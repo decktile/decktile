@@ -90,21 +90,21 @@ section[data-theme="dark"]::after {
 /* Title and section dividers: coral gradient, top to bottom (also with @variant dark) */
 section.layout-title,
 section.layout-title[data-theme="dark"] {
-  background: linear-gradient(180deg, #E05845 0%, #E58570 100%);
-  color: #ffffff;
+  background: var(--bg-image) right bottom / auto 6.5em no-repeat, linear-gradient(180deg, #E05845 0%, #E58570 100%);
+  color: #003841;
 }
 .layout-title h1,
 .layout-title h2,
 .layout-title h3,
 .layout-title h4,
 .layout-title h5,
-.layout-title h6 { color: #ffffff; }
+.layout-title h6 { color: #003841; }
 .layout-title .kicker { color: #003841; }
-.layout-title .subtitle { color: rgba(255,255,255,0.92); }
-.layout-title .speaker { color: rgba(255,255,255,0.9); }
-.layout-title .speaker .role { color: rgba(255,255,255,0.75); }
-.layout-title .speaker-links a { color: rgba(255,255,255,0.85); }
-.layout-title .speaker-links svg { stroke: rgba(255,255,255,0.85); }
+.layout-title .subtitle { color: #003841; }
+.layout-title .speaker { color: #003841; }
+.layout-title .speaker .role { color: rgba(0,56,65,0.8); }
+.layout-title .speaker-links a { color: #003841; }
+.layout-title .speaker-links svg { stroke: #003841; }
 
 .layout-title { --logo: var(--logo-dark); }
 
@@ -169,14 +169,16 @@ footer {
 section[data-theme="dark"] footer {
   --footer-color: rgba(255,255,255,0.85);
   left: var(--section-padding-h);
-  bottom: 1em;
+  bottom: calc(1.1em / 0.6);
 }
 .layout-title .slide-num,
 section[data-theme="dark"] .slide-num {
-  bottom: 1em;
+  bottom: calc(1.1em / 0.6);
   right: var(--section-padding-h);
   color: rgba(255,255,255,0.85);
 }
+section.layout-title footer { --footer-color: #003841; }
+section.layout-title .slide-num { color: #003841; right: calc(6.5em / 0.6); }
 
 .subtitle { color: var(--color-dimmed); }
 h2 + .subtitle { font-size: 0.85em; }

@@ -107,3 +107,23 @@ class TestSetTheme:
     def test_backward_compat_alias(self):
         from slidr.render.seaborn import set_palette, set_theme
         assert set_palette is set_theme
+
+
+class TestStyleModulePalette:
+    """A style module's seaborn_palette must reach the chart colors."""
+
+    BAR = 'plt.bar(["a"], [1])'
+
+    def test_ossummit_europe_bars_use_brand_coral(self):
+        from slidr.render.seaborn import render_seaborn_svg
+        set_theme("ossummit_europe")
+        svg = render_seaborn_svg(self.BAR)
+        assert svg is not None
+        assert "#e05845" in svg.lower()
+
+    def test_palette_survives_applying_theme_twice(self):
+        from slidr.render.seaborn import render_seaborn_svg
+        set_theme("ossummit_europe")
+        set_theme("ossummit_europe")
+        svg = render_seaborn_svg(self.BAR)
+        assert "#e05845" in svg.lower()

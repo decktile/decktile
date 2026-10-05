@@ -86,16 +86,17 @@ def set_theme(name: str) -> None:
     try:
         # 1) style module (for custom overrides CSS can't express)
         mod = importlib.import_module(f"slidr.seaborn_styles.{name}")
-        style = getattr(mod, "STYLE", {})
+        style = dict(getattr(mod, "STYLE", {}))
         if style:
             import matplotlib
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
             import seaborn as sns
-            sns.set_theme(style="darkgrid", palette=style.pop("seaborn_palette", _DEFAULT_PALETTE))
+            palette = style.pop("seaborn_palette", _DEFAULT_PALETTE)
+            sns.set_theme(style="darkgrid", palette=palette)
             plt.rcParams.update(style)
             _style = style
-            _palette = None
+            _palette = palette
             return
     except ImportError:
         pass
