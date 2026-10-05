@@ -32,6 +32,7 @@ Place directives on their own line at the top of a slide body:
 | `@kicker text` | Title slide eyebrow, monospace accent |
 | `@subtitle text` | Title slide subtitle |
 | `@speaker name=X role=Y` | Title slide attribution with optional role |
+| `@contributor name=X role=Y` | Credited non-speaker, same links as `@speaker`, labelled "Contributor" (`label=` overrides) |
 | `@layout name` | Apply slide layout (see below) |
 | `@col` | Explicit column break within `two-col` layout |
 | `@tiny text` | Small dimmed annotation |

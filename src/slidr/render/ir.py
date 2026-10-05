@@ -355,12 +355,15 @@ def _convert_node(node, styles: dict) -> Elem:
     elif isinstance(node, Notes):
         return Elem(kind="notes", content=node.content, tag=node.tag or "")
     elif isinstance(node, AttrNode):
-        if node.type == "speaker":
+        if node.type in ("speaker", "contributor"):
             name = node.attrs.get("name", node.value)
             role = node.attrs.get("role", "")
+            attrs = node.attrs
+            if node.type == "contributor":
+                attrs = {**attrs, "contributor": attrs.get("label", "Contributor")}
             text = f"{name}\n{role}" if role else name
             return Elem(kind="speaker", content=_escape(node.value), text=text,
-                        attrs=node.attrs,
+                        attrs=attrs,
                         font_size=styles.get("font_speaker", 18), color=base.color)
         elif node.type == "kicker":
             return Elem(kind="kicker", content=_escape(node.value), text=node.value,

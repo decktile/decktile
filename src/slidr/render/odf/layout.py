@@ -73,5 +73,5 @@ def estimate_elem_height(elem: Any, width_cm: float) -> float:
             h += max(0.5, estimate_text_height(line, elem.font_size or 18, width_cm)) + 0.2
         return h + 0.5
     elif kind == "speaker":
-        return (2.5 if elem.attrs.get("role") else 1.5) + 0.5
+        return (2.5 if elem.attrs.get("role") or elem.attrs.get("contributor") else 1.5) + 0.5
     return 0.5

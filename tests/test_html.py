@@ -33,3 +33,26 @@ def test_speaker_github_still_uses_lucide_icon():
     assert "lucide" in html  # git-fork proxy still rendered
     assert "lucide-placeholder" not in html
     assert 'href="https://github.com/ntheanh201"' in html
+
+
+def _title_html(md: str) -> str:
+    from slidr.parser.markdown import parse
+    from slidr.render.html import _render_slide
+    from slidr.render.ir import build_ir
+    return _render_slide(build_ir(parse(md))[0])
+
+
+def test_contributor_renders_labelled_and_distinct_from_speaker():
+    html = _title_html(
+        "@speaker name=Reza role=Architect\n"
+        "@contributor name=Thanh role=\"LFX Mentee\" github=github.com/loiht2\n"
+    )
+    assert '<div class="speaker">Reza' in html
+    assert '<div class="speaker contributor"><span class="contributor-label">Contributor</span>' in html
+    assert "Thanh" in html and "LFX Mentee" in html and "github.com/loiht2" in html
+
+
+def test_contributor_label_override():
+    html = _title_html("@contributor name=Thanh label=\"Research by\"\n")
+    assert '<span class="contributor-label">Research by</span>' in html
+

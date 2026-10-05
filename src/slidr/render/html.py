@@ -199,6 +199,9 @@ def _render_elem(e: Elem) -> str:
                 links.append(f'<a href="{_escape(href)}" target="_blank">{svg} {_escape(label)}</a>')
         if links:
             text += '<br><span class="speaker-links">' + "".join(links) + "</span>"
+        label = e.attrs.get("contributor")
+        if label:
+            return f'<div class="speaker contributor"><span class="contributor-label">{_escape(label)}</span><br>{text}</div>'
         return f'<div class="speaker">{text}</div>'
     elif e.kind in ("kicker", "subtitle", "tiny"):
         return f'<p class="{e.kind}">{e.content}</p>'

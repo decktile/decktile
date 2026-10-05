@@ -451,7 +451,7 @@ def _estimate_elem_height(elem: Elem, width_cm: float) -> float:
             h += _estimate_elem_height(child) + 0.2
         return h + 0.5
     elif kind == "speaker":
-        return (2.5 if elem.attrs.get("role") else 1.5) + 0.5
+        return (2.5 if elem.attrs.get("role") or elem.attrs.get("contributor") else 1.5) + 0.5
     return 0.5
 
 
@@ -674,6 +674,9 @@ def _render_speaker(
     fname = gr.register(frame_key)
     p = Paragraph()
     p.append(Span(name, style=tr.register(TextStyleKey(weight="bold"))))
+    label = elem.attrs.get("contributor")
+    if label:
+        role = f"{label}: {role}" if role else label
     if role:
         p.append("\n")
         p.append(

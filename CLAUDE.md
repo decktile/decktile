@@ -79,7 +79,7 @@ slides.md
 | `Table` | pipe tables | `<table><thead><tbody>` |
 | `Quote` | `> text` | `<div class="quote">` |
 | `ListNode` | `- item` | `<ul><li>` |
-| `AttrNode` | `@kicker text` / `@speaker name=X role=Y` | `<div class="kicker">` / `<div class="speaker">` |
+| `AttrNode` | `@kicker text` / `@speaker name=X role=Y` / `@contributor name=X role=Y` | `<div class="kicker">` / `<div class="speaker">` / `<div class="speaker contributor">` |
 | `Inline::Text` | text | escaped text |
 | `Inline::CodeSpan` | `` `code` `` | `<code>` |
 | `Inline::SoftBreak` | line break | space |
