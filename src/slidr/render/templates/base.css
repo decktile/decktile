@@ -38,7 +38,16 @@ section::before {
 }
 [data-theme="dark"] section::before,
 section[data-theme="dark"]::before {
-  background-image: var(--logo-dark);
+  /* Repeats the full shorthand, not just background-image: weasyprint
+     fails to resolve a var()-based background-image longhand override
+     applied after an earlier background shorthand -- it resets to
+     `none` instead of swapping just the image (confirmed via isolated
+     repro, unrelated to CSS custom-property chaining itself, which
+     weasyprint handles fine on its own). Real browsers resolve this
+     correctly either way; this avoids relying on a longhand override
+     weasyprint (both the --pdf output and the ODP renderer's geometry
+     capture) gets wrong. */
+  background: var(--logo-dark) center / contain no-repeat;
 }
 
 

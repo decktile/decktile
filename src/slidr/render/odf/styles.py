@@ -52,6 +52,40 @@ def px_to_cm(px: float) -> str:
     return f"{px * CM_PER_PX:.3f}cm"
 
 
+def downscale_image(path: str, width_cm: float, height_cm: float) -> str:
+    """Downscale an oversized bitmap before embedding, to 2x the target's
+    own pixel size -- used for both per-page master backgrounds (one
+    style, but Impress recomposites it fresh for every page using it --
+    see ``StyleRegistry._prepare_bg_image``) and per-slide logo/watermark
+    frames (one frame per slide, each independently decoded/resampled by
+    the same mechanism; a wide source watermark photo turned a one-time
+    decode into a cost repeated on every slide carrying it). Preserves
+    alpha -- a logo/watermark PNG's transparency must survive, unlike an
+    opaque full-bleed background photo. Skipped entirely if already
+    smaller than the target.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return path
+    target_w = max(1, round(width_cm / CM_PER_PX * 2))
+    target_h = max(1, round(height_cm / CM_PER_PX * 2))
+    try:
+        with Image.open(path) as im:
+            if im.width <= target_w and im.height <= target_h:
+                return path
+            scale = min(target_w / im.width, target_h / im.height)
+            size = (max(1, round(im.width * scale)), max(1, round(im.height * scale)))
+            mode = "RGBA" if im.mode in ("RGBA", "LA", "P") else "RGB"
+            resized = im.convert(mode).resize(size, Image.LANCZOS)
+            fd, out_path = tempfile.mkstemp(suffix=".png")
+            os.close(fd)
+            resized.save(out_path)
+            return out_path
+    except Exception:
+        return path
+
+
 def is_uniform_tint(gradient: list[tuple[float, str, float]] | None) -> bool:
     """A CSS ``background-image`` gradient layer that is the *same* color
     and alpha at every stop (``linear-gradient(var(--bg-overlay), var(--bg-overlay))``,
@@ -67,6 +101,20 @@ def is_uniform_tint(gradient: list[tuple[float, str, float]] | None) -> bool:
         return False
     first_hex, first_alpha = gradient[0][1], gradient[0][2]
     return all(g[1] == first_hex and abs(g[2] - first_alpha) < 0.01 for g in gradient)
+
+
+def _bitmap_tint_key(style: ResolvedStyle) -> tuple | None:
+    """The (image, tint) master key, or None if this style's background
+    doesn't qualify for a baked-tint master (no image, or a true multi-
+    stop/angled gradient like ``.layout-title``'s that can't be
+    flattened to one tint). Single source shared by ``master_for`` and
+    ``overlay_needed``/``footer_bar_baked`` so they can't drift."""
+    if not (style.bg_image_url and os.path.isfile(style.bg_image_url)):
+        return None
+    if not is_uniform_tint(style.bg_gradient):
+        return None
+    tint_hex, tint_alpha = style.bg_gradient[0][1], round(style.bg_gradient[0][2], 3)
+    return ("bitmap-tinted", style.bg_image_url, tint_hex, tint_alpha)
 
 
 def _master_label(key: tuple, tint_hex: str | None) -> str:
@@ -122,6 +170,8 @@ class StyleRegistry:
         self._opacities: dict[tuple, str] = {}
         self._masters: dict[tuple, str] = {}
         self._tint_baked_keys: set[tuple] = set()
+        self._footer_baked: dict[tuple, bool] = {}
+        self._label_counters: dict[str, int] = {}
         self._pil_ok: bool | None = None
         self._page_layout_name: str | None = None
         self._page_w: float = 0.0
@@ -452,25 +502,7 @@ class StyleRegistry:
         slide's own pixel size -- already more than enough for a full-
         bleed background -- and skip entirely if already smaller.
         """
-        try:
-            from PIL import Image
-        except ImportError:
-            return path
-        target_w = max(1, round(width_cm / CM_PER_PX * 2))
-        target_h = max(1, round(height_cm / CM_PER_PX * 2))
-        try:
-            with Image.open(path) as im:
-                if im.width <= target_w and im.height <= target_h:
-                    return path
-                scale = min(target_w / im.width, target_h / im.height)
-                size = (max(1, round(im.width * scale)), max(1, round(im.height * scale)))
-                resized = im.convert("RGB").resize(size, Image.LANCZOS)
-                fd, out_path = tempfile.mkstemp(suffix=".png")
-                os.close(fd)
-                resized.save(out_path)
-                return out_path
-        except Exception:
-            return path
+        return downscale_image(path, width_cm, height_cm)
 
     def _composite_tint_image(
         self, path: str, hex_color: str, alpha: float, width_cm: float, height_cm: float,
@@ -481,18 +513,15 @@ class StyleRegistry:
         flattened fill per (image, tint) combination, selected per slide
         via ``master_page`` -- a layout switched per slide (light/dark/
         etc.) instead of one image with a universal runtime overlay.
-        Returns ``(path, baked)``: ``baked`` is False if PIL is missing
-        or compositing failed, so the caller (``master_for``) can record
-        the fallback and ``overlay_needed`` stays the single source of
-        truth -- otherwise a page would get neither the baked tint nor
-        the per-slide overlay shape.
+        Returns ``(path, baked)``: ``baked`` is False if compositing
+        failed (corrupt/unreadable image), so the caller (``master_for``)
+        can record the fallback and ``overlay_needed`` stays the single
+        source of truth -- otherwise a page would get neither the baked
+        tint nor the per-slide overlay shape.
         """
         downscaled = self._prepare_bg_image(path, width_cm, height_cm)
         try:
             from PIL import Image
-        except ImportError:
-            return downscaled, False
-        try:
             rgb = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
             with Image.open(downscaled) as im:
                 tint_layer = Image.new("RGB", im.size, rgb)
@@ -504,6 +533,37 @@ class StyleRegistry:
         except Exception:
             return downscaled, False
 
+    def _bake_footer_bar(
+        self, img_path: str, footer: BoxGeometry, width_cm: float, height_cm: float,
+    ) -> bool:
+        """Paints the footer bar directly onto the composited master image
+        at its exact weasyprint-measured position. Baked into the master
+        (painted beneath every per-slide shape automatically) instead of a
+        separate per-slide rect -- also sidesteps having to get z-order
+        right between the bar and the watermark/logo shapes that sit
+        inside it. ``style:repeat="stretch"`` maps the image linearly
+        across the page regardless of its own aspect, so cm -> px uses
+        the image's own size, not the original photo's.
+        """
+        try:
+            from PIL import Image, ImageDraw
+            rgb = tuple(int(footer.style.bg[i:i + 2], 16) for i in (1, 3, 5))
+            alpha = max(0.0, min(1.0, footer.style.bg_alpha))
+            with Image.open(img_path) as im:
+                im = im.convert("RGB")
+                sx, sy = im.width / width_cm, im.height / height_cm
+                box = (footer.x * sx, footer.y * sy, (footer.x + footer.w) * sx, (footer.y + footer.h) * sy)
+                if alpha >= 0.999:
+                    ImageDraw.Draw(im).rectangle(box, fill=rgb)
+                else:
+                    overlay = Image.new("RGB", im.size, rgb)
+                    mask = Image.new("L", im.size, 0)
+                    ImageDraw.Draw(mask).rectangle(box, fill=round(alpha * 255))
+                    im = Image.composite(overlay, im, mask)
+                im.save(img_path)
+            return True
+        except Exception:
+            return False
 
     def _pil_available(self) -> bool:
         if self._pil_ok is None:
@@ -514,23 +574,34 @@ class StyleRegistry:
                 self._pil_ok = False
         return self._pil_ok
 
+    def _next_master_name(self, label: str) -> str:
+        n = self._label_counters.get(label, 0) + 1
+        self._label_counters[label] = n
+        return label if n == 1 else f"{label} {n}"
+
     def overlay_needed(self, style: ResolvedStyle) -> bool:
         """Single source of truth for whether a separate per-slide overlay
         shape is still needed -- false whenever ``master_for`` already
         baked this exact (image, tint) into the master's own bitmap fill.
         Checked against the *recorded* outcome, not re-derived independently
-        (a PIL-missing environment would otherwise disagree with itself:
-        no overlay AND an untinted master)."""
+        (a failed composite would otherwise disagree with itself: no
+        overlay AND an untinted master)."""
         bg_image_ok = bool(style.bg_image_url) and os.path.isfile(style.bg_image_url)
-        if not bg_image_ok or not is_uniform_tint(style.bg_gradient):
+        key = _bitmap_tint_key(style)
+        if key is None:
             return bg_image_ok
-        tint_hex, tint_alpha = style.bg_gradient[0][1], round(style.bg_gradient[0][2], 3)
-        key = ("bitmap-tinted", style.bg_image_url, tint_hex, tint_alpha)
         return key not in self._tint_baked_keys
+
+    def footer_bar_baked(self, style: ResolvedStyle) -> bool:
+        """Single source of truth for whether the footer bar is already
+        painted into this style's master -- the per-slide footer frame
+        must then render text only (no fill), or it double-paints."""
+        key = _bitmap_tint_key(style)
+        return key is not None and self._footer_baked.get(key, False)
 
     def master_for(
         self, style: ResolvedStyle, width_cm: float, height_cm: float,
-        add_file: Callable[[str], str],
+        add_file: Callable[[str], str], footer: BoxGeometry | None = None,
     ) -> str:
         """Dedup'd master page for a slide's base background (solid/gradient/bitmap).
 
@@ -541,24 +612,23 @@ class StyleRegistry:
         distinct master-page layouts, not one shared image recomposited
         with a universal per-slide overlay shape. Only a true multi-stop/
         angled gradient (``.layout-title``'s directional fade) still
-        needs a separate per-slide overlay -- ``odp.py``'s caller skips
-        it (via ``is_uniform_tint``) whenever this method already baked
-        the tint in.
+        needs a separate per-slide overlay -- ``overlay_needed`` is the
+        single source of truth for that. An opaque ``footer`` bar (the
+        section's resolved footer box, if any) is baked in the same way.
         """
         pl_name = self.ensure_page_layout(width_cm, height_cm)
         bg_image_ok = bool(style.bg_image_url) and os.path.isfile(style.bg_image_url)
-        tint_baked = bg_image_ok and is_uniform_tint(style.bg_gradient) and self._pil_available()
+        tint_key = _bitmap_tint_key(style) if self._pil_available() else None
+        tint_baked = tint_key is not None
         if tint_baked:
-            tint_hex, tint_alpha = style.bg_gradient[0][1], round(style.bg_gradient[0][2], 3)
-            key = ("bitmap-tinted", style.bg_image_url, tint_hex, tint_alpha)
+            key = tint_key
+            self._tint_baked_keys.add(key)
         elif bg_image_ok:
             key = ("bitmap", style.bg_image_url)
         elif style.bg_gradient:
             key = ("gradient", tuple(style.bg_gradient), round(style.bg_angle_deg))
         else:
             key = ("solid", style.bg)
-        if tint_baked:
-            self._tint_baked_keys.add(key)
         cached = self._masters.get(key)
         if cached:
             return cached
@@ -566,11 +636,17 @@ class StyleRegistry:
         dp_name = f"SlidrBgDp{next(self._counter)}"
         dp = Style("drawing-page", name=dp_name)
         if key[0] in ("bitmap", "bitmap-tinted"):
-            img_path = (
-                self._composite_tint_image(style.bg_image_url, tint_hex, tint_alpha, width_cm, height_cm)[0]
-                if tint_baked
-                else self._prepare_bg_image(style.bg_image_url, width_cm, height_cm)
-            )
+            if tint_baked:
+                img_path, _ = self._composite_tint_image(
+                    style.bg_image_url, tint_key[2], tint_key[3], width_cm, height_cm,
+                )
+                footer_baked = (
+                    footer is not None and footer.style.bg_alpha > 0
+                    and self._bake_footer_bar(img_path, footer, width_cm, height_cm)
+                )
+                self._footer_baked[key] = footer_baked
+            else:
+                img_path = self._prepare_bg_image(style.bg_image_url, width_cm, height_cm)
             uri = add_file(img_path)
             img_name = f"SlidrBgImg{next(self._counter)}"
             # draw:fill-image is family-less, same as draw:gradient/
@@ -603,8 +679,8 @@ class StyleRegistry:
         # automatic-styles (odfdo pitfall, verified against document.py/styles.py).
         self._doc.styles.get_element("office:automatic-styles").append(dp)
 
-        label = _master_label(key, tint_hex if tint_baked else None)
-        master_name = f"Slidr{label}{next(self._counter)}"
+        label = _master_label(key, tint_key[2] if tint_baked else None)
+        master_name = self._next_master_name(label)
         mp = StyleMasterPage(name=master_name, page_layout=pl_name, draw_style_name=dp_name)
         self._doc.insert_style(mp)
         self._masters[key] = master_name

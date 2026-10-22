@@ -159,3 +159,30 @@ def test_table_zebra_stripe_scoped_to_tbody():
     sub = table_elem.box.substyles
     assert sub["tr:odd"].bg != "#e8e8f0"
     assert sub["tr:even"].bg == "#e8e8f0"
+
+
+def test_pseudo_elements_captured_despite_sharing_section_sid():
+    """section::before/::after share the originating section's own
+    data-slidr-id -- which the outer walk's seen-dedup gate already
+    marked seen while processing the section itself, moments earlier in
+    the same recursion. Without a bypass for pseudo-elements, that gate
+    silently drops logo/watermark capture entirely (verified: every
+    slide in a real deck reported no logo/watermark at all despite a
+    themed section::before/::after resolving to a real, non-zero box in
+    weasyprint's own render)."""
+    import pathlib
+
+    from slidr.render.odf.geometry import annotate_geometry
+
+    ir_slides, doc = _ir_from("---\ntitle: T\n---\n\nHello world.\n")
+    css = (
+        ':root { --logo: url("logo.svg"); --watermark: url("logo.svg"); }\n'
+        'section::before { content: ""; position: absolute; left: 0; top: 0; '
+        'width: 10%; height: 10%; background: var(--logo); }\n'
+        'section::after { content: ""; position: absolute; right: 0; bottom: 0; '
+        'width: 10%; height: 10%; background: var(--watermark); }\n'
+    )
+    section_box, _ = annotate_geometry(ir_slides, doc, css, (1280, 720), pathlib.Path("."))
+    sb = section_box[ir_slides[0].id]
+    assert sb.logo is not None
+    assert sb.watermark is not None

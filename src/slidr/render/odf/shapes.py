@@ -440,7 +440,15 @@ def _render_speaker(
     box = elem.box
     style = box.style
     para_style = reg.paragraph_style(style)
-    p = Paragraph(elem.text or "", style=para_style)
+    text = elem.text or ""
+    links = [
+        elem.attrs[key].replace("https://", "").replace("mailto:", "")
+        for key in ("github", "twitter", "email", "linkedin", "website")
+        if elem.attrs.get(key)
+    ]
+    if links:
+        text = f"{text}\n{'  ·  '.join(links)}" if text else "  ·  ".join(links)
+    p = Paragraph(text, style=para_style)
     gfx = reg.graphic_style(style, fill=False)
     frame = Frame.text_frame(p, style=gfx, position=_pos(box), size=_size(box), anchor_type="page")
     return [frame]

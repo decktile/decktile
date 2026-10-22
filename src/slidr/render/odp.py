@@ -18,7 +18,7 @@ from slidr.parser.ast import Document as ASTDocument
 from slidr.render.ir import ResolvedStyle, build_ir
 from slidr.render.odf.geometry import annotate_geometry
 from slidr.render.odf.shapes import render_elem
-from slidr.render.odf.styles import StyleRegistry
+from slidr.render.odf.styles import StyleRegistry, downscale_image
 
 
 def render(
@@ -71,10 +71,25 @@ def render(
         shapes: list[Any] = []
 
         if sb is not None:
-            page.master_page = reg.master_for(sb.style, page_width, page_height, add_file)
+            page.master_page = reg.master_for(sb.style, page_width, page_height, add_file, footer=sb.footer)
             overlay = _overlay_shape(sb.style, reg, page_width, page_height)
             if overlay is not None:
                 shapes.append(overlay)
+
+        # Footer/slide-num appended before logo/watermark: in the (rare)
+        # fallback path where the bar isn't baked into the master (no PIL,
+        # or compositing failed), it's still a separate shape, and the
+        # watermark/logo this theme nests inside the bar must paint above
+        # it, not under -- correct either way, since the common baked
+        # path renders no separate bar shape at all for skip_fill to hide.
+        footer_shape = sb and sb.footer and _text_pseudo_frame(
+            sb.footer, reg, skip_fill=reg.footer_bar_baked(sb.style),
+        )
+        if footer_shape is not None:
+            shapes.append(footer_shape)
+        slide_num_shape = sb and sb.slide_num and _text_pseudo_frame(sb.slide_num, reg)
+        if slide_num_shape is not None:
+            shapes.append(slide_num_shape)
 
         for e in slide.elements:
             shapes.extend(render_elem(e, reg, add_file, source_dir, global_tags))
@@ -84,9 +99,18 @@ def render(
         # for that pseudo-element -- exactly the HTML's CSS cascade,
         # including any `--logo: var(--logo-dark)` swap on dark/title
         # sections, with no separate Python-side light/dark selection.
-        logo_shape = sb and sb.logo and _pseudo_image_frame(sb.logo, add_file)
-        if logo_shape is not None:
-            shapes.append(logo_shape)
+        # The Python-side fallback is for a theme with no section::before
+        # CSS at all (sb.logo is None) -- NOT for a box that exists but
+        # legitimately resolves to no image (e.g. `.layout-title { --logo:
+        # var(--logo-dark) }` with no logo_dark set -> background-image:
+        # none): that's the cascade explicitly deciding no logo here, and
+        # falling back to doc.meta.logo/logo_dark directly would silently
+        # override it (regression: a logo reappearing on a title slide
+        # the HTML correctly shows without one).
+        if sb is not None and sb.logo is not None:
+            logo_shape = _pseudo_image_frame(sb.logo, add_file)
+            if logo_shape is not None:
+                shapes.append(logo_shape)
         elif logo_path or logo_dark_path:
             slide_logo = logo_dark_path if slide.variant == "dark" else logo_path
             if slide_logo:
@@ -94,12 +118,6 @@ def render(
         watermark_shape = sb and sb.watermark and _pseudo_image_frame(sb.watermark, add_file)
         if watermark_shape is not None:
             shapes.append(watermark_shape)
-        footer_shape = sb and sb.footer and _text_pseudo_frame(sb.footer, reg)
-        if footer_shape is not None:
-            shapes.append(footer_shape)
-        slide_num_shape = sb and sb.slide_num and _text_pseudo_frame(sb.slide_num, reg)
-        if slide_num_shape is not None:
-            shapes.append(slide_num_shape)
 
         # A bitmap-filled master page changes how LibreOffice resolves
         # z-order for un-indexed shapes (confirmed empirically: an
@@ -137,7 +155,7 @@ def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
     url = pseudo.style.bg_image_url
     if not url or not os.path.isfile(url):
         return None
-    uri = add_file(url)
+    uri = add_file(downscale_image(url, pseudo.w, pseudo.h))
     box_w, box_h = pseudo.w, pseudo.h
     aspect = _image_aspect(url)
     box_aspect = box_w / box_h if box_h else (aspect or 1.0)
@@ -157,19 +175,24 @@ def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
     )
 
 
-def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry) -> Frame | None:
+def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = False) -> Frame | None:
     """<footer>/.slide-num: a real DOM element injected by the HTML
     template (shell.html), not an AST node -- geometry.py captures it by
     tag/class against the enclosing section instead of by data-slidr-id.
     Position/size/background/color are exactly weasyprint's own resolved
     box for it (light-theme ``footer`` is a full-width bar via its own
     `left:0;right:0`, dark/title themes leave it text-only -- no
-    Python-side special-casing, the CSS cascade already decided)."""
+    Python-side special-casing, the CSS cascade already decided).
+    ``skip_fill``: the bar is already baked into the master's own bitmap
+    fill (``reg.footer_bar_baked``) -- painting it again here would
+    double it (and need its own, harder-to-get-right z-order against the
+    watermark/logo shapes that sit inside it)."""
     if not pseudo.text:
         return None
     para_style = reg.paragraph_style(pseudo.style)
     gfx = reg.graphic_style(
-        pseudo.style, fill=pseudo.style.bg_alpha > 0, vertical_align="middle", border=False,
+        pseudo.style, fill=not skip_fill and pseudo.style.bg_alpha > 0,
+        vertical_align="middle", border=False,
     )
     p = Paragraph(pseudo.text, style=para_style)
     return Frame.text_frame(

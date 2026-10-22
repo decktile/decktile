@@ -202,14 +202,18 @@ def test_svg_logo_keeps_its_own_aspect_ratio(tmp_path):
     """PIL can't open SVG at all (raises on Image.open) -- the fallback
     was a hardcoded 3.0x1.3cm (2.31 aspect) box regardless of the real
     logo, which visibly compresses any wide logo (regression: a real
-    1305x298 (4.38 aspect) SVG logo rendered squeezed into 2.31)."""
+    1305x298 (4.38 aspect) SVG logo rendered squeezed into 2.31).
+    Unit-tested directly against _logo_frame: the full pipeline now
+    resolves a themed logo via the section::before pseudo-element box
+    instead (its own, separate, already-correct aspect handling) --
+    _logo_frame is the fallback for a theme with no --logo CSS wiring,
+    not exercised by a normal build."""
+    from slidr.render.odp import _logo_frame
+
     logo = tmp_path / "logo.svg"
     logo.write_text('<svg viewBox="0 0 1305 298" xmlns="http://www.w3.org/2000/svg"></svg>')
-    md = f"---\ntitle: T\nlogo: logo.svg\n---\n\n# Hello\n"
-    odp = _build(md, tmp_path)
-    frames = _frames(odp)
-    logo_frame = next(f for f in frames if float(f.width.rstrip("cm")) == 3.0)
-    aspect = float(logo_frame.width.rstrip("cm")) / float(logo_frame.height.rstrip("cm"))
+    frame = _logo_frame(str(logo), lambda p: p, page_w=33.87, page_h=19.05)
+    aspect = float(frame.width.rstrip("cm")) / float(frame.height.rstrip("cm"))
     assert abs(aspect - 1305 / 298) < 0.05
 
 
@@ -229,6 +233,45 @@ def test_dark_slide_uses_logo_dark(tmp_path):
     dark_logo_uri = next(f.get_image().url for f in pages[0].get_frames() if f.get_image())
     light_logo_uri = next(f.get_image().url for f in pages[1].get_frames() if f.get_image())
     assert dark_logo_uri != light_logo_uri
+
+
+def test_theme_no_logo_decision_not_overridden_by_fallback(tmp_path):
+    """The Python-side fallback (doc.meta.logo/logo_dark directly) is for
+    a theme with no section::before CSS at all -- NOT for a box that
+    exists but legitimately resolves to no image (background-image:
+    none). Regression: a logo reappearing on a slide the theme
+    explicitly hides it on, bypassing the CSS cascade's own decision."""
+    from PIL import Image
+
+    logo = tmp_path / "logo.png"
+    Image.new("RGB", (100, 50), "black").save(logo)
+    md = "---\ntitle: T\nlogo: logo.png\n---\n\n@layout title\n\n# Hello\n"
+    theme = default_theme() + (
+        "\nsection::before { content: ''; position: absolute; width: 10%; "
+        "height: 10%; background: var(--logo); }\n"
+        "\n.layout-title::before { background-image: none; }\n"
+    )
+    odp = _build(md, tmp_path, theme_css=theme)
+    frames = _frames(odp)
+    assert not any(f.get_image() for f in frames)
+
+
+def test_speaker_links_render_as_text(tmp_path):
+    """Speaker contact links (github/linkedin/etc) are built from
+    elem.attrs in html.py's own rendering but were never read by the ODP
+    path at all -- elem.text only carries name+role, so the ODP speaker
+    frame silently dropped all contact info."""
+    md = (
+        "---\ntitle: T\n---\n\n# Hello\n\n"
+        "@speaker name=\"Jane Doe\" role=\"Engineer\" "
+        "github=\"jdoe\" linkedin=\"https://linkedin.com/in/jdoe\"\n"
+    )
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    speaker_frame = next(f for f in frames if "Jane Doe" in f.get_formatted_text())
+    text = speaker_frame.get_formatted_text()
+    assert "jdoe" in text
+    assert "linkedin.com/in/jdoe" in text
 
 
 def test_shapes_have_explicit_incrementing_z_index(tmp_path):

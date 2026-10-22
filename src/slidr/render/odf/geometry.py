@@ -106,7 +106,10 @@ def _walk(
     if tag in GLOBAL_TAGS and tag not in global_tags:
         global_tags[tag] = _resolve_style(box, parent_bg)
 
-    if has_rect and (sid not in seen if sid else True):
+    pseudo_or_injected = tag in ("section::before", "section::after", "footer") or (
+        tag == "span" and _has_class(box, "slide-num")
+    )
+    if has_rect and (pseudo_or_injected or (sid not in seen if sid else True)):
         style = _resolve_style(box, parent_bg)
         bg_rgb = style.bg_rgb01  # already composited with parent_bg in _resolve_style
 
