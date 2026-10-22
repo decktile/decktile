@@ -83,6 +83,7 @@ class StyleRegistry:
         self._run: dict[_TextKey, str] = {}
         self._graphic: dict[_GraphicKey, str] = {}
         self._table_cells: dict[tuple, str] = {}
+        self._table_dims: dict[tuple, str] = {}
         self._list_styles: dict[tuple, str] = {}
         self._overlay: dict[tuple, tuple[str, str | None]] = {}
         self._gradients: dict[tuple, str] = {}
@@ -210,6 +211,36 @@ class StyleRegistry:
         )
         self._doc.insert_style(s, automatic=True)
         self._table_cells[key] = name
+        return name
+
+    def table_column_style(self, width_cm: float) -> str:
+        """Explicit column width -- without it Impress tables fall back to
+        a fixed per-column default, ignoring the frame's own measured
+        width/font sizes and rendering noticeably larger than the HTML.
+        ``width``/``height`` for table-column/table-row only map to
+        ``style:column-width``/``style:row-height`` as ``Style()``
+        constructor kwargs (``Style.__init__``), not via a later
+        ``set_properties()`` call -- verified against odfdo source.
+        """
+        key = round(width_cm, 3)
+        cached = self._table_dims.get(("col", key))
+        if cached:
+            return cached
+        name = f"SlidrTCW{next(self._counter)}"
+        s = Style("table-column", name=name, width=f"{width_cm:.3f}cm")
+        self._doc.insert_style(s, automatic=True)
+        self._table_dims[("col", key)] = name
+        return name
+
+    def table_row_style(self, height_cm: float) -> str:
+        key = round(height_cm, 3)
+        cached = self._table_dims.get(("row", key))
+        if cached:
+            return cached
+        name = f"SlidrTRH{next(self._counter)}"
+        s = Style("table-row", name=name, height=f"{height_cm:.3f}cm")
+        self._doc.insert_style(s, automatic=True)
+        self._table_dims[("row", key)] = name
         return name
 
     # ---- graphic (frame fill/border/padding) ----

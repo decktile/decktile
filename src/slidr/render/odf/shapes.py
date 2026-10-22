@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from odfdo import Frame, List as OdfList, ListItem, Paragraph, Span, Table
+from odfdo import Column, Frame, List as OdfList, ListItem, Paragraph, Row, Span, Table
 
 from slidr.parser.ast import (
     CodeSpan, Emphasis, Image as ASTImage, LucideIcon, SoftBreak, Strikethrough,
@@ -267,7 +267,21 @@ def _render_table(
     nrows = len(elem.rows) + 1
     t = Table(f"SlidrTable_{elem.id}", width=max(ncols, 1), height=max(nrows, 1))
 
+    # Without explicit column/row dims, Impress falls back to a fixed
+    # per-column/-row default (bigger than the frame's own measured size),
+    # rendering the table noticeably larger than the HTML -- size every
+    # column/row to split the frame's own box evenly.
+    if ncols:
+        col_style = reg.table_column_style(box.w / ncols)
+        for j in range(ncols):
+            t.set_column(j, Column(style=col_style))
+    if nrows:
+        row_style = reg.table_row_style(box.h / nrows)
+        for i in range(nrows):
+            t.set_row(i, Row(style=row_style))
+
     header_cell = reg.table_cell_style(th_style.bg, th_style.border_color, th_style.border_width)
+    header_run = reg.run_style(th_style.fg, th_style.font_family, th_style.font_size_px, True, False)
     for j, h in enumerate(elem.headers):
         text = _strip_html(h)
         t.set_value((j, 0), text)
@@ -275,17 +289,24 @@ def _render_table(
         cell.set_attribute("table:style-name", header_cell)
         p = cell.get_element("text:p")
         if p is not None:
-            bold = reg.run_style(th_style.fg, th_style.font_family, th_style.font_size_px, True, False)
             p.clear()
-            p.append(Span(text, style=bold))
+            p.append(Span(text, style=header_run))
 
     for i, row in enumerate(elem.rows):
-        row_style = td_even if (i + 1) % 2 == 0 else td_odd
-        cell_name = reg.table_cell_style(row_style.bg, row_style.border_color, row_style.border_width)
+        row_fg_style = td_even if (i + 1) % 2 == 0 else td_odd
+        cell_name = reg.table_cell_style(row_fg_style.bg, row_fg_style.border_color, row_fg_style.border_width)
+        body_run = reg.run_style(
+            row_fg_style.fg, row_fg_style.font_family, row_fg_style.font_size_px, False, False,
+        )
         for j, cell_text in enumerate(row):
-            t.set_value((j, i + 1), _strip_html(cell_text))
+            text = _strip_html(cell_text)
+            t.set_value((j, i + 1), text)
             cell = t.get_cell((j, i + 1), clone=False)
             cell.set_attribute("table:style-name", cell_name)
+            p = cell.get_element("text:p")
+            if p is not None:
+                p.clear()
+                p.append(Span(text, style=body_run))
 
     frame = Frame(
         name=f"table_frame_{elem.id}",
@@ -420,13 +441,23 @@ _ICON_SVG_RE = re.compile(r"<svg\b[^>]*>.*?</svg>", re.DOTALL)
 
 
 def _icon_frame(svg: str, x: float, y: float, w: float, h: float, add_file: AddFile) -> Any | None:
-    """One lucide <svg> icon as a contain-fit image frame within (x, y, w, h)."""
+    """One lucide <svg> icon as a contain-fit image frame within (x, y, w, h).
+
+    ``_svg_dims`` is tuned for diagrams (sizes from the viewBox's own unit
+    count, e.g. a 0.0353cm/unit heuristic) -- a lucide icon's viewBox is a
+    fixed ``0 0 24 24`` regardless of its requested on-slide size, so that
+    heuristic forced every icon to the same ~0.85cm square no matter what
+    box it was asked to fill (ignoring an explicit ``size=`` directive and
+    overlapping adjacent text). Icons must instead respect the caller's
+    box, fit to the icon's own aspect ratio (typically 1:1).
+    """
     import tempfile
 
     svg = _normalize_svg_viewbox(svg)
-    iw, ih = _svg_dims(svg, w)
-    if ih > h and ih > 0:
-        iw, ih = iw * h / ih, h
+    vb = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
+    aspect = (float(vb.group(1)) / float(vb.group(2))) if vb and float(vb.group(2)) > 0 else 1.0
+    box_aspect = w / h if h > 0 else aspect
+    iw, ih = (w, w / aspect) if aspect > box_aspect else (h * aspect, h)
     with tempfile.NamedTemporaryFile(suffix=".svg", mode="w", delete=False) as f:
         f.write(svg)
         tmp_path = f.name
