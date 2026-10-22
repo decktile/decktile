@@ -76,7 +76,8 @@ class _GraphicKey:
 class StyleRegistry:
     """Owns every ODF style created for one ODP document."""
 
-    def __init__(self, document: Document) -> None:
+    def __init__(self, document: Document, pygments_style: str = "default") -> None:
+        self.pygments_style = pygments_style
         self._doc = document
         self._fonts: set[str] = set()
         self._paragraph: dict[_TextKey, str] = {}

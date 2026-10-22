@@ -252,3 +252,66 @@ def test_shapes_have_explicit_incrementing_z_index(tmp_path):
     z_indices = [s.get_attribute("draw:z-index") for s in shapes]
     assert all(z is not None for z in z_indices)
     assert [int(z) for z in z_indices] == list(range(len(shapes)))
+
+
+def test_code_block_gets_per_token_colored_spans(tmp_path):
+    """Code blocks must be pygments-highlighted (matching the HTML
+    renderer), not one flat mono Paragraph -- a keyword/string/comment
+    token must get a different run-style color than plain text."""
+    md = '---\ntitle: T\n---\n\n## Code\n\n```yaml\nkey: "value"\n```\n'
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    code_frame = next(f for f in frames if "key" in f.get_formatted_text())
+    spans = code_frame.get_elements("descendant::text:span")
+    assert len(spans) > 1
+    colors = set()
+    for s in spans:
+        style_name = s.get_attribute("text:style-name")
+        style = odp.get_style("text", style_name)
+        props = style.get_properties(area="text")
+        colors.add(props.get("fo:color"))
+    assert len(colors) > 1
+
+
+def test_table_columns_and_rows_get_explicit_dims(tmp_path):
+    """Without explicit column-width/row-height, Impress falls back to a
+    fixed per-column/-row default wider/taller than the HTML table."""
+    md = "---\ntitle: T\n---\n\n## Table\n\n| A | B |\n|---|---|\n| x | y |\n"
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    table_frame = next(f for f in frames if f.get_element("table:table") is not None)
+    table = table_frame.get_element("table:table")
+    col = table.get_element("table:table-column")
+    col_style = odp.get_style("table-column", col.get_attribute("table:style-name"))
+    assert col_style.get_properties(area="table-column").get("style:column-width")
+    row = table.get_element("table:table-row")
+    row_style = odp.get_style("table-row", row.get_attribute("table:style-name"))
+    assert row_style.get_properties(area="table-row").get("style:row-height")
+
+
+def test_table_body_cell_has_own_run_style(tmp_path):
+    """Body cell text must carry an explicit font-size run style -- without
+    one, Impress falls back to its own (larger) default text size."""
+    md = "---\ntitle: T\n---\n\n## Table\n\n| A |\n|---|\n| body text |\n"
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    table_frame = next(f for f in frames if "body text" in f.get_formatted_text())
+    span = table_frame.get_element("descendant::text:span")
+    assert span is not None
+    style = odp.get_style("text", span.get_attribute("text:style-name"))
+    assert style.get_properties(area="text").get("fo:font-size")
+
+
+def test_arrow_icon_renders_as_svg_image_frame(tmp_path):
+    """A ::: arrow block with a {icon:...} directive must embed the icon
+    as an image frame -- it was previously stripped to an empty frame."""
+    md = (
+        "---\ntitle: T\n---\n\n## Compare\n\n"
+        "::: card\nLeft\n:::\n\n::: arrow\n\n{icon:arrow-right size=48}\n:::\n\n"
+        "::: card\nRight\n:::\n"
+    )
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    images = [f.get_element("draw:image") for f in frames]
+    images = [img for img in images if img is not None]
+    assert any((img.get_attribute("xlink:href") or "").endswith(".svg") for img in images)

@@ -213,6 +213,45 @@ def _render_notes(
     return [bar, frame] if bar is not None else [frame]
 
 
+def _highlighted_code_paragraph(
+    code: str, language: str, style: ResolvedStyle, reg: StyleRegistry, para_style: str,
+) -> Paragraph:
+    """Per-token colored Spans via the same pygments lexer/style the HTML
+    renderer uses (html.py's _highlight_code) -- previously code blocks were
+    one flat mono Paragraph with no token coloring at all."""
+    from pygments import lex
+    from pygments.lexers import TextLexer, get_lexer_by_name
+    from pygments.styles import get_style_by_name
+    from pygments.util import ClassNotFound
+
+    p = Paragraph(style=para_style)
+    if not code:
+        return p
+    try:
+        lexer = get_lexer_by_name(language) if language else TextLexer()
+    except ClassNotFound:
+        lexer = TextLexer()
+    try:
+        pyg_style = get_style_by_name(reg.pygments_style)
+    except Exception:
+        pyg_style = None
+    for ttype, text in lex(code, lexer):
+        if not text:
+            continue
+        color, bold, italic = style.fg, False, False
+        if pyg_style is not None:
+            try:
+                tstyle = pyg_style.style_for_token(ttype)
+            except KeyError:
+                tstyle = None
+            if tstyle and tstyle.get("color"):
+                color = f"#{tstyle['color']}"
+            bold, italic = bool(tstyle and tstyle.get("bold")), bool(tstyle and tstyle.get("italic"))
+        run = reg.run_style(color, style.font_family, style.font_size_px, bold, italic, mono=True)
+        p.append(Span(text, style=run))
+    return p
+
+
 def _render_code(
     elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
     global_tags: dict[str, ResolvedStyle],
@@ -222,7 +261,7 @@ def _render_code(
         return _render_image_data(elem, box, add_file)
     style = box.style
     para_style = reg.paragraph_style(style, mono=True)
-    p = Paragraph(elem.content or "", style=para_style)
+    p = _highlighted_code_paragraph(elem.content or "", elem.language, style, reg, para_style)
     gfx = reg.graphic_style(style, fill=True, vertical_align="top")
     frame = Frame.text_frame(p, style=gfx, position=_pos(box), size=_size(box), anchor_type="page")
     _apply_radius(frame, style)

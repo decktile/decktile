@@ -53,7 +53,7 @@ def render(
 
     odp = Document("presentation")
     odp.body.clear()
-    reg = StyleRegistry(odp)
+    reg = StyleRegistry(odp, doc.meta.pygments_style or "default")
 
     def add_file(path: str) -> str:
         return odp.add_file(path)
