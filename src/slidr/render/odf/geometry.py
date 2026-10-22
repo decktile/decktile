@@ -143,6 +143,14 @@ def _walk(
             # <footer>/.slide-num: template-injected, not AST elements --
             # no data-slidr-id to match by, attach to the enclosing
             # section instead (current_sid, threaded down the recursion).
+            # First match wins: weasyprint's own LineBox/TextBox children
+            # of the element also carry element_tag == "footer" (inherited
+            # from their block ancestor) and get walked into right after --
+            # taking the last match instead landed on the text's own tight
+            # line-box geometry (zero padding, transparent) rather than the
+            # footer block's own resolved box (verified empirically: every
+            # slide's footer reported the same narrow, unstyled geometry
+            # regardless of its real light/dark/title background).
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             el = getattr(box, "element", None)
             pseudo = BoxGeometry(
@@ -154,8 +162,9 @@ def _walk(
                 text=(el.text or "").strip() if el is not None else "",
             )
             if tag == "footer":
-                section_box[current_sid].footer = pseudo
-            else:
+                if section_box[current_sid].footer is None:
+                    section_box[current_sid].footer = pseudo
+            elif section_box[current_sid].slide_num is None:
                 section_box[current_sid].slide_num = pseudo
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())

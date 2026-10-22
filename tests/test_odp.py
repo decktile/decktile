@@ -380,6 +380,31 @@ def test_footer_and_slide_num_render_as_shapes(tmp_path):
     assert gfx.get_properties(area="graphic").get("draw:fill") == "none"
 
 
+def test_footer_bar_gets_its_own_box_not_its_text_line_box(tmp_path):
+    """weasyprint recurses into a <footer>'s own LineBox/TextBox children,
+    which carry the same element_tag -- capturing without first-match-wins
+    landed on the text's own tight, unstyled line-box geometry (zero
+    padding, transparent, text-width only) instead of the footer block's
+    real resolved box, silently losing a themed full-width footer bar
+    entirely (reported as a transparent, narrow frame on every slide)."""
+    md = "---\ntitle: T\nfooter: Conference 2026\n---\n\n# Hello\n"
+    theme = default_theme() + (
+        '\nfooter { left: 0; right: 0; bottom: 0; background: #123456; '
+        'padding: 1em 2em; }\n'
+    )
+    odp = _build(md, tmp_path, theme_css=theme)
+    frames = _frames(odp)
+    footer_frame = next(f for f in frames if "Conference 2026" in f.get_formatted_text())
+    gfx = odp.get_style("graphic", footer_frame.get_attribute("draw:style-name"))
+    props = gfx.get_properties(area="graphic")
+    assert props.get("draw:fill") == "solid"
+    assert props.get("draw:fill-color") == "#123456"
+    pl = odp.get_style("page-layout", "SlidrPageLayout")
+    page_w_cm = float(pl.get_properties()["fo:page-width"].rstrip("cm"))
+    frame_w_cm = float(footer_frame.get_attribute("svg:width").rstrip("cm"))
+    assert frame_w_cm > page_w_cm * 0.9
+
+
 def test_icon_svg_has_no_mismatched_intrinsic_dims(tmp_path):
     """render_icon's no-explicit-size path emits width="24" height="1em"
     (meant for inline HTML flow) -- LibreOffice's SVG import reads these
