@@ -92,7 +92,7 @@ def _build_rich_paragraph(
         elif isinstance(node, CodeSpan):
             code = global_tags.get("code")
             family = code.font_family if code else base.font_family
-            name = reg.run_style(base.fg, family, base.font_size_px, False, False)
+            name = reg.run_style(base.fg, family, base.font_size_px, False, False, mono=True)
             p.append(Span(node.content, style=name))
         elif isinstance(node, ASTImage):
             p.append(f" [{node.alt or 'image'}] ")
@@ -201,7 +201,7 @@ def _render_code(
     if elem.svg or elem.pdf:
         return _render_image_data(elem, box, add_file)
     style = box.style
-    para_style = reg.paragraph_style(style)
+    para_style = reg.paragraph_style(style, mono=True)
     p = Paragraph(elem.content or "", style=para_style)
     gfx = reg.graphic_style(style, fill=True, vertical_align="top")
     frame = Frame.text_frame(p, style=gfx, position=_pos(box), size=_size(box), anchor_type="page")

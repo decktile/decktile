@@ -60,23 +60,38 @@ def render(
 
     reg.ensure_page_layout(page_width, page_height)
     logo_path = _resolve_asset(doc.meta.logo, source_dir)
+    # CSS default is `--logo-dark: var(--logo)` (base.css :root) -- only
+    # differs if a theme/frontmatter explicitly sets logo_dark.
+    logo_dark_path = _resolve_asset(doc.meta.logo_dark, source_dir) or logo_path
 
     for i, slide in enumerate(ir_slides):
         sb = section_box.get(slide.id)
         page = DrawPage(draw_id=slide.id, name=f"Slide {i + 1}")
+        shapes: list[Any] = []
 
         if sb is not None:
             page.master_page = reg.master_for(sb.style, page_width, page_height, add_file)
             overlay = _overlay_shape(sb.style, reg, page_width, page_height)
             if overlay is not None:
-                page.append(overlay)
+                shapes.append(overlay)
 
         for e in slide.elements:
-            for shape in render_elem(e, reg, add_file, source_dir, global_tags):
-                page.append(shape)
+            shapes.extend(render_elem(e, reg, add_file, source_dir, global_tags))
 
-        if logo_path:
-            page.append(_logo_frame(logo_path, add_file, page_width, page_height))
+        slide_logo = logo_dark_path if slide.variant == "dark" else logo_path
+        if slide_logo:
+            shapes.append(_logo_frame(slide_logo, add_file, page_width, page_height))
+
+        # A bitmap-filled master page changes how LibreOffice resolves
+        # z-order for un-indexed shapes (confirmed empirically: an
+        # un-indexed overlay rect painted ABOVE a z-index=0 text frame --
+        # the same shapes with no master page stacked correctly in
+        # document order). Set an explicit, unique z-index per shape so
+        # paint order can never depend on that default.
+        for z, shape in enumerate(shapes):
+            shape.set_attribute("draw:z-index", str(z))
+            page.append(shape)
+
         if slide.notes:
             page.append(_notes_shape(slide.notes, page_width, page_height))
 
@@ -101,7 +116,7 @@ def _overlay_shape(
     gradient/solid tint layered on top -- a pure gradient or solid fill
     (no bg_image_url) is already the master's own fill, no overlay needed.
     """
-    if not style.bg_image_url:
+    if not (style.bg_image_url and os.path.isfile(style.bg_image_url)):
         return None
     name, _opacity = reg.overlay_style(style)
     return RectangleShape(
@@ -110,17 +125,41 @@ def _overlay_shape(
     )
 
 
-def _logo_frame(logo_path: str, add_file: Any, page_w: float, page_h: float) -> Frame:
-    target_w, target_h = 3.0, 1.3
+def _image_aspect(path: str) -> float | None:
+    """width/height ratio of an image file. PIL has no SVG rasterizer at
+    all (raises on open) -- parse viewBox/width/height from the SVG text
+    directly rather than silently falling back to a guessed box (the old
+    fixed 3.0x1.3cm fallback compressed any wide logo, confirmed: a real
+    1305x298 SVG logo rendered squeezed into a 3.0/1.3=2.31 aspect box
+    instead of its real 4.38 aspect)."""
+    if path.lower().endswith(".svg"):
+        import re
+
+        svg = Path(path).read_text(errors="ignore")
+        m = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
+        if m:
+            w, h = float(m.group(1)), float(m.group(2))
+            return w / h if h else None
+        m = re.search(r'width="([\d.]+)[a-z]*"', svg)
+        m2 = re.search(r'height="([\d.]+)[a-z]*"', svg)
+        if m and m2 and float(m2.group(1)):
+            return float(m.group(1)) / float(m2.group(1))
+        return None
     try:
         from PIL import Image
 
-        with Image.open(logo_path) as im:
+        with Image.open(path) as im:
             w_px, h_px = im.size
-        if w_px:
-            target_h = target_w * (h_px / w_px)
+        return w_px / h_px if h_px else None
     except Exception:
-        pass
+        return None
+
+
+def _logo_frame(logo_path: str, add_file: Any, page_w: float, page_h: float) -> Frame:
+    target_w, target_h = 3.0, 1.3
+    aspect = _image_aspect(logo_path)
+    if aspect:
+        target_h = target_w / aspect
     uri = add_file(logo_path)
     right_margin, top_margin = 1.0, 1.0
     return Frame.image_frame(

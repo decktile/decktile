@@ -93,20 +93,21 @@ class StyleRegistry:
 
     # ---- fonts ----
 
-    def ensure_font(self, family: str) -> None:
+    def ensure_font(self, family: str, mono: bool = False) -> None:
         if not family or family in self._fonts:
             return
         self._fonts.add(family)
         face = Style(
             "font-face", font_name=family, font_family=family,
-            font_family_generic="swiss", font_pitch="variable",
+            font_family_generic="modern" if mono else "swiss",
+            font_pitch="fixed" if mono else "variable",
         )
         self._doc.insert_style(face)
         self._doc.insert_style(face.clone, default=True)
 
     # ---- text (paragraph default + inline run) styles ----
 
-    def paragraph_style(self, style: ResolvedStyle) -> str:
+    def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False) -> str:
         """Automatic (content.xml) style -- verified empirically: Impress's
         draw:text-box only resolves text:p/text:span against automatic
         styles, silently ignoring an identical common (styles.xml) style
@@ -116,13 +117,13 @@ class StyleRegistry:
         cached = self._paragraph.get(key)
         if cached:
             return cached
-        self.ensure_font(style.font_family)
+        self.ensure_font(style.font_family, mono=mono)
         name = f"SlidrP{next(self._counter)}"
         s = Style("paragraph", name=name)
         s.set_properties(area="paragraph", align=style.text_align)
         s.set_properties(
             area="text", color=style.fg, font=style.font_family,
-            font_family=style.font_family, family_generic="swiss",
+            font_family=style.font_family, family_generic="modern" if mono else "swiss",
             size=px_to_pt(style.font_size_px), weight=style.font_weight,
             font_style="italic" if style.font_italic else "normal",
         )
@@ -131,18 +132,18 @@ class StyleRegistry:
         return name
 
     def run_style(self, fg: str, font_family: str, font_size_px: float,
-                 bold: bool, italic: bool) -> str:
+                 bold: bool, italic: bool, *, mono: bool = False) -> str:
         key = _TextKey(fg, font_family, font_size_px,
                       "bold" if bold else "normal", italic, "")
         cached = self._run.get(key)
         if cached:
             return cached
-        self.ensure_font(font_family)
+        self.ensure_font(font_family, mono=mono)
         name = f"SlidrT{next(self._counter)}"
         s = Style("text", name=name, bold=bold, italic=italic)
         s.set_properties(
             area="text", color=fg, font=font_family, font_family=font_family,
-            family_generic="swiss", size=px_to_pt(font_size_px),
+            family_generic="modern" if mono else "swiss", size=px_to_pt(font_size_px),
         )
         self._doc.insert_style(s, automatic=True)
         self._run[key] = name
@@ -194,7 +195,15 @@ class StyleRegistry:
         s = Style("graphic", name=name)
         props: dict[str, str] = {
             "draw:textarea-vertical-align": vertical_align,
-            "draw:auto-grow-height": "true",
+            # LibreOffice's text engine can wrap a few percent wider than
+            # weasyprint measured (font substitution/metrics differences);
+            # auto-grow-height let that push the frame past its measured
+            # box and collide with the next sibling (fixed-position frames
+            # don't reflow). shrink-to-fit keeps every frame at its
+            # weasyprint-measured size and scales text down instead,
+            # verified empirically to eliminate the overlap.
+            "draw:auto-grow-height": "false",
+            "style:shrink-to-fit": "true",
             "fo:padding-top": px_to_cm(style.padding_top),
             "fo:padding-right": px_to_cm(style.padding_right),
             "fo:padding-bottom": px_to_cm(style.padding_bottom),
@@ -234,23 +243,36 @@ class StyleRegistry:
         name = f"SlidrGrad{next(self._counter)}"
         start_hex, end_hex = stops[0][1], stops[-1][1]
         odf_deg = css_angle_to_odf(angle_deg, self._page_w, self._page_h)
+        # draw:start-color/end-color are the base-ODF 2-stop fallback;
+        # loext:gradient-stop children (a LibreOffice extension, verified
+        # rendering every stop) carry the full N-stop gradient so a middle
+        # stop's hue (e.g. kcd_vietnam's #7a0504 red) isn't lost.
+        stop_xml = "".join(
+            f'<loext:gradient-stop svg:offset="{offset:.4f}" '
+            f'loext:color-type="rgb" loext:color-value="{hex_color}"/>'
+            for offset, hex_color, _alpha in stops
+        )
         el = Element.from_tag(
             f'<draw:gradient draw:name="{name}" draw:style="linear" '
             f'draw:angle="{odf_deg:.0f}deg" draw:start-color="{start_hex}" '
             f'draw:end-color="{end_hex}" draw:start-intensity="100%" '
-            f'draw:end-intensity="100%" draw:border="0%"/>'
+            f'draw:end-intensity="100%" draw:border="0%">{stop_xml}</draw:gradient>'
         )
         self._doc.styles.get_element("office:styles").append(el)
         self._gradients[key] = name
         return name
 
     def opacity_name(self, stops: list[tuple[float, str, float]], angle_deg: float) -> str | None:
-        """Per-axis transparency gradient name, or None if fully opaque throughout.
+        """Per-axis opacity gradient name, or None if fully opaque throughout.
 
-        ODF ``draw:opacity`` values are *transparency* (0%=opaque, 100%=fully
-        transparent) -- inverted from CSS alpha. A flat run of equal alphas
-        (common: kubecon_japan's gradient is 0.85 throughout) is approximated
-        with ``draw:border`` holding the start value before the real fade.
+        ``draw:opacity``'s ``draw:start``/``draw:end`` are plain opacity
+        percentages (0%=fully transparent, 100%=fully opaque) -- confirmed
+        empirically against the installed LibreOffice via a solid-color
+        corner-sample test (0/25/75/100% inputs produced exactly that much
+        of the foreground color blended in): the direct CSS-alpha sense,
+        not inverted. A flat run of equal alphas (common: kubecon_japan's
+        gradient is 0.85 throughout) is approximated with ``draw:border``
+        holding the start value before the real fade.
         """
         alphas = [a for _, _, a in stops]
         if all(a >= 0.999 for a in alphas):
@@ -269,8 +291,8 @@ class StyleRegistry:
         el = Element.from_tag(
             f'<draw:opacity draw:name="{name}" draw:style="linear" '
             f'draw:angle="{odf_deg:.0f}deg" '
-            f'draw:start="{(1 - start_alpha) * 100:.0f}%" '
-            f'draw:end="{(1 - end_alpha) * 100:.0f}%" '
+            f'draw:start="{start_alpha * 100:.0f}%" '
+            f'draw:end="{end_alpha * 100:.0f}%" '
             f'draw:border="{border_pct:.0f}%"/>'
         )
         self._doc.styles.get_element("office:styles").append(el)

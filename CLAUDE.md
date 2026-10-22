@@ -95,13 +95,15 @@ render/odf/
 - Logo placement uses a fixed top-right heuristic (`_logo_frame` in
   `odp.py`, same corner/size math as the old renderer), not the actual
   `section::before` pseudo-element box weasyprint computes for the HTML
-  logo overlay -- position/size can drift from the HTML render for
+  logo overlay: position/size can drift from the HTML render for
   non-default logo aspect ratios.
-- LibreOffice's text engine can wrap a borderline-width paragraph one
-  line taller than weasyprint measured it, which can overlap a tightly
-  stacked sibling frame below it (fixed-position frames don't reflow).
-  `draw:auto-grow-height` keeps the text itself from clipping; it does
-  not push siblings down.
+- Text frames use `style:shrink-to-fit` (not `draw:auto-grow-height`):
+  LibreOffice's text engine can wrap a borderline-width paragraph
+  slightly wider than weasyprint measured it, and a growing frame would
+  overlap the next fixed-position sibling (no reflow). shrink-to-fit
+  keeps every frame at its weasyprint-measured size, scaling text down
+  a few percent instead when needed (verified: eliminates the overlap
+  on two-column/list-after-paragraph slides).
 
 ## Parser pipeline
 
