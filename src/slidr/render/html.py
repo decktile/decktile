@@ -16,7 +16,6 @@ from slidr.plugins.layouts import KNOWN_LAYOUTS
 
 _pygments_style = "default"
 
-from slidr.render.ir import build_ir, SlideIR, Elem
 
 _BRAND_ICON_SVGS = {
     "linkedin": (
@@ -59,12 +58,21 @@ def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, i
     set_palette(doc.meta.seaborn_theme)
 
     ir_slides = build_ir(doc, base_css(), theme_css)
+    return render_from_ir(ir_slides, doc, assembled_css, dims)
 
+
+def render_from_ir(ir_slides: list[SlideIR], doc: Document, assembled_css: str,
+                   dims: tuple[int, int]) -> str:
+    """Render already-built IR slides to the full HTML page.
+
+    Split out from render() so the ODP geometry pass can render the exact
+    same IR (same data-slidr-id values) it will later annotate.
+    """
     slides = []
     for i, slide in enumerate(ir_slides):
         children = _render_slide(slide)
         slides.append({
-            "num": i + 1, "layout": slide.layout, "children": children,
+            "id": slide.id, "num": i + 1, "layout": slide.layout, "children": children,
             "notes": slide.notes, "footer": doc.meta.footer or "", "paginate": doc.meta.paginate or False,
             "variant": slide.variant or doc.meta.theme_variant,
             "transition": slide.transition or doc.meta.transition or "",
@@ -80,7 +88,7 @@ def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, i
 
 
 def _render_slide(slide: SlideIR) -> str:
-    elems = slide.elements
+    elems = list(slide.elements)
     heading_html = ""
     if elems and elems[0].kind == "heading":
         heading_html = _render_elem(elems[0])
@@ -92,7 +100,7 @@ def _render_slide(slide: SlideIR) -> str:
     side_html = ""
     for e in list(elems):
         if e.kind == "side-image":
-            side_html = f'<div class="side-image"><img src="{_escape(e.src)}" alt=""></div>'
+            side_html = f'<div class="side-image" data-slidr-id="{e.id}"><img src="{_escape(e.src)}" alt=""></div>'
             elems.remove(e)
 
     body_html = "\n".join(filter(None, (_render_elem(e) for e in elems)))
@@ -104,29 +112,30 @@ def _render_slide(slide: SlideIR) -> str:
 
 
 def _render_elem(e: Elem) -> str:
+    sid = f' data-slidr-id="{e.id}"'
     if e.kind == "heading":
         tag = f"h{e.level}"
-        return f"<{tag}>{e.content}</{tag}>"
+        return f"<{tag}{sid}>{e.content}</{tag}>"
     elif e.kind == "text":
-        return f"<p>{e.content}</p>" if e.content else ""
+        return f"<p{sid}>{e.content}</p>" if e.content else ""
     elif e.kind == "quote":
-        return f'<div class="quote">{e.content}</div>' if e.content else ""
+        return f'<div class="quote"{sid}>{e.content}</div>' if e.content else ""
     elif e.kind == "code":
         if e.language == "mermaid":
-            return _render_mermaid(e.content, e.svg)
+            return _render_mermaid(e.content, e.svg, sid)
         if e.language == "seaborn":
-            return _render_seaborn_html(e.content, e.svg)
+            return _render_seaborn_html(e.content, e.svg, sid)
         if e.language == "dot":
-            return _render_dot_html(e.content, e.svg)
-        return _highlight_code(e.content, e.language)
+            return _render_dot_html(e.content, e.svg, sid)
+        return _highlight_code(e.content, e.language, sid)
     elif e.kind == "list":
-        s = "<ul>\n"
+        s = f"<ul{sid}>\n"
         for item in e.items:
             s += f"<li>{item}</li>\n"
         s += "</ul>"
         return s
     elif e.kind == "table":
-        s = "<table>\n<thead>\n<tr>"
+        s = f"<table{sid}>\n<thead>\n<tr>"
         for h in e.headers:
             s += f"<th>{_maybe_escape(h)}</th>"
         s += "</tr>\n</thead>\n<tbody>\n"
@@ -143,23 +152,23 @@ def _render_elem(e: Elem) -> str:
             if "compare" in cls:
                 # children: col-left, arrow, col-right
                 parts = "\n".join(filter(None, (_render_elem(c) for c in e.children)))
-                return f'<div class="{cls}">\n{parts}\n</div>'
+                return f'<div class="{cls}"{sid}>\n{parts}\n</div>'
             children = "\n".join(filter(None, (_render_elem(c) for c in e.children)))
-            return f'<div class="{cls}">\n{children}\n</div>'
+            return f'<div class="{cls}"{sid}>\n{children}\n</div>'
         cols = e.cols or len(e.children) or 2
         style = f"grid-template-columns: repeat({cols}, 1fr); gap: 16px;"
         cls = "grid"
         if e.class_:
             cls += f" {e.class_}"
         children = "\n".join(filter(None, (_render_elem(c) for c in e.children)))
-        return f'<div class="{cls}" style="{style}">\n{children}\n</div>'
+        return f'<div class="{cls}" style="{style}"{sid}>\n{children}\n</div>'
     elif e.kind == "card":
         cls = "card"
         if e.tag:
             cls += f" tag-{e.tag}"
         if e.class_:
             cls += f" {e.class_}"
-        s = f'<div class="{cls}">\n'
+        s = f'<div class="{cls}"{sid}>\n'
         if e.header:
             s += f"<h3>{_maybe_escape(e.header)}</h3>\n"
         for line in e.body:
@@ -173,15 +182,15 @@ def _render_elem(e: Elem) -> str:
         s += "</div>"
         return s
     elif e.kind == "arrow":
-        return f'<div class="card-arrow">{e.content}</div>'
+        return f'<div class="card-arrow"{sid}>{e.content}</div>'
     elif e.kind == "row":
         children = "\n".join(filter(None, (_render_elem(c) for c in e.children)))
-        return f'<div class="row">\n{children}\n</div>'
+        return f'<div class="row"{sid}>\n{children}\n</div>'
     elif e.kind == "notes":
         cls = "notes"
         if e.tag:
             cls += f" tag-{e.tag}"
-        return f'<div class="{cls}">{e.content}</div>'
+        return f'<div class="{cls}"{sid}>{e.content}</div>'
     elif e.kind == "speaker":
         from slidr.plugins.lucide import render_icon
         name = e.attrs.get("name", e.content)
@@ -201,13 +210,13 @@ def _render_elem(e: Elem) -> str:
             text += '<br><span class="speaker-links">' + "".join(links) + "</span>"
         label = e.attrs.get("contributor")
         if label:
-            return f'<div class="speaker contributor"><span class="contributor-label">{_escape(label)}</span><br>{text}</div>'
-        return f'<div class="speaker">{text}</div>'
+            return f'<div class="speaker contributor"{sid}><span class="contributor-label">{_escape(label)}</span><br>{text}</div>'
+        return f'<div class="speaker"{sid}>{text}</div>'
     elif e.kind in ("kicker", "subtitle", "tiny"):
-        return f'<p class="{e.kind}">{e.content}</p>'
+        return f'<p class="{e.kind}"{sid}>{e.content}</p>'
     elif e.kind == "video":
         poster = _video_poster(e.src)
-        return (f'<figure class="video">'
+        return (f'<figure class="video"{sid}>'
                 f'<video controls preload="metadata" src="{_escape(e.src)}" '
                 f'poster="{_escape(poster)}"></video>'
                 f'<img class="video-print" src="{_escape(poster)}" alt="">'
@@ -217,7 +226,7 @@ def _render_elem(e: Elem) -> str:
     return ""
 
 
-def _highlight_code(content: str, language: str) -> str:
+def _highlight_code(content: str, language: str, sid: str = "") -> str:
     try:
         lexer = get_lexer_by_name(language, stripall=True) if language else TextLexer()
     except ClassNotFound:
@@ -225,7 +234,7 @@ def _highlight_code(content: str, language: str) -> str:
     formatter = HtmlFormatter(nowrap=True, style=_pygments_style)
     highlighted = highlight(content, lexer, formatter)
     cls = f' class="highlight language-{language}"' if language else ' class="highlight"'
-    return f'<pre{cls}><code>{highlighted}</code></pre>'
+    return f'<pre{cls}{sid}><code>{highlighted}</code></pre>'
 
 
 def _pygments_css(style: str = "default") -> str:
@@ -234,22 +243,22 @@ def _pygments_css(style: str = "default") -> str:
     return f"\n/* ---- pygments ---- */\n{css}\n"
 
 
-def _render_seaborn_html(content: str, svg: str = "") -> str:
+def _render_seaborn_html(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
-        return f'<div class="seaborn-plot">\n{svg}\n</div>'
-    return f'<pre class="seaborn-fallback"><code>{_escape(content)}</code></pre>'
+        return f'<div class="seaborn-plot"{sid}>\n{svg}\n</div>'
+    return f'<pre class="seaborn-fallback"{sid}><code>{_escape(content)}</code></pre>'
 
 
-def _render_mermaid(content: str, svg: str = "") -> str:
+def _render_mermaid(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
-        return f'<div class="mermaid">\n{svg}\n</div>'
-    return f'<pre class="mermaid-fallback"><code>{_escape(content)}</code></pre>'
+        return f'<div class="mermaid"{sid}>\n{svg}\n</div>'
+    return f'<pre class="mermaid-fallback"{sid}><code>{_escape(content)}</code></pre>'
 
 
-def _render_dot_html(content: str, svg: str = "") -> str:
+def _render_dot_html(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
-        return f'<div class="graphviz-plot">\n{svg}\n</div>'
-    return f'<pre class="dot-fallback"><code>{_escape(content)}</code></pre>'
+        return f'<div class="graphviz-plot"{sid}>\n{svg}\n</div>'
+    return f'<pre class="dot-fallback"{sid}><code>{_escape(content)}</code></pre>'
 
 
 def _normalize_viewbox(svg: str) -> str:

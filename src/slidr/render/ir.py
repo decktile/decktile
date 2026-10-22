@@ -20,6 +20,43 @@ from slidr.theme.parser import parse_theme
 
 
 @dataclass
+class ResolvedStyle:
+    """Style resolved from a weasyprint box's computed CSS, in CSS px / hex."""
+    bg: str = ""                 # alpha-composited onto the parent's resolved bg
+    bg_alpha: float = 1.0
+    fg: str = "#333333"
+    border_color: str = ""
+    border_width: float = 0.0    # px
+    border_radius: float = 0.0   # px
+    font_family: str = ""
+    font_size_px: float = 18.0
+    font_weight: str = "normal"
+    font_italic: bool = False
+    text_align: str = "left"
+    bg_gradient: list[tuple[float, str, float]] | None = None  # (offset, hex, alpha) stops
+    bg_angle_deg: float = 180.0
+    bg_image_url: str = ""       # local file path of a CSS background-image, if any
+    bg_rgb01: tuple[float, float, float] = (1.0, 1.0, 1.0)  # composited bg, for child compositing
+    padding_top: float = 0.0     # px
+    padding_right: float = 0.0
+    padding_bottom: float = 0.0
+    padding_left: float = 0.0
+
+
+@dataclass
+class BoxGeometry:
+    """Border-box rect (cm, section-relative) plus resolved style for one Elem."""
+    x: float = 0.0
+    y: float = 0.0
+    w: float = 0.0
+    h: float = 0.0
+    style: ResolvedStyle = field(default_factory=ResolvedStyle)
+    # first-seen style per descendant tag within this Elem's own subtree:
+    # card h3/p, table th/td/tr:odd/tr:even, list li/li::marker.
+    substyles: dict[str, ResolvedStyle] = field(default_factory=dict)
+
+
+@dataclass
 class Elem:
     """A single styled element on a slide."""
     kind: str
@@ -52,23 +89,25 @@ class Elem:
     item_inlines: list[list] = field(default_factory=list)
     svg: str = ""
     pdf: bytes = b""
+    id: str = ""                         # data-slidr-id, assigned in build_ir
+    box: BoxGeometry | None = None       # filled by render/odf/geometry.py for ODP
 
 
 @dataclass
 class SlideIR:
     """A fully resolved slide ready for rendering."""
+    id: str = ""
     layout: str = "content"
     elements: list[Elem] = field(default_factory=list)
     notes: str = ""
     variant: str = ""
     transition: str = ""
 
-
 def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[SlideIR]:
     """Convert a Document AST into a list of SlideIR objects."""
     styles = resolve_styles(base_css, theme_css) if base_css else {}
     slides = []
-    for slide in doc.slides:
+    for idx, slide in enumerate(doc.slides):
         layout = slide.layout
         body_nodes = slide.children
 
@@ -93,9 +132,26 @@ def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[Sli
         if subtitle_elem:
             elements.insert(1 if heading_elem else 0, subtitle_elem)
 
-        slides.append(SlideIR(layout=layout, elements=elements, notes=slide.notes or "",
+        slides.append(SlideIR(id=f"s{idx}", layout=layout, elements=elements,
+                             notes=slide.notes or "",
                              variant=slide.variant or "", transition=slide.transition or ""))
+    _assign_elem_ids(slides)
     return slides
+
+
+def _assign_elem_ids(slides: list[SlideIR]) -> None:
+    """Assign a globally-unique data-slidr-id to every Elem (incl. nested children)."""
+    from itertools import count
+    counter = count(1)
+
+    def walk(elems: list[Elem]) -> None:
+        for e in elems:
+            e.id = f"e{next(counter)}"
+            if e.children:
+                walk(e.children)
+
+    for slide in slides:
+        walk(slide.elements)
 
 
 def resolve_styles(base_css: str, theme_css: str) -> dict:

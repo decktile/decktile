@@ -1,140 +1,137 @@
-"""Tests for ODP renderer."""
+"""Observable ODF contract for the ODP renderer: real render() -> real odfdo
+Document round-trip, asserting what a consumer (LibreOffice, a reviewer
+opening the file) would see -- not internal call patterns."""
 
-from slidr.render.ir import Elem
-from slidr.render.odp import _merge_text_elements
+from pathlib import Path
 
+from odfdo import Document as OdfDocument
 
-def make(kind: str, **kwargs) -> Elem:
-    return Elem(kind=kind, **kwargs)
-
-
-def test_merge_text_elements_consecutive():
-    result = _merge_text_elements([
-        make("heading", text="Title"),
-        make("text", text="Body text"),
-        make("list", items=["Item 1", "Item 2"]),
-    ])
-    assert len(result) == 1
-    block = result[0]
-    assert block.kind == "block"
-    assert len(block.children) == 3
-    assert block.children[0].kind == "heading"
-    assert block.children[1].kind == "text"
-    assert block.children[2].kind == "list"
+from slidr.parser.markdown import parse
+from slidr.render.html import base_css, default_theme
+from slidr.render.odp import render
 
 
-def test_merge_text_elements_separated_by_card():
-    result = _merge_text_elements([
-        make("text", text="Before"),
-        make("card", header="Card"),
-        make("text", text="After"),
-    ])
-    assert len(result) == 3
-    assert result[0].kind == "text"
-    assert result[1].kind == "card"
-    assert result[2].kind == "text"
+def _build(md: str, tmp_path: Path, theme_css: str = "", source_dir: Path | None = None) -> OdfDocument:
+    doc = parse(md)
+    css = theme_css or default_theme()
+    out = tmp_path / "out.odp"
+    render(doc, out, base_css(), css, source_dir=source_dir or tmp_path)
+    return OdfDocument(str(out))
 
 
-def test_merge_text_elements_single():
-    result = _merge_text_elements([make("text", text="Only text")])
-    assert len(result) == 1
-    assert result[0].kind == "text"
+def _frames(odp: OdfDocument, page_index: int = 0):
+    page = odp.body.get_draw_pages()[page_index]
+    return page.get_frames()
 
 
-def test_merge_text_elements_empty():
-    result = _merge_text_elements([])
-    assert result == []
+def test_page_size_matches_content_dimensions(tmp_path):
+    odp = _build("---\ntitle: T\nsize: 1280x720\n---\n\n# Hello\n", tmp_path)
+    pl = odp.get_style("page-layout", "SlidrPageLayout")
+    props = pl.get_properties()
+    w_cm = float(props["fo:page-width"].rstrip("cm"))
+    h_cm = float(props["fo:page-height"].rstrip("cm"))
+    assert abs(w_cm - 1280 * 2.54 / 96) < 0.01
+    assert abs(h_cm - 720 * 2.54 / 96) < 0.01
 
 
-def test_merge_text_elements_all_non_text():
-    result = _merge_text_elements([
-        make("card", header="A"),
-        make("card", header="B"),
-    ])
-    assert len(result) == 2
-    assert result[0].kind == "card"
-    assert result[1].kind == "card"
+def test_light_section_background_is_white(tmp_path):
+    odp = _build("---\ntitle: T\n---\n\n# Hello\n", tmp_path)
+    page = odp.body.get_draw_pages()[0]
+    master = odp.styles.get_master_page(0) if page.master_page == "" else \
+        next(m for m in odp.styles.master_pages if m.name == page.master_page)
+    dp = odp.get_style("drawing-page", master.draw_style_name)
+    props = dp.get_properties()
+    assert props.get("draw:fill-color", "").lower() == "#ffffff"
 
 
-def test_render_list_produces_odf_list():
-    """Verify _render_list outputs an ODF <text:list> element."""
-    from slidr.render.odp import _render_list, GraphicStyleRegistry, TextStyleRegistry
-    from slidr.render.odp import LayoutContext
-    from odfdo import Document
-
-    gr = GraphicStyleRegistry()
-    tr = TextStyleRegistry()
-    odp = Document("presentation")
-    ctx = LayoutContext(x=2, y=2, width=24, gap=0.5)
-
-    elem = Elem(
-        kind="list", items=["First", "Second", "Third"],
-        item_inlines=[], font_size=16, color="#333",
+def test_dark_variant_section_uses_dark_colors(tmp_path):
+    theme = (
+        default_theme()
+        + "\nsection[data-theme=\"dark\"] { --color-background: #1a1a2e; "
+        "--color-foreground: #e0e0e0; }\n"
     )
-    frames = _render_list(elem, ctx, gr, tr, odp)
+    odp = _build(
+        "---\ntitle: T\n---\n\n@variant dark\n\n# Dark Slide\n", tmp_path, theme_css=theme,
+    )
+    page = odp.body.get_draw_pages()[0]
+    master = next(m for m in odp.styles.master_pages if m.name == page.master_page)
+    dp = odp.get_style("drawing-page", master.draw_style_name)
+    assert dp.get_properties().get("draw:fill-color", "").lower() == "#1a1a2e"
 
-    assert len(frames) == 1
-    frame = frames[0]
-    assert frame.tag == "draw:frame"
-    text_box = frame.get_element("draw:text-box")
-    assert text_box is not None
-    odf_list = text_box.get_element("text:list")
-    assert odf_list is not None, "Expected <text:list> in output"
-    items = odf_list.get_elements("text:list-item")
+
+def test_card_frame_has_fill_and_border(tmp_path):
+    md = (
+        "---\ntitle: T\n---\n\n## Cards\n\n"
+        "::: card {tag=green}\n### Head\nBody text\n:::\n"
+    )
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    card_frame = next(f for f in frames if "Body text" in f.get_formatted_text())
+    style = odp.get_style("graphic", card_frame.style)
+    props = style.get_properties(area="graphic")
+    assert props.get("draw:fill") == "solid"
+    assert props.get("draw:fill-color")
+    assert props.get("draw:stroke") == "solid"
+
+
+def test_list_items_are_real_odf_list_items(tmp_path):
+    md = "---\ntitle: T\n---\n\n## List\n\n- one\n- two\n- three\n"
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    list_frame = next(f for f in frames if "one" in f.get_formatted_text())
+    box = list_frame.get_text_box()
+    items = box.get_elements("text:list/text:list-item")
     assert len(items) == 3
+    assert [i.text_content.strip() for i in items] == ["one", "two", "three"]
 
 
-def test_css_values_propagate_to_odp_styles():
-    """Verify font and border-radius from CSS reach the ODP style registry."""
-    from slidr.render.odp import (
-        GraphicStyleRegistry, StyleKey, set_fonts, set_border_radius,
-        _style_key_for,
+def test_table_header_and_body_cells_have_distinct_styles(tmp_path):
+    md = (
+        "---\ntitle: T\n---\n\n## Table\n\n"
+        "| A | B |\n|---|---|\n| r1 | x |\n| r2 | y |\n"
     )
-    from slidr.render.ir import Elem
-
-    set_fonts("My Custom Sans", "My Custom Mono")
-    set_border_radius("0.2em")
-
-    gr = GraphicStyleRegistry()
-    key = _style_key_for(Elem(kind="text", font_size=18, color="#333"))
-    assert key.font_family == "My Custom Sans"
-
-    key2 = _style_key_for(Elem(kind="code", font_size=14, color="#333"))
-    assert key2.font_family == "My Custom Mono"
-
-    gr.register(key)
-    gr.register(key2)
-    from odfdo import Document
-    doc = Document("presentation")
-    gr.insert_all(doc)
-    styles_xml = doc.get_part("styles").serialize().decode()
-    assert "My Custom Sans" in styles_xml
-    assert "My Custom Mono" in styles_xml
-
-    card_key = StyleKey(font_size=18, color="#333", fill="#e8f5e9",
-                        font_family="My Custom Sans", border_radius="0.2em")
-    gr2 = GraphicStyleRegistry()
-    gr2.register(card_key)
-    doc2 = Document("presentation")
-    gr2.insert_all(doc2)
-    styles2 = doc2.get_part("styles").serialize().decode()
-    assert 'corner-radius' in styles2
-    assert '0.2em' in styles2
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    table_frame = next(f for f in frames if f.get_element("table:table") is not None)
+    table = table_frame.get_element("table:table")
+    header_cell = table.get_element("table:table-row/table:table-cell")
+    body_cell = table.get_elements("table:table-row")[1].get_element("table:table-cell")
+    assert header_cell.get_attribute("table:style-name") != body_cell.get_attribute("table:style-name")
 
 
-def test_mermaid_generates_svg_and_pdf_in_ir():
-    """Verify mermaid code blocks produce both SVG (for HTML) and PDF (for ODP)."""
-    from slidr.parser.markdown import parse
-    from slidr.render.html import base_css, default_theme
-    from slidr.render.ir import build_ir
+def test_frames_stay_within_page_bounds(tmp_path):
+    md = (
+        "---\ntitle: T\nsize: 1280x720\n---\n\n## Content\n\n"
+        "Some body text.\n\n- item one\n- item two\n"
+    )
+    odp = _build(md, tmp_path)
+    pl = odp.get_style("page-layout", "SlidrPageLayout")
+    props = pl.get_properties()
+    page_w = float(props["fo:page-width"].rstrip("cm"))
+    page_h = float(props["fo:page-height"].rstrip("cm"))
+    for frame in _frames(odp):
+        x = float((frame.pos_x or "0cm").rstrip("cm"))
+        y = float((frame.pos_y or "0cm").rstrip("cm"))
+        w = float((frame.width or "0cm").rstrip("cm"))
+        h = float((frame.height or "0cm").rstrip("cm"))
+        assert x >= -0.01 and y >= -0.01
+        assert x + w <= page_w + 0.5  # small tolerance for auto-grow text frames
+        assert y + h <= page_h + 0.5
 
-    doc = parse("---\ntitle: test\n---\n\n# Diagram\n\n```mermaid\ngraph LR\n    A --> B\n```\n")
-    slides = build_ir(doc, base_css(), default_theme())
-    code_elems = [e for s in slides for e in s.elements if e.kind == "code"]
-    assert len(code_elems) == 1
-    e = code_elems[0]
-    assert e.language == "mermaid"
-    assert len(e.svg) > 100, "SVG should be non-empty"
-    assert "viewBox" in e.svg
-    assert len(e.pdf) > 100, "PDF should be non-empty"
-    assert e.pdf[:4] == b"%PDF", "PDF should start with PDF magic bytes"
+
+def test_speaker_notes_present(tmp_path):
+    md = "---\ntitle: T\n---\n\n<!--\nremember to smile\n-->\n\n# Hello\n"
+    odp = _build(md, tmp_path)
+    page = odp.body.get_draw_pages()[0]
+    notes = page.get_element("presentation:notes")
+    assert notes is not None
+    assert "remember to smile" in notes.text_content
+
+
+def test_missing_background_image_degrades_to_solid_fill(tmp_path):
+    """A theme referencing a nonexistent background image must not crash --
+    degrade to the resolved solid/gradient fill (regression: this exact
+    scenario crashed in kubecon_japan.css before the fix)."""
+    theme = default_theme() + '\nsection { background-image: url("does/not/exist.png"); }\n'
+    odp = _build("---\ntitle: T\n---\n\n# Hello\n", tmp_path, theme_css=theme)
+    assert odp.body.get_draw_pages()  # just must not have raised

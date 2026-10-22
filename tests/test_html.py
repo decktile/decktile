@@ -47,8 +47,10 @@ def test_contributor_renders_labelled_and_distinct_from_speaker():
         "@speaker name=Reza role=Architect\n"
         "@contributor name=Thanh role=\"LFX Mentee\" github=github.com/loiht2\n"
     )
-    assert '<div class="speaker">Reza' in html
-    assert '<div class="speaker contributor"><span class="contributor-label">Contributor</span>' in html
+    assert 'class="speaker"' in html  # plain speaker div exists
+    assert "Reza" in html and "Architect" in html
+    assert 'class="speaker contributor"' in html  # distinct contributor variant
+    assert '<span class="contributor-label">Contributor</span>' in html
     assert "Thanh" in html and "LFX Mentee" in html and "github.com/loiht2" in html
 
 

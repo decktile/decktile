@@ -1,6 +1,6 @@
 # CLAUDE.md — Slidr (Python)
 
-Slidr is a Python CLI that turns markdown into styled HTML + PDF + ODP. Uses markdown-it-py for parsing, weasyprint for PDF, odfdo for ODP, Jinja2 for templates. CSS passthrough -- no CSS parser needed. Theme colors extracted via tinycss2 for ODP only.
+Slidr is a Python CLI that turns markdown into styled HTML + PDF + ODP. Uses markdown-it-py for parsing, weasyprint for both PDF and ODP layout, odfdo for ODP, Jinja2 for templates. CSS passthrough, no CSS parser needed for HTML/PDF. ODP geometry and color come from weasyprint's own resolved layout, not a separate parser.
 
 ## Build & test
 
@@ -32,11 +32,11 @@ src/slidr/
 │   ├── parser.py         # tinycss2: parse base.css + theme CSS → PPTX style dict (colors, fonts, padding)
 │   └── loader.py         # Raw CSS passthrough + variable extraction (legacy)
 ├── render/
-│   ├── ir.py             # AST → SlideIR intermediate representation. build_ir(), _convert_node(), _apply_layout_ir()
-│   ├── html.py           # Jinja2: SlideIR → HTML. _render_slide() extracts h2 + subtitle before slide-body
+│   ├── ir.py             # AST → SlideIR intermediate representation. build_ir(), _convert_node(), _apply_layout_ir(). Elem.id (data-slidr-id) + Elem.box (BoxGeometry, filled by odf/geometry.py) for ODP only
+│   ├── html.py           # Jinja2: SlideIR → HTML, with data-slidr-id on every emitted tag. render_from_ir() split out so odp.py renders the exact same IR/HTML pairing
 │   ├── pdf.py            # weasyprint: HTML file → PDF
-│   ├── odf/              # ODF shared styles + layout engine
-│   ├── odp.py            # odfdo: SlideIR → ODP. Card children rendered below text frame
+│   ├── odf/              # ODP renderer internals (see below)
+│   ├── odp.py            # thin orchestrator: build_ir → odf.geometry.annotate_geometry → one DrawPage per slide via odf.shapes + odf.styles
 │   └── templates/
 │       ├── shell.html    # Main HTML template (Jinja2)
 │       ├── presenter.html # Presenter view (grid: main slide | next preview / notes)
@@ -49,6 +49,59 @@ src/slidr/
     └── kubecon_japan.css # KubeCon Japan theme
 ├── seaborn_styles/      # optional STYLE modules (CSS theme parsing is the default)
 ```
+
+## ODP rendering (render/odf/)
+
+ODP output is **geometry-driven**, not a second layout/paint engine: the
+same HTML string (with a `data-slidr-id` on every element) is rendered
+through weasyprint, and its resolved layout box tree supplies exact
+position, size, and computed CSS style for each `Elem`.
+
+```
+render/odf/
+├── geometry.py   # weasyprint box-tree adapter (private API, version-guarded
+│                 # by tests/test_geometry.py). annotate_geometry()
+│                 # fills Elem.box (BoxGeometry: x/y/w/h in cm, section-relative,
+│                 # plus a ResolvedStyle) and Elem.box.substyles (first-seen
+│                 # style per descendant tag: card h3/p, table th/td/tr:odd/
+│                 # tr:even, list li/li::marker) by walking each Elem's own
+│                 # subtree. A box's own background-image (gradient/photo)
+│                 # is never backfilled from an unrelated ancestor's flat
+│                 # color (e.g. <body>'s screen-mode letterboxing bg).
+├── styles.py     # StyleRegistry: dedups odfdo Style objects from ResolvedStyle.
+│                 # draw:gradient/draw:opacity are family-less in odfdo (built
+│                 # as raw XML). Paragraph/run text styles MUST be inserted
+│                 # automatic=True (content.xml): Impress silently ignores
+│                 # an identical common/styles.xml text style. Table-cell fill
+│                 # MUST go through style:graphic-properties (draw:fill-color),
+│                 # not style:table-cell-properties (fo:background-color):
+│                 # Impress tables are draw tables, not spreadsheet tables.
+├── shapes.py     # Elem.kind -> Frame + real ODF semantics: text:list/
+│                 # text:list-item (not manual bullets), table:table appended
+│                 # directly to the Frame (not wrapped in draw:text-box), per
+│                 # run text:span for inline bold/italic/code. CSS border-left
+│                 # accents (quote/notes) render as a LineShape, not a full
+│                 # draw:stroke outline. Card/table/notes text is parser
+│                 # pre-expanded HTML (icons, bold): stripped + entity
+│                 # decoded before use as literal ODF text.
+└── __init__.py
+```
+
+### Known ODP limitations
+
+- Lucide icons (inline SVG) have no ODF text equivalent and are dropped
+  wherever they appear (headings, cards, tables, arrows) rather than
+  rendered or faked.
+- Logo placement uses a fixed top-right heuristic (`_logo_frame` in
+  `odp.py`, same corner/size math as the old renderer), not the actual
+  `section::before` pseudo-element box weasyprint computes for the HTML
+  logo overlay -- position/size can drift from the HTML render for
+  non-default logo aspect ratios.
+- LibreOffice's text engine can wrap a borderline-width paragraph one
+  line taller than weasyprint measured it, which can overlap a tightly
+  stacked sibling frame below it (fixed-position frames don't reflow).
+  `draw:auto-grow-height` keeps the text itself from clipping; it does
+  not push siblings down.
 
 ## Parser pipeline
 
