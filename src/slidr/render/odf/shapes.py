@@ -9,6 +9,7 @@ table:table, per-run text:span), not HTML stripped to plain text.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,7 +20,7 @@ from slidr.parser.ast import (
     Strong, Text,
 )
 from slidr.render.ir import BoxGeometry, Elem, ResolvedStyle
-from slidr.render.odf.styles import StyleRegistry, px_to_cm
+from slidr.render.odf.styles import CM_PER_PX, StyleRegistry, px_to_cm
 
 AddFile = Callable[[str], str]
 
@@ -306,13 +307,28 @@ def _render_card(
 
     para_style = reg.paragraph_style(body_style)
     content: list[Any] = []
+    icon_frame = None
     if elem.header:
+        header_html = elem.header
+        m = _ICON_SVG_RE.match(header_html.lstrip())
+        if m:
+            # Leading {icon:...} on a card header: no ODF inline-image-in-text
+            # flow, so render it as its own small frame in the card's left
+            # padding gutter (same convention as the bullet-list marker),
+            # next to the header line, and drop it from the header text.
+            header_html = header_html[header_html.index(m.group(0)) + len(m.group(0)):]
+            icon_size = header_style.font_size_px * CM_PER_PX
+            gutter_x = box.x + style.padding_left * CM_PER_PX - icon_size * 1.15
+            icon_y = box.y + style.padding_top * CM_PER_PX
+            icon_frame = _icon_frame(
+                m.group(0), max(box.x, gutter_x), icon_y, icon_size, icon_size, add_file,
+            )
         head_name = reg.run_style(
             header_style.fg, header_style.font_family, header_style.font_size_px,
             header_style.font_weight == "bold", False,
         )
         hp = Paragraph(style=para_style)
-        hp.append(Span(_strip_html(elem.header), style=head_name))
+        hp.append(Span(_strip_html(header_html), style=head_name))
         content.append(hp)
     li_style = box.substyles.get("li", body_style)
     li_para_style = reg.paragraph_style(li_style, margin_bottom_px=li_style.font_size_px * 0.4)
@@ -334,7 +350,10 @@ def _render_card(
         style=gfx, position=_pos(box), size=_size(box), anchor_type="page",
     )
     _apply_radius(frame, style)
-    return [frame]
+    shapes = [frame]
+    if icon_frame is not None:
+        shapes.append(icon_frame)
+    return shapes
 
 
 def _render_grid(
@@ -395,6 +414,46 @@ def _svg_dims(svg: str, max_w_cm: float) -> tuple[float, float]:
         return (max_w_cm, max_w_cm * 9 / 16)
     w = min(max_w_cm, vb_w * 0.0353)
     return (w, w * (vb_h / vb_w))
+
+
+_ICON_SVG_RE = re.compile(r"<svg\b[^>]*>.*?</svg>", re.DOTALL)
+
+
+def _icon_frame(svg: str, x: float, y: float, w: float, h: float, add_file: AddFile) -> Any | None:
+    """One lucide <svg> icon as a contain-fit image frame within (x, y, w, h)."""
+    import tempfile
+
+    svg = _normalize_svg_viewbox(svg)
+    iw, ih = _svg_dims(svg, w)
+    if ih > h and ih > 0:
+        iw, ih = iw * h / ih, h
+    with tempfile.NamedTemporaryFile(suffix=".svg", mode="w", delete=False) as f:
+        f.write(svg)
+        tmp_path = f.name
+    uri = add_file(tmp_path)
+    os.unlink(tmp_path)
+    ix, iy = x + (w - iw) / 2, y + (h - ih) / 2
+    return Frame.image_frame(
+        image=uri,
+        size=(f"{iw:.3f}cm", f"{ih:.3f}cm"),
+        position=(f"{ix:.3f}cm", f"{iy:.3f}cm"),
+        anchor_type="page",
+    )
+
+
+def _render_arrow(
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
+    global_tags: dict[str, ResolvedStyle],
+) -> list[Any]:
+    """``::: arrow`` fenced block: a single centered lucide icon (default a
+    plain arrow glyph), not text -- render as an image frame like any other
+    inline icon, falling back to text if no icon markup is present."""
+    box = elem.box
+    m = _ICON_SVG_RE.search(elem.content or "")
+    if not m:
+        return _render_text_like(elem, reg, add_file, source_dir, global_tags)
+    frame = _icon_frame(m.group(0), box.x, box.y, box.w, box.h, add_file)
+    return [frame] if frame is not None else []
 
 
 def _render_image_data(elem: Elem, box: BoxGeometry, add_file: AddFile) -> list[Any]:
@@ -508,7 +567,7 @@ _RENDERERS: dict[str, Any] = {
     "kicker": _render_text_like,
     "subtitle": _render_text_like,
     "tiny": _render_text_like,
-    "arrow": _render_text_like,
+    "arrow": _render_arrow,
     "quote": _render_quote,
     "notes": _render_notes,
     "code": _render_code,
