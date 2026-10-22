@@ -85,6 +85,25 @@ def test_list_items_are_real_odf_list_items(tmp_path):
     assert [i.text_content.strip() for i in items] == ["one", "two", "three"]
 
 
+def test_list_bullet_has_colored_level_style(tmp_path):
+    """Bullet color must be an inline style:text-properties child on the
+    level style -- Impress ignores @text:style-name for bullet color."""
+    md = "---\ntitle: T\n---\n\n## List\n\n- one\n- two\n"
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    list_frame = next(f for f in frames if "one" in f.get_formatted_text())
+    box = list_frame.get_text_box()
+    odf_list = box.get_element("text:list")
+    list_style_name = odf_list.get_attribute("text:style-name")
+    assert list_style_name
+    list_style = odp.get_style("list", list_style_name)
+    bullet = list_style.get_element("text:list-level-style-bullet")
+    assert bullet.get_attribute("text:bullet-char") == "\u25b8"
+    text_props = bullet.get_element("style:text-properties")
+    assert text_props is not None
+    assert text_props.get_attribute("fo:color")
+
+
 def test_table_header_and_body_cells_have_distinct_styles(tmp_path):
     md = (
         "---\ntitle: T\n---\n\n## Table\n\n"

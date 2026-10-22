@@ -59,9 +59,10 @@ def render(
         return odp.add_file(path)
 
     reg.ensure_page_layout(page_width, page_height)
+    # Fallback only: base.css always defines `section::before { background:
+    # var(--logo) ... }`, so the pseudo-element capture below is the normal
+    # path. This covers a theme that doesn't set --logo at all.
     logo_path = _resolve_asset(doc.meta.logo, source_dir)
-    # CSS default is `--logo-dark: var(--logo)` (base.css :root) -- only
-    # differs if a theme/frontmatter explicitly sets logo_dark.
     logo_dark_path = _resolve_asset(doc.meta.logo_dark, source_dir) or logo_path
 
     for i, slide in enumerate(ir_slides):
@@ -78,9 +79,21 @@ def render(
         for e in slide.elements:
             shapes.extend(render_elem(e, reg, add_file, source_dir, global_tags))
 
-        slide_logo = logo_dark_path if slide.variant == "dark" else logo_path
-        if slide_logo:
-            shapes.append(_logo_frame(slide_logo, add_file, page_width, page_height))
+        # Logo (section::before) / watermark (section::after): position,
+        # size, and file come directly from weasyprint's own resolved box
+        # for that pseudo-element -- exactly the HTML's CSS cascade,
+        # including any `--logo: var(--logo-dark)` swap on dark/title
+        # sections, with no separate Python-side light/dark selection.
+        logo_shape = sb and sb.logo and _pseudo_image_frame(sb.logo, add_file)
+        if logo_shape is not None:
+            shapes.append(logo_shape)
+        elif logo_path or logo_dark_path:
+            slide_logo = logo_dark_path if slide.variant == "dark" else logo_path
+            if slide_logo:
+                shapes.append(_logo_frame(slide_logo, add_file, page_width, page_height))
+        watermark_shape = sb and sb.watermark and _pseudo_image_frame(sb.watermark, add_file)
+        if watermark_shape is not None:
+            shapes.append(watermark_shape)
 
         # A bitmap-filled master page changes how LibreOffice resolves
         # z-order for un-indexed shapes (confirmed empirically: an
@@ -105,6 +118,37 @@ def _resolve_asset(src: str, source_dir: Path | None) -> str | None:
         return None
     path = str((source_dir / src).resolve()) if source_dir else src
     return path if os.path.isfile(path) else None
+
+
+def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
+    """A section::before/::after box: exact position/size, and its own
+    background-image url is the exact file the HTML used (already
+    reflecting any CSS variable swap -- no separate Python-side selection).
+    CSS uses ``background-size: contain`` (preserve the logo's own
+    aspect, center within the box) -- Frame.image_frame stretches to the
+    declared size, so fit-and-center within the CSS box using the file's
+    real aspect ratio rather than distorting it to the box's aspect."""
+    url = pseudo.style.bg_image_url
+    if not url or not os.path.isfile(url):
+        return None
+    uri = add_file(url)
+    box_w, box_h = pseudo.w, pseudo.h
+    aspect = _image_aspect(url)
+    box_aspect = box_w / box_h if box_h else (aspect or 1.0)
+    if aspect and aspect > box_aspect:
+        w, h = box_w, box_w / aspect
+    elif aspect:
+        w, h = box_h * aspect, box_h
+    else:
+        w, h = box_w, box_h
+    x = pseudo.x + (box_w - w) / 2
+    y = pseudo.y + (box_h - h) / 2
+    return Frame.image_frame(
+        image=uri,
+        position=(f"{x:.3f}cm", f"{y:.3f}cm"),
+        size=(f"{max(w, 0.01):.3f}cm", f"{max(h, 0.01):.3f}cm"),
+        anchor_type="page",
+    )
 
 
 def _overlay_shape(

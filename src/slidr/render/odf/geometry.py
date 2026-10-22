@@ -107,6 +107,24 @@ def _walk(
                 style=style,
             )
             seen.add(sid)
+        elif tag in ("section::before", "section::after") and sid in section_box:
+            # logo (::before) / watermark (::after): position+file resolved
+            # the same way as any other box -- weasyprint's own cascade
+            # already applied any `--logo: var(--logo-dark)` swap, so this
+            # is always the exact file/position the HTML used, no separate
+            # Python-side light/dark selection needed.
+            ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
+            pseudo = BoxGeometry(
+                x=(box.border_box_x() - ox) * PX_TO_CM,
+                y=(box.border_box_y() - oy) * PX_TO_CM,
+                w=box.border_width() * PX_TO_CM,
+                h=box.border_height() * PX_TO_CM,
+                style=style,
+            )
+            if tag == "section::before":
+                section_box[sid].logo = pseudo
+            else:
+                section_box[sid].watermark = pseudo
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             elem = by_id[sid]

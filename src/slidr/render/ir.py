@@ -51,6 +51,13 @@ class BoxGeometry:
     w: float = 0.0
     h: float = 0.0
     style: ResolvedStyle = field(default_factory=ResolvedStyle)
+    # section::before/::after (logo/watermark): position/size/file resolved
+    # the same way as any other box, including CSS variable swaps like
+    # `.layout-title { --logo: var(--logo-dark) }` -- weasyprint's own
+    # cascade already picked the right file, no separate Python-side
+    # light/dark logo selection needed.
+    logo: "BoxGeometry | None" = None
+    watermark: "BoxGeometry | None" = None
     # first-seen style per descendant tag within this Elem's own subtree:
     # card h3/p, table th/td/tr:odd/tr:even, list li/li::marker.
     substyles: dict[str, ResolvedStyle] = field(default_factory=dict)

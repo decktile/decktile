@@ -170,12 +170,31 @@ def _strip_html(text: str) -> str:
     _expand_markdown/_expand_icons). ODF cell/paragraph text is literal,
     not HTML: embedding it raw would print tag soup (confirmed: lucide
     icon SVGs showing as literal `<svg>...` text in table cells). Strip
-    tags and decode entities (`&gt;`) -- icons/inline formatting degrade
-    to plain text, not garbage."""
+    tags and decode entities (`&gt;`), then collapse whitespace: a
+    multi-line SVG icon (newline after `<svg ...>`, one per `<path/>`)
+    leaves literal `\\n` runs once its tags are gone, which `Paragraph`
+    then turns into leading `text:line-break` elements pushing a card
+    header down off the top of its box (confirmed: 5 icon newlines ->
+    5 line breaks before the heading text)."""
     import html
     import re
 
-    return html.unescape(re.sub(r"<[^>]+>", "", text))
+    stripped = html.unescape(re.sub(r"<[^>]+>", "", text))
+    return re.sub(r"\s+", " ", stripped).strip()
+
+
+def _html_list_items(text: str) -> list[str] | None:
+    """Card body lines are parser-pre-expanded HTML (plugins/fenced.py's
+    _expand_markdown); a markdown bullet list inside a card body comes
+    through as one ``<ul><li>...</li><li>...</li></ul>`` string -- blanket
+    `_strip_html` on that concatenates every item with no separator
+    (confirmed: "YOLO...Runs on NPUs..." ran together as one line).
+    Returns each item's stripped text, or None if `text` isn't a list."""
+    import re
+
+    if not text.lstrip().startswith(("<ul", "<ol")):
+        return None
+    return [_strip_html(m) for m in re.findall(r"<li>(.*?)</li>", text, re.DOTALL)]
 
 
 def _render_notes(
@@ -216,8 +235,10 @@ def _render_list(
     box = elem.box
     style = box.style
     li_style = box.substyles.get("li", style)
-    para_style = reg.paragraph_style(li_style)
-    odf_list = OdfList()
+    para_style = reg.paragraph_style(li_style, margin_bottom_px=li_style.font_size_px * 0.4)
+    marker_fg = box.substyles.get("li::marker", li_style).fg
+    list_name = reg.list_style(marker_fg, li_style.font_family)
+    odf_list = OdfList(style=list_name)
     inline_rows = elem.item_inlines or [[] for _ in elem.items]
     for row in inline_rows:
         p = (
@@ -293,8 +314,19 @@ def _render_card(
         hp = Paragraph(style=para_style)
         hp.append(Span(_strip_html(elem.header), style=head_name))
         content.append(hp)
+    li_style = box.substyles.get("li", body_style)
+    li_para_style = reg.paragraph_style(li_style, margin_bottom_px=li_style.font_size_px * 0.4)
+    marker_fg = box.substyles.get("li::marker", li_style).fg
+    list_name = reg.list_style(marker_fg, li_style.font_family)
     for line in elem.body:
-        content.append(_plain_paragraph(_strip_html(line), para_style))
+        items = _html_list_items(line)
+        if items is not None:
+            odf_list = OdfList(style=list_name)
+            for item in items:
+                odf_list.append_item(ListItem(_plain_paragraph(item, li_para_style)))
+            content.append(odf_list)
+        else:
+            content.append(_plain_paragraph(_strip_html(line), para_style))
 
     gfx = reg.graphic_style(style, fill=True, vertical_align="top")
     frame = Frame.text_frame(

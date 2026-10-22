@@ -59,7 +59,7 @@ class _TextKey:
     weight: str
     italic: bool
     text_align: str
-
+    margin_bottom_px: float = 0.0
 
 @dataclass(frozen=True)
 class _GraphicKey:
@@ -82,6 +82,7 @@ class StyleRegistry:
         self._run: dict[_TextKey, str] = {}
         self._graphic: dict[_GraphicKey, str] = {}
         self._table_cells: dict[tuple, str] = {}
+        self._list_styles: dict[tuple, str] = {}
         self._overlay: dict[tuple, tuple[str, str | None]] = {}
         self._gradients: dict[tuple, str] = {}
         self._opacities: dict[tuple, str] = {}
@@ -107,13 +108,15 @@ class StyleRegistry:
 
     # ---- text (paragraph default + inline run) styles ----
 
-    def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False) -> str:
+    def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False,
+                        margin_bottom_px: float = 0.0) -> str:
         """Automatic (content.xml) style -- verified empirically: Impress's
         draw:text-box only resolves text:p/text:span against automatic
         styles, silently ignoring an identical common (styles.xml) style
         (same family of pitfall as the table-cell/master-background ones)."""
         key = _TextKey(style.fg, style.font_family, style.font_size_px,
-                      style.font_weight, style.font_italic, style.text_align)
+                      style.font_weight, style.font_italic, style.text_align,
+                      round(margin_bottom_px, 1))
         cached = self._paragraph.get(key)
         if cached:
             return cached
@@ -121,6 +124,8 @@ class StyleRegistry:
         name = f"SlidrP{next(self._counter)}"
         s = Style("paragraph", name=name)
         s.set_properties(area="paragraph", align=style.text_align)
+        if margin_bottom_px:
+            s.set_properties({"fo:margin-bottom": px_to_cm(margin_bottom_px)}, area="paragraph")
         s.set_properties(
             area="text", color=style.fg, font=style.font_family,
             font_family=style.font_family, family_generic="modern" if mono else "swiss",
@@ -147,6 +152,34 @@ class StyleRegistry:
         )
         self._doc.insert_style(s, automatic=True)
         self._run[key] = name
+        return name
+
+    def list_style(self, color: str, font_family: str) -> str:
+        """Bullet list style matching base.css's ``ul { list-style: var(--list-style) }``
+        (bullet char U+25B8) and ``li::marker { color: var(--color-accent) }``.
+        Impress ignores ``text:list-level-style-bullet/@text:style-name`` for
+        the bullet glyph's color (verified empirically against real output);
+        an inline ``style:text-properties`` child is what it actually honors.
+        """
+        key = (color, font_family)
+        cached = self._list_styles.get(key)
+        if cached:
+            return cached
+        self.ensure_font(font_family)
+        name = f"SlidrL{next(self._counter)}"
+        s = Style("list", name=name)
+        level = s.set_level_style(1, bullet_char="\u25b8")
+        if level is not None:
+            props = Element.from_tag("style:list-level-properties")
+            props.set_attribute("text:space-before", "0cm")
+            props.set_attribute("text:min-label-width", "0.5cm")
+            level.append(props)
+            tprops = Element.from_tag("style:text-properties")
+            tprops.set_attribute("fo:color", color)
+            tprops.set_attribute("style:font-name", font_family)
+            level.append(tprops)
+        self._doc.insert_style(s, automatic=True)
+        self._list_styles[key] = name
         return name
 
     def table_cell_style(self, bg: str, border_color: str, border_width_px: float) -> str:
