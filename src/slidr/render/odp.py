@@ -168,7 +168,9 @@ def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry) -> Frame | None:
     if not pseudo.text:
         return None
     para_style = reg.paragraph_style(pseudo.style)
-    gfx = reg.graphic_style(pseudo.style, fill=True, vertical_align="middle", border=False)
+    gfx = reg.graphic_style(
+        pseudo.style, fill=pseudo.style.bg_alpha > 0, vertical_align="middle", border=False,
+    )
     p = Paragraph(pseudo.text, style=para_style)
     return Frame.text_frame(
         p, style=gfx,

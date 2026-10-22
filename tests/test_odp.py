@@ -324,12 +324,18 @@ def test_arrow_icon_renders_as_svg_image_frame(tmp_path):
 def test_footer_and_slide_num_render_as_shapes(tmp_path):
     """<footer>/.slide-num are template-injected (shell.html), not AST
     nodes -- they carried no data-slidr-id and were silently dropped by
-    the by-id geometry match, so they never appeared in ODP at all."""
+    the by-id geometry match, so they never appeared in ODP at all.
+    default.css sets no --footer-bg (CSS default: transparent) -- the
+    frame must have no fill, not an opaque box painted over the gradient
+    (a composited-background regression: ResolvedStyle.bg is the parent
+    chain's opaque color even at bg_alpha=0)."""
     md = "---\ntitle: T\nfooter: My Conference 2026\npaginate: true\n---\n\n# Hello\n"
     odp = _build(md, tmp_path)
     frames = _frames(odp)
-    assert any("My Conference 2026" in f.get_formatted_text() for f in frames)
+    footer_frame = next(f for f in frames if "My Conference 2026" in f.get_formatted_text())
     assert any(f.get_formatted_text().strip() == "1" for f in frames)
+    gfx = odp.get_style("graphic", footer_frame.get_attribute("draw:style-name"))
+    assert gfx.get_properties(area="graphic").get("draw:fill") == "none"
 
 
 def test_icon_svg_has_no_mismatched_intrinsic_dims(tmp_path):
