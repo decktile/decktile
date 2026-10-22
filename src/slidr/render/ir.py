@@ -58,6 +58,13 @@ class BoxGeometry:
     # light/dark logo selection needed.
     logo: "BoxGeometry | None" = None
     watermark: "BoxGeometry | None" = None
+    # <footer>/.slide-num: real DOM elements injected by the HTML template
+    # (shell.html), not part of the parsed-markdown AST tree -- carry no
+    # data-slidr-id, so they're captured by tag/class instead of by-id
+    # like every other Elem, with their own plain-text content.
+    footer: "BoxGeometry | None" = None
+    slide_num: "BoxGeometry | None" = None
+    text: str = ""
     # first-seen style per descendant tag within this Elem's own subtree:
     # card h3/p, table th/td/tr:odd/tr:even, list li/li::marker.
     substyles: dict[str, ResolvedStyle] = field(default_factory=dict)

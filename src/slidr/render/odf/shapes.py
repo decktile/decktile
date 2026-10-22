@@ -240,13 +240,17 @@ def _highlighted_code_paragraph(
             continue
         color, bold, italic = style.fg, False, False
         if pyg_style is not None:
-            try:
-                tstyle = pyg_style.style_for_token(ttype)
-            except KeyError:
-                tstyle = None
-            if tstyle and tstyle.get("color"):
+            tstyle = {}
+            t = ttype
+            while t is not None:
+                try:
+                    tstyle = pyg_style.style_for_token(t)
+                    break
+                except KeyError:
+                    t = t.parent
+            if tstyle.get("color"):
                 color = f"#{tstyle['color']}"
-            bold, italic = bool(tstyle and tstyle.get("bold")), bool(tstyle and tstyle.get("italic"))
+            bold, italic = bool(tstyle.get("bold")), bool(tstyle.get("italic"))
         run = reg.run_style(color, style.font_family, style.font_size_px, bold, italic, mono=True)
         p.append(Span(text, style=run))
     return p
@@ -489,10 +493,24 @@ def _icon_frame(svg: str, x: float, y: float, w: float, h: float, add_file: AddF
     box it was asked to fill (ignoring an explicit ``size=`` directive and
     overlapping adjacent text). Icons must instead respect the caller's
     box, fit to the icon's own aspect ratio (typically 1:1).
+
+    render_icon's no-explicit-size path emits mismatched intrinsic dims
+    (``width="24" height="1em"`` plus a ``style="height:1em;width:auto"``
+    override, meant for inline HTML flow) -- confirmed empirically that
+    LibreOffice's SVG import reads these as the icon's real aspect ratio
+    instead of the viewBox, rendering a visibly non-square/compressed
+    icon. Strip width/height/style from the <svg> tag itself so the
+    viewBox is the only aspect-ratio signal left; Frame.image_frame's
+    own declared cm size controls the final on-slide box regardless.
     """
     import tempfile
 
     svg = _normalize_svg_viewbox(svg)
+    svg_tag_end = svg.index(">")
+    svg_tag = svg[:svg_tag_end]
+    for attr in ("width", "height", "style"):
+        svg_tag = re.sub(rf'\s{attr}="[^"]*"', "", svg_tag, count=1)
+    svg = svg_tag + svg[svg_tag_end:]
     vb = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
     aspect = (float(vb.group(1)) / float(vb.group(2))) if vb and float(vb.group(2)) > 0 else 1.0
     box_aspect = w / h if h > 0 else aspect

@@ -57,7 +57,7 @@ def annotate_geometry(
     seen: set[str] = set()
     white = (1.0, 1.0, 1.0)
     for page in rendered.pages:
-        _walk(page._page_box, by_id, section_box, seen, None, white, global_tags)
+        _walk(page._page_box, by_id, section_box, seen, None, white, global_tags, None)
     return section_box, global_tags
 
 
@@ -78,6 +78,16 @@ def _sid_of(box: Any) -> str | None:
         return None
 
 
+def _has_class(box: Any, cls: str) -> bool:
+    el = getattr(box, "element", None)
+    if el is None:
+        return False
+    try:
+        return cls in (el.get("class") or "").split()
+    except Exception:
+        return False
+
+
 def _walk(
     box: Any,
     by_id: dict[str, Elem],
@@ -86,6 +96,7 @@ def _walk(
     section_origin: tuple[float, float] | None,
     parent_bg: tuple[float, float, float],
     global_tags: dict[str, ResolvedStyle],
+    current_sid: str | None,
 ) -> None:
     tag = getattr(box, "element_tag", None) or ""
     sid = _sid_of(box)
@@ -107,6 +118,7 @@ def _walk(
                 style=style,
             )
             seen.add(sid)
+            current_sid = sid
         elif tag in ("section::before", "section::after") and sid in section_box:
             # logo (::before) / watermark (::after): position+file resolved
             # the same way as any other box -- weasyprint's own cascade
@@ -125,6 +137,26 @@ def _walk(
                 section_box[sid].logo = pseudo
             else:
                 section_box[sid].watermark = pseudo
+        elif tag in ("footer", "span") and current_sid in section_box and (
+            tag == "footer" or _has_class(box, "slide-num")
+        ):
+            # <footer>/.slide-num: template-injected, not AST elements --
+            # no data-slidr-id to match by, attach to the enclosing
+            # section instead (current_sid, threaded down the recursion).
+            ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
+            el = getattr(box, "element", None)
+            pseudo = BoxGeometry(
+                x=(box.border_box_x() - ox) * PX_TO_CM,
+                y=(box.border_box_y() - oy) * PX_TO_CM,
+                w=box.border_width() * PX_TO_CM,
+                h=box.border_height() * PX_TO_CM,
+                style=style,
+                text=(el.text or "").strip() if el is not None else "",
+            )
+            if tag == "footer":
+                section_box[current_sid].footer = pseudo
+            else:
+                section_box[current_sid].slide_num = pseudo
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             elem = by_id[sid]
@@ -143,7 +175,7 @@ def _walk(
             seen.add(sid)
 
     for child in getattr(box, "children", None) or []:
-        _walk(child, by_id, section_box, seen, section_origin, bg_rgb, global_tags)
+        _walk(child, by_id, section_box, seen, section_origin, bg_rgb, global_tags, current_sid)
 
 
 _SUBTAGS = {"h3", "p", "th", "td", "tr", "li"}

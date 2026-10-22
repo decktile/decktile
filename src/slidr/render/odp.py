@@ -94,6 +94,12 @@ def render(
         watermark_shape = sb and sb.watermark and _pseudo_image_frame(sb.watermark, add_file)
         if watermark_shape is not None:
             shapes.append(watermark_shape)
+        footer_shape = sb and sb.footer and _text_pseudo_frame(sb.footer, reg)
+        if footer_shape is not None:
+            shapes.append(footer_shape)
+        slide_num_shape = sb and sb.slide_num and _text_pseudo_frame(sb.slide_num, reg)
+        if slide_num_shape is not None:
+            shapes.append(slide_num_shape)
 
         # A bitmap-filled master page changes how LibreOffice resolves
         # z-order for un-indexed shapes (confirmed empirically: an
@@ -147,6 +153,27 @@ def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
         image=uri,
         position=(f"{x:.3f}cm", f"{y:.3f}cm"),
         size=(f"{max(w, 0.01):.3f}cm", f"{max(h, 0.01):.3f}cm"),
+        anchor_type="page",
+    )
+
+
+def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry) -> Frame | None:
+    """<footer>/.slide-num: a real DOM element injected by the HTML
+    template (shell.html), not an AST node -- geometry.py captures it by
+    tag/class against the enclosing section instead of by data-slidr-id.
+    Position/size/background/color are exactly weasyprint's own resolved
+    box for it (light-theme ``footer`` is a full-width bar via its own
+    `left:0;right:0`, dark/title themes leave it text-only -- no
+    Python-side special-casing, the CSS cascade already decided)."""
+    if not pseudo.text:
+        return None
+    para_style = reg.paragraph_style(pseudo.style)
+    gfx = reg.graphic_style(pseudo.style, fill=True, vertical_align="middle", border=False)
+    p = Paragraph(pseudo.text, style=para_style)
+    return Frame.text_frame(
+        p, style=gfx,
+        position=(f"{pseudo.x:.3f}cm", f"{pseudo.y:.3f}cm"),
+        size=(f"{max(pseudo.w, 0.01):.3f}cm", f"{max(pseudo.h, 0.01):.3f}cm"),
         anchor_type="page",
     )
 

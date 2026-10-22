@@ -2,6 +2,8 @@
 Document round-trip, asserting what a consumer (LibreOffice, a reviewer
 opening the file) would see -- not internal call patterns."""
 
+import re
+import zipfile
 from pathlib import Path
 
 from odfdo import Document as OdfDocument
@@ -291,14 +293,16 @@ def test_table_columns_and_rows_get_explicit_dims(tmp_path):
 
 def test_table_body_cell_has_own_run_style(tmp_path):
     """Body cell text must carry an explicit font-size run style -- without
-    one, Impress falls back to its own (larger) default text size."""
+    one, Impress falls back to its own (larger) default text size. Select
+    the body-cell span specifically: the header cell always had a run
+    style, so a non-specific lookup would pass even before the fix."""
     md = "---\ntitle: T\n---\n\n## Table\n\n| A |\n|---|\n| body text |\n"
     odp = _build(md, tmp_path)
     frames = _frames(odp)
     table_frame = next(f for f in frames if "body text" in f.get_formatted_text())
-    span = table_frame.get_element("descendant::text:span")
-    assert span is not None
-    style = odp.get_style("text", span.get_attribute("text:style-name"))
+    spans = table_frame.get_elements("descendant::text:span")
+    body_span = next(s for s in spans if s.text == "body text")
+    style = odp.get_style("text", body_span.get_attribute("text:style-name"))
     assert style.get_properties(area="text").get("fo:font-size")
 
 
@@ -315,3 +319,33 @@ def test_arrow_icon_renders_as_svg_image_frame(tmp_path):
     images = [f.get_element("draw:image") for f in frames]
     images = [img for img in images if img is not None]
     assert any((img.get_attribute("xlink:href") or "").endswith(".svg") for img in images)
+
+
+def test_footer_and_slide_num_render_as_shapes(tmp_path):
+    """<footer>/.slide-num are template-injected (shell.html), not AST
+    nodes -- they carried no data-slidr-id and were silently dropped by
+    the by-id geometry match, so they never appeared in ODP at all."""
+    md = "---\ntitle: T\nfooter: My Conference 2026\npaginate: true\n---\n\n# Hello\n"
+    odp = _build(md, tmp_path)
+    frames = _frames(odp)
+    assert any("My Conference 2026" in f.get_formatted_text() for f in frames)
+    assert any(f.get_formatted_text().strip() == "1" for f in frames)
+
+
+def test_icon_svg_has_no_mismatched_intrinsic_dims(tmp_path):
+    """render_icon's no-explicit-size path emits width="24" height="1em"
+    (meant for inline HTML flow) -- LibreOffice's SVG import reads these
+    as the icon's real aspect ratio instead of the viewBox, rendering a
+    visibly squashed icon. The embedded file must carry no width/height/
+    style attributes on the <svg> tag, leaving viewBox as the only
+    aspect-ratio signal."""
+    md = "---\ntitle: T\n---\n\n::: card\n### {icon:zap} Label\n:::\n"
+    odp = _build(md, tmp_path)
+    z = zipfile.ZipFile(tmp_path / "out.odp")
+    svgs = [n for n in z.namelist() if n.startswith("Pictures/") and n.endswith(".svg")]
+    assert svgs
+    svg = z.read(svgs[0]).decode()
+    tag = svg[: svg.index(">")]
+    assert not re.search(r'(?<![-\w])width="', tag)
+    assert not re.search(r'(?<![-\w])height="', tag)
+    assert 'viewBox="' in tag
