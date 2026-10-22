@@ -52,6 +52,23 @@ def px_to_cm(px: float) -> str:
     return f"{px * CM_PER_PX:.3f}cm"
 
 
+def is_uniform_tint(gradient: list[tuple[float, str, float]] | None) -> bool:
+    """A CSS ``background-image`` gradient layer that is the *same* color
+    and alpha at every stop (``linear-gradient(var(--bg-overlay), var(--bg-overlay))``,
+    used by every non-title section in this deck's themes) is really a flat
+    tint, not a gradient -- it can be pre-composited into one flattened
+    master-page fill per (image, tint) combination and switched per slide
+    via ``master_page``, instead of a per-slide alpha-composited overlay
+    shape on top of one shared bitmap master. A true multi-stop/angled
+    gradient (``.layout-title``'s directional fade) still needs the
+    per-slide overlay -- it can't be expressed as a single flat color.
+    """
+    if not gradient:
+        return False
+    first_hex, first_alpha = gradient[0][1], gradient[0][2]
+    return all(g[1] == first_hex and abs(g[2] - first_alpha) < 0.01 for g in gradient)
+
+
 @dataclass(frozen=True)
 class _TextKey:
     fg: str
@@ -439,18 +456,57 @@ class StyleRegistry:
         except Exception:
             return path
 
+    def _composite_tint_image(
+        self, path: str, hex_color: str, alpha: float, width_cm: float, height_cm: float,
+    ) -> str:
+        """Bakes a uniform overlay tint directly into a downscaled copy of
+        the background image -- replaces a per-slide alpha-composited
+        overlay shape on top of one shared bitmap master with ONE
+        flattened fill per (image, tint) combination, selected per slide
+        via ``master_page`` -- a layout switched per slide (light/dark/
+        etc.) instead of one image with a universal runtime overlay.
+        """
+        downscaled = self._prepare_bg_image(path, width_cm, height_cm)
+        try:
+            from PIL import Image
+        except ImportError:
+            return downscaled
+        try:
+            rgb = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+            with Image.open(downscaled) as im:
+                tint_layer = Image.new("RGB", im.size, rgb)
+                composited = Image.blend(im.convert("RGB"), tint_layer, max(0.0, min(1.0, alpha)))
+                fd, out_path = tempfile.mkstemp(suffix=".png")
+                os.close(fd)
+                composited.save(out_path)
+                return out_path
+        except Exception:
+            return downscaled
+
     def master_for(
         self, style: ResolvedStyle, width_cm: float, height_cm: float,
         add_file: Callable[[str], str],
     ) -> str:
         """Dedup'd master page for a slide's base background (solid/gradient/bitmap).
 
-        A gradient-over-image overlay (if any) is a separate per-slide shape
-        (``overlay_style``) -- ODF master backgrounds support exactly one fill.
+        A uniform overlay tint (every theme's light/dark section
+        background -- ``is_uniform_tint``) is baked directly into the
+        master's own bitmap fill: one master per (image, tint) pair,
+        switched per slide via ``master_page`` -- "light" and "dark" are
+        distinct master-page layouts, not one shared image recomposited
+        with a universal per-slide overlay shape. Only a true multi-stop/
+        angled gradient (``.layout-title``'s directional fade) still
+        needs a separate per-slide overlay -- ``odp.py``'s caller skips
+        it (via ``is_uniform_tint``) whenever this method already baked
+        the tint in.
         """
         pl_name = self.ensure_page_layout(width_cm, height_cm)
         bg_image_ok = bool(style.bg_image_url) and os.path.isfile(style.bg_image_url)
-        if bg_image_ok:
+        tint_baked = bg_image_ok and is_uniform_tint(style.bg_gradient)
+        if tint_baked:
+            tint_hex, tint_alpha = style.bg_gradient[0][1], round(style.bg_gradient[0][2], 3)
+            key = ("bitmap-tinted", style.bg_image_url, tint_hex, tint_alpha)
+        elif bg_image_ok:
             key = ("bitmap", style.bg_image_url)
         elif style.bg_gradient:
             key = ("gradient", tuple(style.bg_gradient), round(style.bg_angle_deg))
@@ -462,8 +518,13 @@ class StyleRegistry:
 
         dp_name = f"SlidrBgDp{next(self._counter)}"
         dp = Style("drawing-page", name=dp_name)
-        if key[0] == "bitmap":
-            uri = add_file(self._prepare_bg_image(style.bg_image_url, width_cm, height_cm))
+        if key[0] in ("bitmap", "bitmap-tinted"):
+            img_path = (
+                self._composite_tint_image(style.bg_image_url, tint_hex, tint_alpha, width_cm, height_cm)
+                if tint_baked
+                else self._prepare_bg_image(style.bg_image_url, width_cm, height_cm)
+            )
+            uri = add_file(img_path)
             img_name = f"SlidrBgImg{next(self._counter)}"
             # draw:fill-image is family-less, same as draw:gradient/
             # draw:opacity -- append to styles.xml office:styles (same

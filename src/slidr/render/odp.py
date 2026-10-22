@@ -18,7 +18,7 @@ from slidr.parser.ast import Document as ASTDocument
 from slidr.render.ir import ResolvedStyle, build_ir
 from slidr.render.odf.geometry import annotate_geometry
 from slidr.render.odf.shapes import render_elem
-from slidr.render.odf.styles import StyleRegistry
+from slidr.render.odf.styles import StyleRegistry, is_uniform_tint
 
 
 def render(
@@ -185,11 +185,18 @@ def _overlay_shape(
 ) -> Any | None:
     """Full-slide gradient/tint rect over a bitmap master background.
 
-    Only needed when the section's background is a bitmap (photo) with a
-    gradient/solid tint layered on top -- a pure gradient or solid fill
-    (no bg_image_url) is already the master's own fill, no overlay needed.
+    Needed only for a true multi-stop/angled gradient over a photo
+    (``.layout-title``'s directional fade) -- a uniform tint (every
+    other section's light/dark overlay) is baked directly into the
+    master's own bitmap fill by ``master_for`` (``is_uniform_tint``),
+    one master per (image, tint) switched via ``master_page`` instead of
+    a per-slide alpha-composited shape on top of one shared bitmap. A
+    pure gradient/solid fill (no bg_image_url) is already the master's
+    own fill either way, no overlay needed.
     """
     if not (style.bg_image_url and os.path.isfile(style.bg_image_url)):
+        return None
+    if is_uniform_tint(style.bg_gradient):
         return None
     name, _opacity = reg.overlay_style(style)
     return RectangleShape(

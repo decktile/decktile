@@ -256,6 +256,48 @@ def test_shapes_have_explicit_incrementing_z_index(tmp_path):
     assert [int(z) for z in z_indices] == list(range(len(shapes)))
 
 
+def test_uniform_tint_bakes_into_master_no_overlay_shape(tmp_path):
+    """A uniform tint (every gradient stop the same color+alpha) over a
+    background image must be baked into the master's own bitmap fill --
+    not rendered as a separate per-slide overlay shape recomposited on
+    every page sharing that master (a layout switched per slide, not one
+    shared image plus a universal runtime overlay)."""
+    from PIL import Image
+
+    img_path = tmp_path / "bg.png"
+    Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
+    theme = default_theme() + (
+        '\nsection { background: linear-gradient(rgba(255,255,255,0.9), '
+        'rgba(255,255,255,0.9)), url("bg.png") left top / cover no-repeat; }\n'
+    )
+    md = "---\ntitle: T\n---\n\n# Hello\n"
+    odp = _build(md, tmp_path, theme_css=theme)
+    page = odp.body.get_draw_pages()[0]
+    rects = [c for c in page.children if c.tag == "draw:rect"]
+    assert rects == []
+
+
+def test_distinct_tints_over_same_image_get_distinct_masters(tmp_path):
+    """Light and dark variants over the same source image select
+    different master pages -- a layout switch per slide, not one shared
+    master."""
+    from PIL import Image
+
+    img_path = tmp_path / "bg.png"
+    Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
+    theme = default_theme() + (
+        '\nsection { background: linear-gradient(rgba(255,255,255,0.9), '
+        'rgba(255,255,255,0.9)), url("bg.png") left top / cover no-repeat; }\n'
+        '\nsection[data-theme="dark"] { background: linear-gradient(rgba(0,0,0,0.8), '
+        'rgba(0,0,0,0.8)), url("bg.png") left top / cover no-repeat; }\n'
+    )
+    md = "---\ntitle: T\n---\n\n# Light\n\n---\n\n@variant dark\n\n# Dark\n"
+    odp = _build(md, tmp_path, theme_css=theme)
+    pages = odp.body.get_draw_pages()
+    masters = {p.get_attribute("draw:master-page-name") for p in pages}
+    assert len(masters) == 2
+
+
 def test_code_block_gets_per_token_colored_spans(tmp_path):
     """Code blocks must be pygments-highlighted (matching the HTML
     renderer), not one flat mono Paragraph -- a keyword/string/comment
