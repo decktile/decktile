@@ -18,7 +18,7 @@ from slidr.parser.ast import Document as ASTDocument
 from slidr.render.ir import ResolvedStyle, build_ir
 from slidr.render.odf.geometry import annotate_geometry
 from slidr.render.odf.shapes import render_elem
-from slidr.render.odf.styles import StyleRegistry, is_uniform_tint
+from slidr.render.odf.styles import StyleRegistry
 
 
 def render(
@@ -188,15 +188,16 @@ def _overlay_shape(
     Needed only for a true multi-stop/angled gradient over a photo
     (``.layout-title``'s directional fade) -- a uniform tint (every
     other section's light/dark overlay) is baked directly into the
-    master's own bitmap fill by ``master_for`` (``is_uniform_tint``),
-    one master per (image, tint) switched via ``master_page`` instead of
-    a per-slide alpha-composited shape on top of one shared bitmap. A
-    pure gradient/solid fill (no bg_image_url) is already the master's
-    own fill either way, no overlay needed.
+    master's own bitmap fill by ``master_for``, one master per (image,
+    tint) switched via ``master_page`` instead of a per-slide alpha-
+    composited shape on top of one shared bitmap. ``reg.overlay_needed``
+    is the single source of truth (not re-derived here independently):
+    it reflects whether that baking actually succeeded, not just
+    whether it was attempted, so a PIL-missing environment can't end up
+    with neither the baked tint nor this overlay. A pure gradient/solid
+    fill (no bg_image_url) is already the master's own fill either way.
     """
-    if not (style.bg_image_url and os.path.isfile(style.bg_image_url)):
-        return None
-    if is_uniform_tint(style.bg_gradient):
+    if not reg.overlay_needed(style):
         return None
     name, _opacity = reg.overlay_style(style)
     return RectangleShape(

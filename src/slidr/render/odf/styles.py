@@ -69,6 +69,20 @@ def is_uniform_tint(gradient: list[tuple[float, str, float]] | None) -> bool:
     return all(g[1] == first_hex and abs(g[2] - first_alpha) < 0.01 for g in gradient)
 
 
+def _master_label(key: tuple, tint_hex: str | None) -> str:
+    """A descriptive master-page name (shows in Impress's layout panel as
+    e.g. "SlidrLight1") instead of a bare counter -- the whole point of
+    baking tints into distinct masters is a layout switched per slide,
+    which should read as one in the UI, not just in the XML."""
+    if key[0] == "bitmap-tinted" and tint_hex:
+        r, g, b = (int(tint_hex[i:i + 2], 16) for i in (1, 3, 5))
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        return "Light" if luminance > 0.5 else "Dark"
+    if key[0] in ("bitmap", "gradient"):
+        return "Gradient"
+    return "Solid"
+
+
 @dataclass(frozen=True)
 class _TextKey:
     fg: str
@@ -107,6 +121,8 @@ class StyleRegistry:
         self._gradients: dict[tuple, str] = {}
         self._opacities: dict[tuple, str] = {}
         self._masters: dict[tuple, str] = {}
+        self._tint_baked_keys: set[tuple] = set()
+        self._pil_ok: bool | None = None
         self._page_layout_name: str | None = None
         self._page_w: float = 0.0
         self._page_h: float = 0.0
@@ -458,19 +474,24 @@ class StyleRegistry:
 
     def _composite_tint_image(
         self, path: str, hex_color: str, alpha: float, width_cm: float, height_cm: float,
-    ) -> str:
+    ) -> tuple[str, bool]:
         """Bakes a uniform overlay tint directly into a downscaled copy of
         the background image -- replaces a per-slide alpha-composited
         overlay shape on top of one shared bitmap master with ONE
         flattened fill per (image, tint) combination, selected per slide
         via ``master_page`` -- a layout switched per slide (light/dark/
         etc.) instead of one image with a universal runtime overlay.
+        Returns ``(path, baked)``: ``baked`` is False if PIL is missing
+        or compositing failed, so the caller (``master_for``) can record
+        the fallback and ``overlay_needed`` stays the single source of
+        truth -- otherwise a page would get neither the baked tint nor
+        the per-slide overlay shape.
         """
         downscaled = self._prepare_bg_image(path, width_cm, height_cm)
         try:
             from PIL import Image
         except ImportError:
-            return downscaled
+            return downscaled, False
         try:
             rgb = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
             with Image.open(downscaled) as im:
@@ -479,9 +500,33 @@ class StyleRegistry:
                 fd, out_path = tempfile.mkstemp(suffix=".png")
                 os.close(fd)
                 composited.save(out_path)
-                return out_path
+                return out_path, True
         except Exception:
-            return downscaled
+            return downscaled, False
+
+
+    def _pil_available(self) -> bool:
+        if self._pil_ok is None:
+            try:
+                import PIL  # noqa: F401
+                self._pil_ok = True
+            except ImportError:
+                self._pil_ok = False
+        return self._pil_ok
+
+    def overlay_needed(self, style: ResolvedStyle) -> bool:
+        """Single source of truth for whether a separate per-slide overlay
+        shape is still needed -- false whenever ``master_for`` already
+        baked this exact (image, tint) into the master's own bitmap fill.
+        Checked against the *recorded* outcome, not re-derived independently
+        (a PIL-missing environment would otherwise disagree with itself:
+        no overlay AND an untinted master)."""
+        bg_image_ok = bool(style.bg_image_url) and os.path.isfile(style.bg_image_url)
+        if not bg_image_ok or not is_uniform_tint(style.bg_gradient):
+            return bg_image_ok
+        tint_hex, tint_alpha = style.bg_gradient[0][1], round(style.bg_gradient[0][2], 3)
+        key = ("bitmap-tinted", style.bg_image_url, tint_hex, tint_alpha)
+        return key not in self._tint_baked_keys
 
     def master_for(
         self, style: ResolvedStyle, width_cm: float, height_cm: float,
@@ -502,7 +547,7 @@ class StyleRegistry:
         """
         pl_name = self.ensure_page_layout(width_cm, height_cm)
         bg_image_ok = bool(style.bg_image_url) and os.path.isfile(style.bg_image_url)
-        tint_baked = bg_image_ok and is_uniform_tint(style.bg_gradient)
+        tint_baked = bg_image_ok and is_uniform_tint(style.bg_gradient) and self._pil_available()
         if tint_baked:
             tint_hex, tint_alpha = style.bg_gradient[0][1], round(style.bg_gradient[0][2], 3)
             key = ("bitmap-tinted", style.bg_image_url, tint_hex, tint_alpha)
@@ -512,6 +557,8 @@ class StyleRegistry:
             key = ("gradient", tuple(style.bg_gradient), round(style.bg_angle_deg))
         else:
             key = ("solid", style.bg)
+        if tint_baked:
+            self._tint_baked_keys.add(key)
         cached = self._masters.get(key)
         if cached:
             return cached
@@ -520,7 +567,7 @@ class StyleRegistry:
         dp = Style("drawing-page", name=dp_name)
         if key[0] in ("bitmap", "bitmap-tinted"):
             img_path = (
-                self._composite_tint_image(style.bg_image_url, tint_hex, tint_alpha, width_cm, height_cm)
+                self._composite_tint_image(style.bg_image_url, tint_hex, tint_alpha, width_cm, height_cm)[0]
                 if tint_baked
                 else self._prepare_bg_image(style.bg_image_url, width_cm, height_cm)
             )
@@ -556,7 +603,8 @@ class StyleRegistry:
         # automatic-styles (odfdo pitfall, verified against document.py/styles.py).
         self._doc.styles.get_element("office:automatic-styles").append(dp)
 
-        master_name = f"SlidrMaster{next(self._counter)}"
+        label = _master_label(key, tint_hex if tint_baked else None)
+        master_name = f"Slidr{label}{next(self._counter)}"
         mp = StyleMasterPage(name=master_name, page_layout=pl_name, draw_style_name=dp_name)
         self._doc.insert_style(mp)
         self._masters[key] = master_name
