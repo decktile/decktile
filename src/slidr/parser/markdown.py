@@ -57,12 +57,23 @@ def parse(input_text: str) -> Document:
 def _parse_slide(content: str) -> Slide:
     notes = ""
     # Collect all HTML comments as speaker notes
-    note_parts = re.findall(r"<!--(?!attr:)\s*(.*?)\s*-->", content, flags=re.DOTALL)
+    note_parts = re.findall(r"<!--(?!attr:)(.*?)-->", content, flags=re.DOTALL)
     if note_parts:
-        notes = "\n\n".join(
-            "\n".join(line.rstrip() for line in p.strip("\n").splitlines())
-            for p in note_parts if p.strip()
-        )
+        blocks = []
+        for p in note_parts:
+            raw_lines = p.splitlines()
+            is_single_line = len(raw_lines) <= 1
+            lines = [line.rstrip() for line in raw_lines]
+            while lines and not lines[0].strip():
+                lines.pop(0)
+            while lines and not lines[-1].strip():
+                lines.pop()
+            if not lines:
+                continue
+            if is_single_line:
+                lines[0] = lines[0].strip()
+            blocks.append("\n".join(lines))
+        notes = "\n\n".join(blocks)
     # Strip comments from content
     content = re.sub(r"<!--(?!attr:).*?-->", "", content, flags=re.DOTALL).strip()
     content = preprocess_directives(content)

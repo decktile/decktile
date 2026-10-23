@@ -47,6 +47,11 @@ def test_parse_slide_notes_separate_comments_joined_with_blank_line():
     assert doc.slides[0].notes == "first comment\n\nsecond comment"
 
 
+def test_parse_slide_notes_first_line_indentation_preserved():
+    doc = parse("---\ntheme: t\n---\n\n<!--\n  - indented from the start\n-->\n\n## Slide")
+    assert doc.slides[0].notes == "  - indented from the start"
+
+
 def test_hidden_slide():
     doc = parse("---\ntheme: t\n---\n\n# First\n\n---\n\n@hidden\n\n# Hidden\n\n---\n\n# Third")
     assert len(doc.slides) == 2
