@@ -96,7 +96,7 @@ body.autoplay-looping { opacity: 0; }
     <section class="slide layout-{{ slide.layout }}"{% if slide.variant %} data-theme="{{ slide.variant }}"{% endif %}>{{ slide.children }}</section>
 {% endfor %}
   </div>
-  <div id="pres-notes"><button id="pres-autoplay" title="Toggle autoplay" style="font-size:18px;background:#333;border:1px solid #555;color:#eee;padding:4px 12px;cursor:pointer;margin-bottom:8px;border-radius:4px">⏯</button> <button id="pres-speed-dec" title="Slower" style="font-size:16px;background:#333;border:1px solid #555;color:#eee;padding:4px 10px;cursor:pointer;margin-bottom:8px;border-radius:4px">&minus;</button> <span id="pres-speed-val" style="display:inline-block;min-width:3em;text-align:center">{{ autoplay }}s</span> <button id="pres-speed-inc" title="Faster" style="font-size:16px;background:#333;border:1px solid #555;color:#eee;padding:4px 10px;cursor:pointer;margin-bottom:8px;border-radius:4px">+</button><br><span id="pres-notes-text"></span></div>
+  <div id="pres-notes"><button id="pres-autoplay" title="Toggle autoplay" style="font-size:18px;background:#333;border:1px solid #555;color:#eee;padding:4px 12px;cursor:pointer;margin-bottom:8px;border-radius:4px">⏯</button> <button id="pres-speed-dec" title="Faster" style="font-size:16px;background:#333;border:1px solid #555;color:#eee;padding:4px 10px;cursor:pointer;margin-bottom:8px;border-radius:4px">&minus;</button> <span id="pres-speed-val" style="display:inline-block;min-width:3em;text-align:center">{{ autoplay }}s</span> <button id="pres-speed-inc" title="Slower" style="font-size:16px;background:#333;border:1px solid #555;color:#eee;padding:4px 10px;cursor:pointer;margin-bottom:8px;border-radius:4px">+</button><br><span id="pres-notes-text"></span></div>
 </div>
 
 <script>
