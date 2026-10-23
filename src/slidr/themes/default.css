@@ -79,12 +79,16 @@ section {
   font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
 }
 
-/* Watermark sits left of the page-number column, anchored to the same
-   --section-padding-h the page number's own right offset uses, so the
-   two stay clear of each other regardless of watermark image size. */
+/* Watermark sits left of, and baseline-aligned with, the page-number
+   column: anchored to --section-padding-h (same var .slide-num's right
+   offset uses) so the two stay clear of each other regardless of
+   watermark image size. .slide-num has font-size: 0.6em (base.css), so
+   its own bottom: 1em resolves to 0.6em of the section's actual size --
+   match that here, not the naive full 1em, or the watermark sits
+   visibly higher than the page number. */
 section::after {
   right: calc(var(--section-padding-h) + var(--watermark-gap));
-  bottom: 1em;
+  bottom: 0.6em;
   width: var(--watermark-w);
   height: var(--watermark-h);
   background-position: center;

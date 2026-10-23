@@ -122,6 +122,9 @@ def test_default_theme_font_family_matches_converged_theme_choice():
 def test_default_theme_watermark_sits_left_of_page_number():
     """Watermark anchored to --section-padding-h (same var .slide-num
     uses) plus a gap, so it clears the page-number column generically
-    instead of overlapping it at the old 4%/5% base.css position."""
+    instead of overlapping it at the old 4%/5% base.css position.
+    bottom: 0.6em (not 1em) matches .slide-num's own 0.6em font-size
+    context -- else the watermark sits visibly higher than the number."""
     css = default_theme()
     assert "right: calc(var(--section-padding-h) + var(--watermark-gap));" in css
+    assert "bottom: 0.6em;" in css
