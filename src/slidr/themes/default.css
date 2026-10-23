@@ -29,7 +29,7 @@
      ratio needs it */
   --watermark-w: 4em;
   --watermark-h: 1em;
-  --watermark-gap: 2em;
+  --watermark-gap: 1em;
 }
 
 /* per-slide variant override */
@@ -88,7 +88,7 @@ section {
    visibly higher than the page number. */
 section::after {
   right: calc(var(--section-padding-h) + var(--watermark-gap));
-  bottom: 0.6em;
+  bottom: 0.48em;
   width: var(--watermark-w);
   height: var(--watermark-h);
   background-position: center;

@@ -123,8 +123,9 @@ def test_default_theme_watermark_sits_left_of_page_number():
     """Watermark anchored to --section-padding-h (same var .slide-num
     uses) plus a gap, so it clears the page-number column generically
     instead of overlapping it at the old 4%/5% base.css position.
-    bottom: 0.6em (not 1em) matches .slide-num's own 0.6em font-size
-    context -- else the watermark sits visibly higher than the number."""
+    bottom: 0.48em (not 1em) vertically centers the watermark against
+    .slide-num's own 0.6em-font-size text box, not just bottom-aligning
+    the two boxes."""
     css = default_theme()
     assert "right: calc(var(--section-padding-h) + var(--watermark-gap));" in css
-    assert "bottom: 0.6em;" in css
+    assert "bottom: 0.48em;" in css
