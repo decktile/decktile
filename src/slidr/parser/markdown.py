@@ -60,7 +60,7 @@ def _parse_slide(content: str) -> Slide:
     note_parts = re.findall(r"<!--(?!attr:)\s*(.*?)\s*-->", content, flags=re.DOTALL)
     if note_parts:
         notes = "\n\n".join(
-            "\n".join(line.strip() for line in p.strip().splitlines() if line.strip())
+            "\n".join(line.rstrip() for line in p.strip("\n").splitlines())
             for p in note_parts if p.strip()
         )
     # Strip comments from content

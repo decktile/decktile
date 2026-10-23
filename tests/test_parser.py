@@ -34,7 +34,17 @@ def test_slides():
 
 def test_parse_slide_notes_keep_line_breaks():
     doc = parse("---\ntheme: t\n---\n\n<!--\n- first point\n  - nested\n- second point\n-->\n\n## Slide")
-    assert doc.slides[0].notes == "- first point\n- nested\n- second point"
+    assert doc.slides[0].notes == "- first point\n  - nested\n- second point"
+
+
+def test_parse_slide_notes_keep_paragraph_gaps_within_one_comment():
+    doc = parse("---\ntheme: t\n---\n\n<!--\nfirst paragraph\n\nsecond paragraph\n-->\n\n## Slide")
+    assert doc.slides[0].notes == "first paragraph\n\nsecond paragraph"
+
+
+def test_parse_slide_notes_separate_comments_joined_with_blank_line():
+    doc = parse("---\ntheme: t\n---\n\n<!-- first comment -->\n\n## Slide\n\n<!-- second comment -->")
+    assert doc.slides[0].notes == "first comment\n\nsecond comment"
 
 
 def test_hidden_slide():

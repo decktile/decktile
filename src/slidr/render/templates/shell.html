@@ -33,7 +33,7 @@ html.presenter #presenter-panel {
   justify-content: center;
   overflow: hidden;
 }
-#pres-main section { display: none !important; width: 100%; height: 100%; overflow: hidden; }
+#pres-main section { display: none !important; width: 100%; height: 100%; overflow: hidden; position: relative; }
 #pres-main section.active { display: block !important; zoom: 0.9; }
 #pres-notes {
   grid-column: 2;
@@ -56,7 +56,7 @@ html.presenter #presenter-panel {
   border-left: 1px solid #333;
   padding: 1em;
 }
-#pres-next section { display: none !important; width: 100%; height: auto; overflow: hidden; }
+#pres-next section { display: none !important; width: 100%; height: auto; overflow: hidden; position: relative; }
 #pres-next section.active { display: block !important; zoom: 0.3; }
 /* Hide logo overlay in presenter panel */
 #presenter-panel section::before { display: none !important; }
