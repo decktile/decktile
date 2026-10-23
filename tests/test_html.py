@@ -117,3 +117,11 @@ def test_default_theme_font_family_matches_converged_theme_choice():
     """default.css was the only one of 6 themes still on "Segoe UI" --
     all 5 real conference themes independently converged on Roboto."""
     assert 'font-family: Roboto, Arial, "Helvetica Neue", sans-serif;' in default_theme()
+
+
+def test_default_theme_watermark_sits_left_of_page_number():
+    """Watermark anchored to --section-padding-h (same var .slide-num
+    uses) plus a gap, so it clears the page-number column generically
+    instead of overlapping it at the old 4%/5% base.css position."""
+    css = default_theme()
+    assert "right: calc(var(--section-padding-h) + var(--watermark-gap));" in css
