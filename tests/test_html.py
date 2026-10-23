@@ -81,3 +81,25 @@ def test_autoplay_speed_is_a_mutable_variable_not_a_hardcoded_constant():
     assert "var autoplaySpeed = 7;" in html
     assert "AUTOPLAY_INTERVAL" not in html
 
+
+def test_default_theme_h1_bold_and_h3_matches_converged_theme_size():
+    """h1 font-weight and h3 font-size were the only two sizes where
+    default.css lagged all 5 real conference themes (h1 missing bold,
+    h3 still at the old 1.3em instead of the converged 1.15em)."""
+    css = default_theme()
+    assert "h1 { font-size: 2.5em; font-weight: 700; }" in css
+    assert "h3 { font-size: 1.15em; }" in css
+
+
+def test_base_css_has_h3_underline_and_kicker_eyebrow_treatment():
+    """h3::after and the kicker's uppercase/letter-spaced treatment were
+    duplicated identically across every real theme but missing from the
+    shared base -- promoted as structural defaults (colors untouched,
+    still resolved via the existing --color-accent-primary/var(--font-
+    mono) variables)."""
+    css = base_css()
+    assert "h3::after {" in css
+    assert "border-bottom: 2px solid var(--color-accent-primary);" in css
+    assert "text-transform: uppercase" in css
+    assert "letter-spacing: 0.05em" in css
+
