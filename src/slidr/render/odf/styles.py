@@ -248,6 +248,42 @@ class StyleRegistry:
         self._doc.insert_style(face)
         self._doc.insert_style(face.clone, default=True)
 
+    def ensure_lucide_font(self) -> str:
+        """Embeds the vendored Lucide icon font into the ODP package (once)
+        and declares it with its own ``style:font-face-src`` -- unlike a
+        system font referenced by name, this one must travel with the
+        document or every icon falls back to tofu on a machine that
+        doesn't have it installed (verified: not present on this one).
+        Returns the font family name to use in run styles."""
+        name = "lucide"
+        if name in self._fonts:
+            return name
+        self._fonts.add(name)
+        from slidr.plugins.lucide_font import FONT_PATH
+
+        manifest = self._doc.manifest
+        if manifest.get_media_type("Fonts/") is None:
+            manifest.add_full_path("Fonts/")
+        font_bytes = FONT_PATH.read_bytes()
+        self._doc.container.set_part("Fonts/lucide.ttf", font_bytes)
+        manifest.add_full_path("Fonts/lucide.ttf", "application/x-font-ttf")
+
+        font_face = Element.from_tag("style:font-face")
+        font_face.set_attribute("style:name", name)
+        font_face.set_attribute("svg:font-family", name)
+        src = Element.from_tag("svg:font-face-src")
+        uri = Element.from_tag("svg:font-face-uri")
+        uri.set_attribute("xlink:href", "Fonts/lucide.ttf")
+        uri.set_attribute("xlink:type", "simple")
+        fmt = Element.from_tag("svg:font-face-format")
+        fmt.set_attribute("svg:string", "truetype")
+        uri.append(fmt)
+        src.append(uri)
+        font_face.append(src)
+        self._doc.styles.get_element("office:font-face-decls").append(font_face)
+        return name
+
+
     # ---- text (paragraph default + inline run) styles ----
 
     def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False,

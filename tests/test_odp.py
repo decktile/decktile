@@ -529,7 +529,14 @@ def test_chrome_shapes_land_on_master_for_uniform_tint(tmp_path):
     master_name = pages[0].get_attribute("draw:master-page-name")
     master = odp.get_style("master-page", master_name)
     assert any(f.get_image() for f in master.get_frames())
-    assert any("Conf 2026" in f.get_formatted_text() for f in master.get_frames())
+    footer_frame = next(f for f in master.get_frames() if "Conf 2026" in f.get_formatted_text())
+    style_name = footer_frame.get_element("descendant::text:p").get_attribute("text:style-name")
+    styles_xml = odp.get_part("styles")
+    content_xml = odp.get_part("content")
+    assert styles_xml.get_element(
+        f'//office:automatic-styles/style:style[@style:name="{style_name}"]',
+    ) is not None
+    assert content_xml.get_element(f'//style:style[@style:name="{style_name}"]') is None
 
 
 def test_chrome_falls_back_to_per_slide_for_overlay_background(tmp_path):
@@ -555,4 +562,40 @@ def test_chrome_falls_back_to_per_slide_for_overlay_background(tmp_path):
     odp = _build(md, tmp_path, theme_css=theme)
     page = odp.body.get_draw_pages()[0]
     assert any(f.get_image() for f in page.get_frames())
-    assert any("Conf 2026" in f.get_formatted_text() for f in page.get_frames())
+    footer_frame = next(f for f in page.get_frames() if "Conf 2026" in f.get_formatted_text())
+    style_name = footer_frame.get_element("descendant::text:p").get_attribute("text:style-name")
+    styles_xml = odp.get_part("styles")
+    content_xml = odp.get_part("content")
+    assert content_xml.get_element(f'//style:style[@style:name="{style_name}"]') is not None
+    assert styles_xml.get_element(
+        f'//office:automatic-styles/style:style[@style:name="{style_name}"]',
+    ) is None
+    children = list(page.children)
+    overlay_idx = next(i for i, c in enumerate(children) if c.tag == "draw:rect")
+    footer_idx = next(
+        i for i, c in enumerate(children)
+        if c.tag == "draw:frame" and "Conf 2026" in c.get_formatted_text()
+    )
+    assert overlay_idx < footer_idx
+
+
+def test_page_number_widens_for_multi_digit_slide_counts(tmp_path):
+    """The page-number field's frame is measured from whichever slide
+    first uses a given master, which may be single-digit -- a later
+    two-digit page wrapped vertically inside the too-narrow box instead
+    of shrinking (confirmed: "30" rendered as "3" stacked over "0")."""
+    slides = "\n\n---\n\n".join(f"# Slide {i}" for i in range(1, 13))
+    md = f"---\ntitle: T\npaginate: true\n---\n\n{slides}\n"
+    odp = _build(md, tmp_path)
+    master_name = odp.body.get_draw_pages()[0].get_attribute("draw:master-page-name")
+    master = odp.get_style("master-page", master_name)
+    page_num_frame = next(
+        f for f in master.get_frames() if f.get_element("descendant::text:page-number") is not None
+    )
+    w = float(page_num_frame.width.rstrip("cm"))
+    h = float(page_num_frame.height.rstrip("cm"))
+    # w/h are each independently rounded to 3 decimal cm places on save,
+    # so a tight 1.2x compounds rounding noise -- 1.1x still clearly
+    # distinguishes "widened for 2 digits" from the original single-digit
+    # box (~0.21cm wide, well under half of its own ~0.43cm height).
+    assert w >= 1.1 * h

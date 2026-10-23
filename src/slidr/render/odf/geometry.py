@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -36,10 +37,17 @@ def annotate_geometry(
 
     Returns ``({slide.id: BoxGeometry}, {tag: ResolvedStyle})``: the first
     for each slide's root ``<section>`` (slide/master background); the
-    second for inline constructs with no per-instance id (currently just
-    ``code``, for its themed mono font) -- resolved once from the first
-    occurrence found anywhere, since the CSS rule that styles it (e.g.
-    ``code { font-family: var(--font-mono) }``) never varies per instance.
+    second for inline constructs with no per-instance id (``code``, for
+    its themed mono font, plus ``icon:accent-primary``/``-secondary``/
+    ``-contrast`` for lucide icon glyph color) -- resolved once from the
+    first occurrence found anywhere (``code``) or directly from the
+    theme's own ``:root`` custom properties (icon accents), since the CSS
+    that styles them never varies per instance. Icon accents specifically
+    can't be resolved from weasyprint's own box tree: an inline ``<svg>``
+    icon gets no separate, walkable box there (verified empirically --
+    unlike a replaced ``<img>``, weasyprint folds it into its containing
+    element's own paint step with no ``element_tag == "svg"`` child to
+    read ``color`` from).
     """
     from weasyprint import HTML
 
@@ -55,11 +63,32 @@ def annotate_geometry(
 
     section_box: dict[str, BoxGeometry] = {}
     global_tags: dict[str, ResolvedStyle] = {}
+    for cls, hexcolor in _resolve_icon_accent_colors(assembled_css).items():
+        global_tags[f"icon:{cls}"] = ResolvedStyle(fg=hexcolor)
     seen: set[str] = set()
     white = (1.0, 1.0, 1.0)
     for page in rendered.pages:
         _walk(page._page_box, by_id, section_box, seen, None, white, global_tags, None)
     return section_box, global_tags
+
+
+_ICON_ACCENT_RE = re.compile(
+    r'--color-(accent-primary|accent-secondary|accent-contrast)\s*:\s*([^;]+);',
+)
+
+
+def _resolve_icon_accent_colors(css: str) -> dict[str, str]:
+    """``accent-primary``/``-secondary``/``-contrast`` -> resolved hex, read
+    directly from the theme's (and base.css's) own ``:root { ... }``
+    blocks, in source order so a theme's declaration overrides base.css's
+    default -- the normal CSS custom-property cascade for the default
+    (non-dark) case, which is what matters since every icon in this
+    deck's themes appears on light/default sections."""
+    out: dict[str, str] = {}
+    for block in re.finditer(r':root\s*\{([^}]*)\}', css):
+        for m in _ICON_ACCENT_RE.finditer(block.group(1)):
+            out[m.group(1)] = m.group(2).strip()
+    return out
 
 
 def _index(elems: list[Elem], by_id: dict[str, Elem]) -> None:
