@@ -351,6 +351,105 @@ LOGO_CSS
   font-size: 1.5em;
 }
 
+/* ---- timeline layouts ---- */
+/* ::: grid {cols=1} of ::: card blocks, flex (not CSS grid) so any item
+   count distributes naturally. Items alternate sides of a central spine
+   -- the connector stub's direction (left card <- stub -> right card,
+   vertical; above <- stub -> below, horizontal) flips every item, the
+   literal "line going up and down". {focus} on a card scales it up. */
+.layout-timeline-vertical .grid,
+.layout-timeline-horizontal .grid {
+  display: flex;
+  position: relative;
+}
+.layout-timeline-vertical .grid {
+  flex-direction: column;
+  gap: 1.4em;
+  padding: 0 2.5em;
+}
+.layout-timeline-horizontal .grid {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1em;
+  margin-top: 8em; /* reserves room for odd cards shifted above the spine */
+}
+.layout-timeline-horizontal .grid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0.12em;
+  background: var(--color-accent-primary);
+  opacity: 0.4;
+}
+.layout-timeline-vertical .card {
+  position: relative;
+  width: 44%;
+}
+.layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
+.layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
+.layout-timeline-horizontal .card {
+  position: relative;
+  flex: 1;
+  height: 6em; /* fixed so the stub below reliably reaches the spine --
+                  keep horizontal-timeline card text brief, it won't
+                  clip (no overflow:hidden -- that would also clip the
+                  card's own connector dot/stub below) */
+  margin-top: 2em; /* stub gap below the spine */
+}
+.layout-timeline-horizontal .card:nth-child(odd) {
+  margin-top: -8em; /* 6em card + 2em stub, shifted above the spine */
+}
+/* connector dot on the spine */
+.layout-timeline-vertical .card::before,
+.layout-timeline-horizontal .card::before {
+  content: "";
+  position: absolute;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  border: 0.15em solid var(--color-background);
+  z-index: 1;
+}
+.layout-timeline-vertical .card:nth-child(odd)::before  { right: -2.3em; top: 1em; }
+.layout-timeline-vertical .card:nth-child(even)::before { left: -2.3em; top: 1em; }
+.layout-timeline-horizontal .card::before { left: 50%; transform: translateX(-50%); }
+.layout-timeline-horizontal .card:nth-child(even)::before { top: -2em; }
+.layout-timeline-horizontal .card:nth-child(odd)::before  { bottom: -2em; }
+/* connector stub -- the alternating line itself, not just the dot */
+.layout-timeline-vertical .card::after {
+  content: "";
+  position: absolute;
+  top: 1.3em;
+  height: 0.08em;
+  width: 2em;
+  background: var(--color-accent-primary);
+  opacity: 0.5;
+}
+.layout-timeline-vertical .card:nth-child(odd)::after  { right: -2em; }
+.layout-timeline-vertical .card:nth-child(even)::after { left: -2em; }
+.layout-timeline-horizontal .card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0.08em;
+  height: 2em;
+  background: var(--color-accent-primary);
+  opacity: 0.5;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .card:nth-child(even)::after { top: -2em; }
+.layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
+/* {focus}: bigger, highlighted */
+.layout-timeline-vertical .card.focus,
+.layout-timeline-horizontal .card.focus {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 0.12em var(--color-accent-primary);
+  z-index: 2;
+}
+
 /* ---- slide transitions ---- */
 section[data-transition]:not([data-transition="none"]).active > .slide-body {
   animation-duration: .4s;

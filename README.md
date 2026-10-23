@@ -121,6 +121,8 @@ places that should be one. PRs that consolidate repeated logic are welcome.
 | `@layout compare` | Two cards side-by-side with an arrow connector, conclusion notes below |
 | `@layout metrics-N` | 2-4 metric cards, auto-detected from `::: card {metric}` blocks |
 | `@layout ecosystem` | Compact stacked layout for partner/device logos. Small labels, uniform image sizing |
+| `@layout timeline-vertical` | Cards alternate left/right of a central vertical spine, connected by stubs |
+| `@layout timeline-horizontal` | Cards alternate above/below a central horizontal spine |
 | Custom | `@layout <name>` adds CSS class `layout-<name>`, style via frontmatter `style:` block |
 
 ### Compare layout
@@ -177,6 +179,63 @@ Density improvement
 Each `::: card {metric}` block: first line is the big number, following lines are the label.
 Styled with accent-colored large text (`2.8em`, bold) and dimmed label text.
 Grid auto-centers vertically in the slide body.
+
+### Timeline layouts
+
+Cards alternate sides of a central spine -- left/right for `timeline-vertical`,
+above/below for `timeline-horizontal`. `::: card {focus}` scales an item up and
+highlights it. No explicit `cols=` needed beyond matching the layout's flow
+(`cols=1` for vertical, one row for horizontal).
+
+```markdown
+@layout timeline-vertical
+
+## Project Roadmap
+
+::: grid {cols=1}
+::: card
+### Q1 2026
+Kickoff and planning.
+:::
+::: card {focus}
+### Q2 2026
+Major public launch.
+:::
+::: card
+### Q3 2026
+Scale and iterate.
+:::
+:::
+```
+
+```markdown
+@layout timeline-horizontal
+
+## Release Timeline
+
+::: grid {cols=4}
+::: card
+### v1.0
+Initial release
+:::
+::: card {focus}
+### v2.0
+Big feature launch
+:::
+::: card
+### v2.1
+Bugfixes
+:::
+::: card
+### v3.0
+Next major
+:::
+:::
+```
+
+`timeline-horizontal` cards have a fixed height (keep text brief -- a
+title plus one short line) so the connector stub reliably reaches the
+spine regardless of content length.
 
 ### Section labels and side images
 

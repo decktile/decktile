@@ -142,3 +142,13 @@ def test_video_sync_wired_in_both_presenter_and_main_branches():
     assert "_wireVideoSync('#pres-main', bc);" in html
     assert "_wireVideoSync('body > section', bc);" in html
     assert "e.data.video" in html
+
+
+def test_base_css_has_timeline_layouts():
+    """@layout timeline-vertical / timeline-horizontal and ::: card
+    {focus} need no parser changes (generic @layout <name> -> .layout-
+    <name>, generic bare-word card attr -> .card.<word>) -- only CSS."""
+    css = base_css()
+    assert ".layout-timeline-vertical .grid" in css
+    assert ".layout-timeline-horizontal .grid" in css
+    assert ".card.focus" in css
