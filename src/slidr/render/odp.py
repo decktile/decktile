@@ -136,7 +136,7 @@ def render(
             page.append(shape)
 
         if slide.notes:
-            page.append(_notes_shape(slide.notes, page_width, page_height, reg))
+            page.append(_notes_shape(slide.notes, reg))
 
         odp.body.append(page)
 
@@ -354,13 +354,21 @@ def _logo_frame(logo_path: str, add_file: Any, page_w: float, page_h: float) -> 
     )
 
 
-def _notes_shape(text: str, page_w: float, page_h: float, reg: StyleRegistry) -> PresentationNotes:
+def _notes_shape(text: str, reg: StyleRegistry) -> PresentationNotes:
+    """The notes page is a separate, independently-sized portrait page --
+    not derived from the slide's own landscape page dimensions. Geometry
+    matched against a LibreOffice-authored reference (python-pptx deck
+    with real notes, converted via soffice --convert-to odp): the
+    master's own "Blank-notes" placeholder sits at (2.1cm, 14.107cm)
+    sized 16.799cm x 13.364cm. Using the slide's own (wider, landscape)
+    page width/height here clipped every notes line off the right edge
+    of the portrait notes page."""
     notes = PresentationNotes()
     paragraphs = [Paragraph(part) for part in text.split(" | ")]
     frame = Frame.text_frame(
         paragraphs,
-        position=("1.5cm", f"{page_h * 0.55:.2f}cm"),
-        size=(f"{page_w - 3:.2f}cm", f"{page_h * 0.4:.2f}cm"),
+        position=("2.1cm", "14.107cm"),
+        size=("16.799cm", "13.364cm"),
         anchor_type="page", presentation_class="notes",
         presentation_style=reg.notes_style(),
     )
