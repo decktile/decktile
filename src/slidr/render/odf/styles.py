@@ -230,6 +230,7 @@ class StyleRegistry:
         self._label_counters: dict[str, int] = {}
         self._pil_ok: bool | None = None
         self._page_layout_name: str | None = None
+        self._notes_style_name: str | None = None
         self._page_w: float = 0.0
         self._page_h: float = 0.0
         self._counter = count(1)
@@ -281,6 +282,25 @@ class StyleRegistry:
         src.append(uri)
         font_face.append(src)
         self._doc.styles.get_element("office:font-face-decls").append(font_face)
+        return name
+
+    def notes_style(self) -> str:
+        """A minimal ``style:family="presentation"`` style for the speaker
+        notes placeholder frame. Required, not cosmetic: verified
+        empirically via an LO import/export roundtrip that a notes-page
+        ``draw:frame`` with no ``presentation:style-name`` is silently
+        discarded on import (replaced with LO's own blank placeholder,
+        i.e. the speaker notes vanish the moment anyone opens the file
+        in Impress) -- an otherwise-identical frame with this style-name
+        set survives the roundtrip with its text intact."""
+        if self._notes_style_name is not None:
+            return self._notes_style_name
+        name = "SlidrNotesPr"
+        s = Element.from_tag("style:style")
+        s.set_attribute("style:name", name)
+        s.set_attribute("style:family", "presentation")
+        self._doc.insert_style(s, automatic=True)
+        self._notes_style_name = name
         return name
 
 

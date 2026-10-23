@@ -62,17 +62,16 @@ symlinks all directories from the source folder into `dist/`. Files and
 pdm run slidr slides.md    # symlinks slides/assets/ → slides/dist/assets/
 ```
 
-`--image-odp` is the production-ready ODP path (PDF screenshot → images in ODP).
-Pixel-perfect, always matches HTML output.
+`--odp` is the production-ready ODP path: a native ODF renderer (styles.py,
+geometry.py, shapes.py) that reproduces the HTML layout, colors, fonts, and
+positioning directly in `content.xml`/`styles.xml` - no PDF roundtrip. Cards,
+grids, tables, lists, quotes, speaker notes (from `<!-- comment -->` blocks),
+and lucide icons (rendered as colored glyphs from an embedded icon font) all
+map to real ODF shapes and styles, editable in LibreOffice Impress.
 
-`--odp` uses a native ODF renderer (text, shapes, style registries). Currently
-in progress: master page creation, font-face declarations, precise element
-positioning. Known issues:
-
-- Slide backgrounds use a cloned template master page instead of a fresh
-  `StyleMasterPage` - works but carries template defaults
-- Font-face `@font-face` registration fails due to an `odfdo` internal bug
-- Vertical spacing and text alignment drift slightly from HTML
+`--image-odp` remains available as a pixel-perfect fallback (PDF screenshot
+per slide embedded as an image) for decks the native renderer doesn't handle
+well yet.
 
 If you know the ODF spec or `odfdo` internals, contributions to the native ODP
 renderer are welcome. See `src/slidr/render/odp.py` and `src/slidr/render/odf/`.
@@ -82,23 +81,8 @@ The Python CLI makes distribution tricky; if you've tackled that problem
 before, reach out.
 
 Most of this codebase is AI-generated. I've kept it DRY where I could, but
-there's still duplication - the lucide icon rendering appears in three places
-that should be one, the table cell renderer has its own SVG path, etc. PRs
-that consolidate repeated logic are welcome.
-
-### Editing in PowerPoint / LibreOffice Impress
-
-The best workflow for editable slides: build a PDF, open it in LibreOffice Draw,
-select all slides, and paste into LibreOffice Impress (or export to PPTX):
-
-```bash
-pdm run slidr slides.md --pdf
-libreoffice --draw slides.pdf        # Select All → Copy
-libreoffice --impress                # Paste into new presentation
-```
-
-LibreOffice Draw preserves text, layout, and images from the PDF. This
-avoids the positioning complexity of the native ODP renderer.
+there's still duplication - the lucide icon rendering appears in a couple
+places that should be one. PRs that consolidate repeated logic are welcome.
 
 ## Viewer controls
 

@@ -136,7 +136,7 @@ def render(
             page.append(shape)
 
         if slide.notes:
-            page.append(_notes_shape(slide.notes, page_width, page_height))
+            page.append(_notes_shape(slide.notes, page_width, page_height, reg))
 
         odp.body.append(page)
 
@@ -354,13 +354,15 @@ def _logo_frame(logo_path: str, add_file: Any, page_w: float, page_h: float) -> 
     )
 
 
-def _notes_shape(text: str, page_w: float, page_h: float) -> PresentationNotes:
+def _notes_shape(text: str, page_w: float, page_h: float, reg: StyleRegistry) -> PresentationNotes:
     notes = PresentationNotes()
+    paragraphs = [Paragraph(part) for part in text.split(" | ")]
     frame = Frame.text_frame(
-        Paragraph(text),
+        paragraphs,
         position=("1.5cm", f"{page_h * 0.55:.2f}cm"),
         size=(f"{page_w - 3:.2f}cm", f"{page_h * 0.4:.2f}cm"),
         anchor_type="page", presentation_class="notes",
+        presentation_style=reg.notes_style(),
     )
     notes.append(frame)
     return notes

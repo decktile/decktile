@@ -154,6 +154,20 @@ def test_speaker_notes_present(tmp_path):
     notes = page.get_element("presentation:notes")
     assert notes is not None
     assert "remember to smile" in notes.text_content
+    frame = notes.get_element("draw:frame")
+    assert frame.get_attribute("presentation:style-name")
+
+
+def test_speaker_notes_multiple_comments_become_separate_paragraphs(tmp_path):
+    md = (
+        "---\ntitle: T\n---\n\n<!-- first point -->\n\n# Hello\n\n<!-- second point -->\n"
+    )
+    odp = _build(md, tmp_path)
+    page = odp.body.get_draw_pages()[0]
+    notes = page.get_element("presentation:notes")
+    texts = [p.text for p in notes.get_elements("descendant::text:p")]
+    assert "first point" in texts
+    assert "second point" in texts
 
 
 def test_missing_background_image_degrades_to_solid_fill(tmp_path):
