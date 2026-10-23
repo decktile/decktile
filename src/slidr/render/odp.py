@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from odfdo import Document, DrawPage, Frame, Paragraph, PresentationNotes, RectangleShape
+from odfdo.element import Element
 
 from slidr.parser.ast import Document as ASTDocument
 from slidr.render.ir import ResolvedStyle, build_ir
@@ -87,7 +88,9 @@ def render(
         )
         if footer_shape is not None:
             shapes.append(footer_shape)
-        slide_num_shape = sb and sb.slide_num and _text_pseudo_frame(sb.slide_num, reg)
+        slide_num_shape = sb and sb.slide_num and _text_pseudo_frame(
+            sb.slide_num, reg, page_field=True,
+        )
         if slide_num_shape is not None:
             shapes.append(slide_num_shape)
 
@@ -175,7 +178,9 @@ def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
     )
 
 
-def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = False) -> Frame | None:
+def _text_pseudo_frame(
+    pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = False, page_field: bool = False,
+) -> Frame | None:
     """<footer>/.slide-num: a real DOM element injected by the HTML
     template (shell.html), not an AST node -- geometry.py captures it by
     tag/class against the enclosing section instead of by data-slidr-id.
@@ -186,7 +191,15 @@ def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = Fal
     ``skip_fill``: the bar is already baked into the master's own bitmap
     fill (``reg.footer_bar_baked``) -- painting it again here would
     double it (and need its own, harder-to-get-right z-order against the
-    watermark/logo shapes that sit inside it)."""
+    watermark/logo shapes that sit inside it).
+    ``page_field``: ``.slide-num``'s text is the slide's index at build
+    time, baked as a literal string -- inserting, deleting, or reordering
+    a slide afterward in Impress leaves every later page number wrong.
+    Use a live ``text:page-number`` field instead (``text:select-page=
+    "current"``, cached display value = the build-time number), which
+    Impress recomputes from actual page position regardless of later
+    edits.
+    """
     if not pseudo.text:
         return None
     para_style = reg.paragraph_style(pseudo.style)
@@ -194,7 +207,14 @@ def _text_pseudo_frame(pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = Fal
         pseudo.style, fill=not skip_fill and pseudo.style.bg_alpha > 0,
         vertical_align="middle", border=False,
     )
-    p = Paragraph(pseudo.text, style=para_style)
+    if page_field:
+        p = Paragraph(style=para_style)
+        field = Element.from_tag("text:page-number")
+        field.set_attribute("text:select-page", "current")
+        field.text = pseudo.text
+        p.append(field)
+    else:
+        p = Paragraph(pseudo.text, style=para_style)
     return Frame.text_frame(
         p, style=gfx,
         position=(f"{pseudo.x:.3f}cm", f"{pseudo.y:.3f}cm"),

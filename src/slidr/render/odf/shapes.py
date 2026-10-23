@@ -20,7 +20,7 @@ from slidr.parser.ast import (
     Strong, Text,
 )
 from slidr.render.ir import BoxGeometry, Elem, ResolvedStyle
-from slidr.render.odf.styles import CM_PER_PX, StyleRegistry, px_to_cm
+from slidr.render.odf.styles import CM_PER_PX, StyleRegistry, px_to_cm, round_image_corners
 
 AddFile = Callable[[str], str]
 
@@ -601,7 +601,6 @@ def _render_inline_images(
     frames = []
     x = box.x
     for img, path in resolved:
-        uri = add_file(path)
         w_cm, h_cm = _image_natural_size(path)
         if w_cm > slot_w:
             h_cm *= slot_w / w_cm
@@ -609,6 +608,8 @@ def _render_inline_images(
         if h_cm > box.h:
             w_cm *= box.h / h_cm
             h_cm = box.h
+        radius_cm = box.style.border_radius * CM_PER_PX
+        uri = add_file(round_image_corners(path, radius_cm, w_cm))
         frame = Frame.image_frame(
             image=uri, text=img.title or "",
             size=(f"{w_cm:.3f}cm", f"{h_cm:.3f}cm"),
@@ -631,7 +632,6 @@ def _image_natural_size(path: str) -> tuple[float, float]:
         return (w_px * 2.54 / 96, h_px * 2.54 / 96)
     except Exception:
         return (16.0, 9.0)
-    return [frame]
 
 
 def _render_image(
@@ -644,7 +644,8 @@ def _render_image(
     path = _resolve_img_path(src, source_dir)
     if not path:
         return []
-    uri = add_file(path)
+    radius_cm = box.style.border_radius * CM_PER_PX
+    uri = add_file(round_image_corners(path, radius_cm, box.w))
     frame = Frame.image_frame(image=uri, position=_pos(box), size=_size(box), anchor_type="page")
     return [frame]
 

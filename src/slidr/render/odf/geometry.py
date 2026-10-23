@@ -12,6 +12,7 @@ of ``Elem.box``.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from pathlib import Path
 from typing import Any
@@ -176,6 +177,16 @@ def _walk(
                 _collect_substyles(box, bg_rgb) if elem.kind in ("card", "table", "list")
                 else {}
             )
+            # `border-radius` is set on `img` itself (base.css's rounded
+            # image treatment), not on the paragraph/figure wrapping it --
+            # a plain Elem's own resolved style never carries it, so a
+            # content image rendered square regardless of the theme's
+            # `--img-radius`. Copy it from the first nested `img` box, if
+            # this elem is image content.
+            if elem.kind in ("text", "side-image"):
+                img_radius = _img_border_radius(box)
+                if img_radius:
+                    style = dataclasses.replace(style, border_radius=img_radius)
             elem.box = BoxGeometry(
                 x=(box.border_box_x() - ox) * PX_TO_CM,
                 y=(box.border_box_y() - oy) * PX_TO_CM,
@@ -364,3 +375,18 @@ def _hex(rgb01: tuple[float, float, float]) -> str:
 
 def _dim_px(dim: Any) -> float:
     return float(dim.value) if getattr(dim, "unit", "px") == "px" else 0.0
+
+
+def _img_border_radius(box: Any) -> float:
+    """The first nested ``img`` box's own border-radius (px), or 0.
+    ``border-radius`` is set on ``img`` itself (base.css's rounded image
+    treatment), not on the paragraph/figure wrapping it -- the wrapping
+    Elem's own resolved style never carries it."""
+    for child in getattr(box, "children", None) or []:
+        if getattr(child, "element_tag", None) == "img":
+            dims = child.style["border_top_left_radius"]
+            return _dim_px(dims[0]) if isinstance(dims, tuple) else 0.0
+        found = _img_border_radius(child)
+        if found:
+            return found
+    return 0.0

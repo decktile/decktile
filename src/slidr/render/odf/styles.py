@@ -95,6 +95,50 @@ def _downscale_image_cached(path: str, width_cm: float, height_cm: float) -> str
         return path
 
 
+def round_image_corners(path: str, radius_cm: float, frame_w_cm: float) -> str:
+    """Bakes rounded corners into a copy of the image via an alpha mask.
+
+    ``draw:corner-radius`` has no visual effect on a ``draw:image``'s
+    embedded picture content in LibreOffice -- verified empirically: it
+    rounds a plain filled frame's own shape correctly, but a picture
+    frame renders perfectly square regardless of the attribute. CSS's
+    ``img { border-radius: var(--img-radius) }`` treatment has to be
+    applied to the pixels themselves. Radius is scaled by the ratio of
+    the frame's own box width to the source image's native pixel width,
+    so the rounding proportion matches regardless of source resolution.
+    Memoized like ``downscale_image``, for the same reason (a deck photo
+    recurring across slides).
+    """
+    if radius_cm <= 0 or frame_w_cm <= 0:
+        return path
+    return _round_image_corners_cached(path, round(radius_cm, 3), round(frame_w_cm, 2))
+
+
+@functools.lru_cache(maxsize=256)
+def _round_image_corners_cached(path: str, radius_cm: float, frame_w_cm: float) -> str:
+    try:
+        from PIL import Image, ImageChops, ImageDraw
+    except ImportError:
+        return path
+    try:
+        with Image.open(path) as im:
+            had_alpha = im.mode in ("RGBA", "LA")
+            im = im.convert("RGBA")
+            radius_px = max(1, round(radius_cm / frame_w_cm * im.width))
+            mask = Image.new("L", im.size, 0)
+            ImageDraw.Draw(mask).rounded_rectangle(
+                [0, 0, im.width - 1, im.height - 1], radius=radius_px, fill=255,
+            )
+            alpha = ImageChops.multiply(mask, im.getchannel("A")) if had_alpha else mask
+            im.putalpha(alpha)
+            fd, out_path = tempfile.mkstemp(suffix=".png")
+            os.close(fd)
+            im.save(out_path)
+            return out_path
+    except Exception:
+        return path
+
+
 def is_uniform_tint(gradient: list[tuple[float, str, float]] | None) -> bool:
     """A CSS ``background-image`` gradient layer that is the *same* color
     and alpha at every stop (``linear-gradient(var(--bg-overlay), var(--bg-overlay))``,

@@ -2,6 +2,7 @@
 Document round-trip, asserting what a consumer (LibreOffice, a reviewer
 opening the file) would see -- not internal call patterns."""
 
+import io
 import re
 import zipfile
 from pathlib import Path
@@ -418,7 +419,9 @@ def test_footer_and_slide_num_render_as_shapes(tmp_path):
     odp = _build(md, tmp_path)
     frames = _frames(odp)
     footer_frame = next(f for f in frames if "My Conference 2026" in f.get_formatted_text())
-    assert any(f.get_formatted_text().strip() == "1" for f in frames)
+    page_num_frame = next(f for f in frames if f.get_element("descendant::text:page-number") is not None)
+    field = page_num_frame.get_element("descendant::text:page-number")
+    assert field.get_attribute("text:select-page") == "current"
     gfx = odp.get_style("graphic", footer_frame.get_attribute("draw:style-name"))
     assert gfx.get_properties(area="graphic").get("draw:fill") == "none"
 
@@ -465,3 +468,27 @@ def test_icon_svg_has_no_mismatched_intrinsic_dims(tmp_path):
     assert not re.search(r'(?<![-\w])width="', tag)
     assert not re.search(r'(?<![-\w])height="', tag)
     assert 'viewBox="' in tag
+
+
+def test_content_image_gets_rounded_corners(tmp_path):
+    """CSS's ``img { border-radius: var(--img-radius) }`` only affects
+    the paragraph wrapping an image in weasyprint's own resolved style,
+    not the <img> box itself, so a content image's radius was always 0
+    -- and even with the right radius, ``draw:corner-radius`` has no
+    visual effect on a draw:image's embedded picture (verified: it only
+    rounds a plain filled frame's own shape, never a picture's pixels).
+    Must bake the rounding into the image itself via an alpha mask."""
+    from PIL import Image
+
+    img_path = tmp_path / "photo.png"
+    Image.new("RGB", (400, 300), (10, 120, 200)).save(img_path)
+    md = "---\ntitle: T\n---\n\n## Pic\n\n![alt](photo.png)\n"
+    theme = default_theme() + "\n:root { --img-radius: 2em; }\n"
+    odp = _build(md, tmp_path, theme_css=theme)
+    z = zipfile.ZipFile(tmp_path / "out.odp")
+    pngs = [n for n in z.namelist() if n.startswith("Pictures/") and n.endswith(".png")]
+    assert pngs
+    with Image.open(io.BytesIO(z.read(pngs[0]))) as im:
+        assert im.mode == "RGBA"
+        assert im.getchannel("A").getpixel((0, 0)) == 0
+        assert im.getchannel("A").getpixel((im.width // 2, im.height // 2)) > 200
