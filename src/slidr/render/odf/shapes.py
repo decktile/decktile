@@ -8,6 +8,7 @@ table:table, per-run text:span), not HTML stripped to plain text.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import re
 from pathlib import Path
@@ -100,7 +101,14 @@ def _build_rich_paragraph(
         elif isinstance(node, SoftBreak):
             p.append(" ")
         elif isinstance(node, LucideIcon):
-            pass  # vector icons have no ODF text equivalent; dropped, not faked
+            from slidr.plugins.lucide_font import icon_glyph
+
+            glyph = icon_glyph(node.name)
+            if glyph:
+                color = _icon_accent_color(node.attrs.get("cls", ""), global_tags, base.fg)
+                reg.ensure_lucide_font()
+                run = reg.run_style(color, "lucide", base.font_size_px, False, False)
+                p.append(Span(glyph, style=run))
     return p
 
 
@@ -371,27 +379,26 @@ def _render_card(
 
     para_style = reg.paragraph_style(body_style)
     content: list[Any] = []
-    icon_frame = None
     if elem.header:
         header_html = elem.header
+        hp = Paragraph(style=para_style)
         m = _ICON_SVG_RE.match(header_html.lstrip())
         if m:
-            # Leading {icon:...} on a card header: no ODF inline-image-in-text
-            # flow, so render it as its own small frame in the card's left
-            # padding gutter (same convention as the bullet-list marker),
-            # next to the header line, and drop it from the header text.
-            header_html = header_html[header_html.index(m.group(0)) + len(m.group(0)):]
-            icon_size = header_style.font_size_px * CM_PER_PX
-            gutter_x = box.x + style.padding_left * CM_PER_PX - icon_size * 1.15
-            icon_y = box.y + style.padding_top * CM_PER_PX
-            icon_frame = _icon_frame(
-                m.group(0), max(box.x, gutter_x), icon_y, icon_size, icon_size, add_file,
+            # Leading {icon:...} on a card header: a glyph Span flows
+            # inline with the label text, matching the HTML's icon+space
+            # +label layout directly instead of an approximated gutter
+            # frame.
+            icon_span = _icon_glyph_span(
+                m.group(0), reg, global_tags, header_style.fg, header_style.font_size_px,
             )
+            if icon_span is not None:
+                hp.append(icon_span)
+                hp.append(" ")
+            header_html = header_html[header_html.index(m.group(0)) + len(m.group(0)):]
         head_name = reg.run_style(
             header_style.fg, header_style.font_family, header_style.font_size_px,
             header_style.font_weight == "bold", False,
         )
-        hp = Paragraph(style=para_style)
         hp.append(Span(_strip_html(header_html), style=head_name))
         content.append(hp)
     li_style = box.substyles.get("li", body_style)
@@ -414,10 +421,7 @@ def _render_card(
         style=gfx, position=_pos(box), size=_size(box), anchor_type="page",
     )
     _apply_radius(frame, style)
-    shapes = [frame]
-    if icon_frame is not None:
-        shapes.append(icon_frame)
-    return shapes
+    return [frame]
 
 
 def _render_grid(
@@ -489,52 +493,43 @@ def _svg_dims(svg: str, max_w_cm: float) -> tuple[float, float]:
 
 
 _ICON_SVG_RE = re.compile(r"<svg\b[^>]*>.*?</svg>", re.DOTALL)
+_ICON_NAME_RE = re.compile(r"\blucide-([a-z0-9-]+)-icon\b")
+_ICON_CLASS_RE = re.compile(r'<svg\b[^>]*\bclass="([^"]*)"')
 
 
-def _icon_frame(svg: str, x: float, y: float, w: float, h: float, add_file: AddFile) -> Any | None:
-    """One lucide <svg> icon as a contain-fit image frame within (x, y, w, h).
+def _icon_accent_color(classes: str, global_tags: dict[str, ResolvedStyle], fallback_fg: str) -> str:
+    accent = next((c for c in classes.split() if c.startswith("accent-")), None)
+    style = global_tags.get(f"icon:{accent}") if accent else None
+    return style.fg if style else fallback_fg
 
-    ``_svg_dims`` is tuned for diagrams (sizes from the viewBox's own unit
-    count, e.g. a 0.0353cm/unit heuristic) -- a lucide icon's viewBox is a
-    fixed ``0 0 24 24`` regardless of its requested on-slide size, so that
-    heuristic forced every icon to the same ~0.85cm square no matter what
-    box it was asked to fill (ignoring an explicit ``size=`` directive and
-    overlapping adjacent text). Icons must instead respect the caller's
-    box, fit to the icon's own aspect ratio (typically 1:1).
 
-    render_icon's no-explicit-size path emits mismatched intrinsic dims
-    (``width="24" height="1em"`` plus a ``style="height:1em;width:auto"``
-    override, meant for inline HTML flow) -- confirmed empirically that
-    LibreOffice's SVG import reads these as the icon's real aspect ratio
-    instead of the viewBox, rendering a visibly non-square/compressed
-    icon. Strip width/height/style from the <svg> tag itself so the
-    viewBox is the only aspect-ratio signal left; Frame.image_frame's
-    own declared cm size controls the final on-slide box regardless.
-    """
-    import tempfile
+def _icon_glyph_span(
+    svg: str, reg: StyleRegistry, global_tags: dict[str, ResolvedStyle],
+    fallback_fg: str, font_size_px: float,
+) -> Any | None:
+    """A lucide icon rendered as a colored font glyph (``lucide.ttf``,
+    embedded in the package) instead of an SVG image frame -- a real
+    text run, so it picks up a themed color like any other text and
+    scales with font-size instead of a fixed pixel box. Fixes the
+    longstanding "icon always renders black" gap: an inline <svg>'s
+    ``stroke="currentColor"`` has no separate, walkable weasyprint box
+    to resolve a themed color from (verified empirically), so the color
+    comes from the icon's own ``accent-*`` class instead (resolved once,
+    directly from the theme's ``:root`` custom properties -- see
+    geometry.py's ``_resolve_icon_accent_colors``)."""
+    from slidr.plugins.lucide_font import icon_glyph
 
-    svg = _normalize_svg_viewbox(svg)
-    svg_tag_end = svg.index(">")
-    svg_tag = svg[:svg_tag_end]
-    for attr in ("width", "height", "style"):
-        svg_tag = re.sub(rf'\s{attr}="[^"]*"', "", svg_tag, count=1)
-    svg = svg_tag + svg[svg_tag_end:]
-    vb = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
-    aspect = (float(vb.group(1)) / float(vb.group(2))) if vb and float(vb.group(2)) > 0 else 1.0
-    box_aspect = w / h if h > 0 else aspect
-    iw, ih = (w, w / aspect) if aspect > box_aspect else (h * aspect, h)
-    with tempfile.NamedTemporaryFile(suffix=".svg", mode="w", delete=False) as f:
-        f.write(svg)
-        tmp_path = f.name
-    uri = add_file(tmp_path)
-    os.unlink(tmp_path)
-    ix, iy = x + (w - iw) / 2, y + (h - ih) / 2
-    return Frame.image_frame(
-        image=uri,
-        size=(f"{iw:.3f}cm", f"{ih:.3f}cm"),
-        position=(f"{ix:.3f}cm", f"{iy:.3f}cm"),
-        anchor_type="page",
-    )
+    name_m = _ICON_NAME_RE.search(svg)
+    if not name_m:
+        return None
+    glyph = icon_glyph(name_m.group(1))
+    if not glyph:
+        return None
+    cls_m = _ICON_CLASS_RE.search(svg)
+    color = _icon_accent_color(cls_m.group(1) if cls_m else "", global_tags, fallback_fg)
+    reg.ensure_lucide_font()
+    run = reg.run_style(color, "lucide", font_size_px, False, False)
+    return Span(glyph, style=run)
 
 
 def _render_arrow(
@@ -542,14 +537,19 @@ def _render_arrow(
     global_tags: dict[str, ResolvedStyle],
 ) -> list[Any]:
     """``::: arrow`` fenced block: a single centered lucide icon (default a
-    plain arrow glyph), not text -- render as an image frame like any other
-    inline icon, falling back to text if no icon markup is present."""
+    plain arrow glyph), not text -- a centered glyph Span, falling back
+    to text if no icon markup is present."""
     box = elem.box
-    m = _ICON_SVG_RE.search(elem.content or "")
-    if not m:
+    span = _icon_glyph_span(elem.content or "", reg, global_tags, box.style.fg, box.style.font_size_px)
+    if span is None:
         return _render_text_like(elem, reg, add_file, source_dir, global_tags)
-    frame = _icon_frame(m.group(0), box.x, box.y, box.w, box.h, add_file)
-    return [frame] if frame is not None else []
+    centered = dataclasses.replace(box.style, text_align="center")
+    para_style = reg.paragraph_style(centered)
+    p = Paragraph(style=para_style)
+    p.append(span)
+    gfx = reg.graphic_style(centered, fill=False, vertical_align="middle")
+    frame = Frame.text_frame(p, style=gfx, position=_pos(box), size=_size(box), anchor_type="page")
+    return [frame]
 
 
 def _render_image_data(elem: Elem, box: BoxGeometry, add_file: AddFile) -> list[Any]:

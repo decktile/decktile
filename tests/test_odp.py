@@ -397,19 +397,29 @@ def test_table_body_cell_has_own_run_style(tmp_path):
     assert style.get_properties(area="text").get("fo:font-size")
 
 
-def test_arrow_icon_renders_as_svg_image_frame(tmp_path):
-    """A ::: arrow block with a {icon:...} directive must embed the icon
-    as an image frame -- it was previously stripped to an empty frame."""
+def test_arrow_icon_renders_as_colored_font_glyph(tmp_path):
+    """A ::: arrow block with a {icon:...} directive must render as a
+    colored lucide-font glyph -- it was previously stripped to an empty
+    frame, then (before the font rewrite) embedded as an always-black
+    SVG image frame regardless of the theme's accent color."""
     md = (
         "---\ntitle: T\n---\n\n## Compare\n\n"
-        "::: card\nLeft\n:::\n\n::: arrow\n\n{icon:arrow-right size=48}\n:::\n\n"
+        "::: card\nLeft\n:::\n\n::: arrow\n\n{icon:arrow-right size=48 cls=accent-primary}\n:::\n\n"
         "::: card\nRight\n:::\n"
     )
-    odp = _build(md, tmp_path)
+    theme = default_theme() + "\n:root { --color-accent-primary: #ff3300; }\n"
+    odp = _build(md, tmp_path, theme_css=theme)
     frames = _frames(odp)
-    images = [f.get_element("draw:image") for f in frames]
-    images = [img for img in images if img is not None]
-    assert any((img.get_attribute("xlink:href") or "").endswith(".svg") for img in images)
+    span = next(
+        (s for f in frames for s in f.get_elements("descendant::text:span")
+         if s.text and ord(s.text[0]) >= 0xE000),
+        None,
+    )
+    assert span is not None
+    style = odp.get_style("text", span.get_attribute("text:style-name"))
+    props = style.get_properties(area="text")
+    assert props.get("style:font-name") == "lucide"
+    assert props.get("fo:color") == "#ff3300"
 
 
 def test_footer_and_slide_num_render_as_shapes(tmp_path):
@@ -456,23 +466,21 @@ def test_footer_bar_gets_its_own_box_not_its_text_line_box(tmp_path):
     assert frame_w_cm > page_w_cm * 0.9
 
 
-def test_icon_svg_has_no_mismatched_intrinsic_dims(tmp_path):
-    """render_icon's no-explicit-size path emits width="24" height="1em"
-    (meant for inline HTML flow) -- LibreOffice's SVG import reads these
-    as the icon's real aspect ratio instead of the viewBox, rendering a
-    visibly squashed icon. The embedded file must carry no width/height/
-    style attributes on the <svg> tag, leaving viewBox as the only
-    aspect-ratio signal."""
+def test_card_header_icon_renders_as_inline_colored_glyph(tmp_path):
+    """A leading {icon:...} on a card header must flow inline with the
+    label text as a colored lucide-font glyph (matching the HTML's
+    icon+space+label layout) and the label text itself must not still
+    carry the stripped icon markup."""
     md = "---\ntitle: T\n---\n\n::: card\n### {icon:zap} Label\n:::\n"
-    odp = _build(md, tmp_path)
-    z = zipfile.ZipFile(tmp_path / "out.odp")
-    svgs = [n for n in z.namelist() if n.startswith("Pictures/") and n.endswith(".svg")]
-    assert svgs
-    svg = z.read(svgs[0]).decode()
-    tag = svg[: svg.index(">")]
-    assert not re.search(r'(?<![-\w])width="', tag)
-    assert not re.search(r'(?<![-\w])height="', tag)
-    assert 'viewBox="' in tag
+    theme = default_theme() + "\n:root { --color-accent-primary: #00aa55; }\n"
+    odp = _build(md, tmp_path, theme_css=theme)
+    frames = _frames(odp)
+    header_frame = next(f for f in frames if "Label" in f.get_formatted_text())
+    spans = header_frame.get_elements("descendant::text:span")
+    glyph_span = next((s for s in spans if s.text and ord(s.text[0]) >= 0xE000), None)
+    assert glyph_span is not None
+    label_span = next(s for s in spans if s.text == "Label")
+    assert label_span is not None
 
 
 def test_content_image_gets_rounded_corners(tmp_path):
