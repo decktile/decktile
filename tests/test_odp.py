@@ -513,6 +513,23 @@ def test_card_header_icon_renders_as_inline_colored_glyph(tmp_path):
     assert label_span is not None
 
 
+def test_card_header_icon_on_default_theme_does_not_crash(tmp_path):
+    """Regression: the default theme never overrides --color-accent-
+    primary/-secondary/-contrast with a direct hex (every conference
+    theme does) -- base.css's own fallback is var(--color-accent), and
+    _resolve_icon_accent_colors used to return that literal string
+    verbatim, which crashed odfdo's color parser (KeyError, unrecognized
+    CSS3 color name) the moment any default-themed deck rendered a
+    cls=accent-* icon to ODP."""
+    md = "---\ntitle: T\n---\n\n::: card\n### {icon:zap cls=accent-primary} Label\n:::\n"
+    odp = _build(md, tmp_path)  # theme_css defaults to default_theme()
+    frames = _frames(odp)
+    header_frame = next(f for f in frames if "Label" in f.get_formatted_text())
+    spans = header_frame.get_elements("descendant::text:span")
+    glyph_span = next((s for s in spans if s.text and ord(s.text[0]) >= 0xE000), None)
+    assert glyph_span is not None
+
+
 def test_content_image_gets_rounded_corners(tmp_path):
     """CSS's ``img { border-radius: var(--img-radius) }`` only affects
     the paragraph wrapping an image in weasyprint's own resolved style,

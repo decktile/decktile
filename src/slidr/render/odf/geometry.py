@@ -107,8 +107,11 @@ def _resolve_icon_accent_colors(css: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for key in ("accent-primary", "accent-secondary", "accent-contrast"):
         full_key = f"--color-{key}"
-        if full_key in all_vars:
-            out[key] = resolve(all_vars[full_key], frozenset({full_key}))
+        if full_key not in all_vars:
+            continue
+        resolved = resolve(all_vars[full_key], frozenset({full_key}))
+        if not resolved.startswith("var("):
+            out[key] = resolved
     return out
 
 
