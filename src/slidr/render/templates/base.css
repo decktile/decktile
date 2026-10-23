@@ -364,7 +364,7 @@ LOGO_CSS
 }
 .layout-timeline-vertical .grid {
   flex-direction: column;
-  gap: 1.4em;
+  gap: 0.6em;
   padding: 0 2.5em;
 }
 .layout-timeline-vertical .grid::before {
@@ -398,6 +398,7 @@ LOGO_CSS
   position: relative;
   width: calc(50% - 2.5em); /* padding (2.5em) on both sides makes the
                                card-to-spine gap exactly 2.5em either way */
+  padding: 0.6em 1em;
 }
 .layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
@@ -456,13 +457,18 @@ LOGO_CSS
 .layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
 /* {focus}: bigger, highlighted -- font-size/padding, not transform:
    scale(), which would drag the card's own ::before/::after connector
-   (positioned in em relative to the card) off the spine with it. */
+   (positioned in em relative to the card) off the spine with it.
+   Vertical gets the font-size bump too; horizontal's height/margin
+   are all in em relative to its own font-size, so bumping it there
+   would throw off the exact spine-alignment math -- padding only. */
 .layout-timeline-vertical .card.focus,
 .layout-timeline-horizontal .card.focus {
-  font-size: 1.1em;
   padding: 1.3em;
   box-shadow: 0 0 0 0.12em var(--color-accent-primary);
   z-index: 2;
+}
+.layout-timeline-vertical .card.focus {
+  font-size: 1.1em;
 }
 .layout-timeline-horizontal .slide-body {
   display: flex;
