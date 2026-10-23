@@ -654,3 +654,21 @@ def test_page_number_widens_for_multi_digit_slide_counts(tmp_path):
     # distinguishes "widened for 2 digits" from the original single-digit
     # box (~0.21cm wide, well under half of its own ~0.43cm height).
     assert w >= 1.1 * h
+
+
+def test_timeline_layout_renders_spine_and_connector_shapes(tmp_path):
+    """A timeline layout's spine (.grid::before) and each card's connector
+    dot+stub (.card::before/::after) are pure CSS generated content with
+    no AST node of their own -- previously silently dropped from ODP
+    output entirely (cards rendered, but with no connecting line)."""
+    md = (
+        "---\ntitle: T\n---\n\n@layout timeline-vertical\n\n## Roadmap\n\n"
+        "::: grid {cols=1}\n::: card\n### Q1\nFirst.\n:::\n"
+        "::: card\n### Q2\nSecond.\n:::\n:::\n"
+    )
+    odp = _build(md, tmp_path)
+    page = odp.body.get_draw_pages()[0]
+    rects = [c for c in page.children if c.tag == "draw:rect"]
+    # at least the spine (1) + two cards' dot (2) + stub (2) = 5 decoration
+    # shapes, on top of the two card text frames themselves
+    assert len(rects) >= 5

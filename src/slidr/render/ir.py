@@ -68,6 +68,11 @@ class BoxGeometry:
     # first-seen style per descendant tag within this Elem's own subtree:
     # card h3/p, table th/td/tr:odd/tr:even, list li/li::marker.
     substyles: dict[str, ResolvedStyle] = field(default_factory=dict)
+    # ::before/::after generated content with no AST node of its own (e.g.
+    # a timeline layout's .grid::before spine, .card::before/::after dot
+    # and connector stub) -- geometry-only decorations the ODP renderer
+    # draws as plain shapes, keyed by nothing but render order.
+    decorations: list["BoxGeometry"] = field(default_factory=list)
 
 
 @dataclass

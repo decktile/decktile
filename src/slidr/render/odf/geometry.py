@@ -160,9 +160,9 @@ def _walk(
     if tag in GLOBAL_TAGS and tag not in global_tags:
         global_tags[tag] = _resolve_style(box, parent_bg)
 
-    pseudo_or_injected = tag in ("section::before", "section::after", "footer") or (
-        tag == "span" and _has_class(box, "slide-num")
-    )
+    pseudo_or_injected = tag in (
+        "section::before", "section::after", "footer", "div::before", "div::after",
+    ) or (tag == "span" and _has_class(box, "slide-num"))
     if has_rect and (pseudo_or_injected or (sid not in seen if sid else True)):
         style = _resolve_style(box, parent_bg)
         bg_rgb = style.bg_rgb01  # already composited with parent_bg in _resolve_style
@@ -223,6 +223,23 @@ def _walk(
                     section_box[current_sid].footer = pseudo
             elif section_box[current_sid].slide_num is None:
                 section_box[current_sid].slide_num = pseudo
+        elif tag in ("div::before", "div::after") and current_sid in by_id and (
+            by_id[current_sid].kind in ("grid", "card")
+        ):
+            # Timeline spine (.grid::before) / dot+stub (.card::before/
+            # ::after): pure CSS generated content, no AST node of its
+            # own. Attach to the enclosing grid/card's own box so the
+            # ODP renderer can draw it as a plain shape alongside it.
+            host = by_id[current_sid]
+            if host.box is not None:
+                ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
+                host.box.decorations.append(BoxGeometry(
+                    x=(box.border_box_x() - ox) * PX_TO_CM,
+                    y=(box.border_box_y() - oy) * PX_TO_CM,
+                    w=box.border_width() * PX_TO_CM,
+                    h=box.border_height() * PX_TO_CM,
+                    style=style,
+                ))
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             elem = by_id[sid]
@@ -249,6 +266,8 @@ def _walk(
                 substyles=substyles,
             )
             seen.add(sid)
+            if elem.kind in ("grid", "card"):
+                current_sid = sid
 
     for child in getattr(box, "children", None) or []:
         _walk(child, by_id, section_box, seen, section_origin, bg_rgb, global_tags, current_sid)

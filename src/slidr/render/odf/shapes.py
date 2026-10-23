@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from odfdo import Column, Frame, List as OdfList, ListItem, Paragraph, Row, Span, Table
+from odfdo import Column, Frame, List as OdfList, ListItem, Paragraph, RectangleShape, Row, Span, Table
 
 from slidr.parser.ast import (
     CodeSpan, Emphasis, Image as ASTImage, LucideIcon, SoftBreak, Strikethrough,
@@ -56,6 +56,21 @@ def _size(box: BoxGeometry) -> tuple[str, str]:
 def _apply_radius(frame: Frame, style: ResolvedStyle) -> None:
     if style.border_radius > 0:
         frame.set_attribute("draw:corner-radius", px_to_cm(style.border_radius))
+
+
+def _decoration_shapes(box: BoxGeometry, reg: StyleRegistry) -> list[Any]:
+    """Draw a grid/card's captured ::before/::after pseudo-elements (e.g.
+    a timeline layout's spine/dot/stub) as plain filled rectangles --
+    they have no AST node of their own, only geometry+style."""
+    shapes: list[Any] = []
+    for deco in box.decorations:
+        gfx = reg.graphic_style(deco.style, fill=True, border=True)
+        shape = RectangleShape(
+            style=gfx, position=_pos(deco), size=_size(deco), anchor_type="page",
+        )
+        _apply_radius(shape, deco.style)
+        shapes.append(shape)
+    return shapes
 
 
 # ---------------------------------------------------------------------------
@@ -421,17 +436,18 @@ def _render_card(
         style=gfx, position=_pos(box), size=_size(box), anchor_type="page",
     )
     _apply_radius(frame, style)
-    return [frame]
+    return [frame, *_decoration_shapes(box, reg)]
 
 
 def _render_grid(
     elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
     global_tags: dict[str, ResolvedStyle],
 ) -> list[Any]:
-    # Grid/row/col containers carry no visible paint of their own -- their
-    # children (already geometry-annotated with their own absolute boxes)
-    # render independently via render_elem's child recursion.
-    return []
+    # Grid/row/col containers carry no visible paint of their own beyond
+    # any captured ::before/::after decoration (e.g. a timeline layout's
+    # spine) -- their children (already geometry-annotated with their own
+    # absolute boxes) render independently via render_elem's recursion.
+    return _decoration_shapes(elem.box, reg)
 
 
 _render_row = _render_grid
