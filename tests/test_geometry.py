@@ -186,3 +186,36 @@ def test_pseudo_elements_captured_despite_sharing_section_sid():
     sb = section_box[ir_slides[0].id]
     assert sb.logo is not None
     assert sb.watermark is not None
+
+
+def test_resolve_icon_accent_colors_follows_var_indirection():
+    """base.css's own fallback is `--color-accent-primary: var(--color-
+    accent)` -- a theme that never overrides it with a direct hex (e.g.
+    the bundled default theme) must still resolve to a real hex, not
+    leak the literal "var(--color-accent)" string through (that crashed
+    odfdo's color parser downstream, KeyError on an unrecognized CSS
+    color name)."""
+    from slidr.render.odf.geometry import _resolve_icon_accent_colors
+
+    css = (
+        ':root { --color-accent: #0288d1; --color-accent-primary: var(--color-accent); '
+        '--color-accent-secondary: var(--color-accent); --color-accent-contrast: var(--color-accent); }\n'
+    )
+    colors = _resolve_icon_accent_colors(css)
+    assert colors["accent-primary"] == "#0288d1"
+    assert colors["accent-secondary"] == "#0288d1"
+    assert colors["accent-contrast"] == "#0288d1"
+
+
+def test_resolve_icon_accent_colors_direct_hex_overrides_var_indirection():
+    """A theme overriding --color-accent-primary with a direct hex (the
+    conference-theme pattern) must win verbatim, unaffected by the var()
+    resolution added for the default-theme case."""
+    from slidr.render.odf.geometry import _resolve_icon_accent_colors
+
+    css = (
+        ':root { --color-accent-primary: var(--color-accent); }\n'
+        ':root { --color-accent-primary: #F4A197; }\n'
+    )
+    colors = _resolve_icon_accent_colors(css)
+    assert colors["accent-primary"] == "#F4A197"

@@ -111,3 +111,9 @@ def test_base_css_table_sizing_is_compact_not_oversized():
     css = base_css()
     assert "table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 0.75em; }" in css
     assert "th, td { padding: 0.4em 0.6em;" in css
+
+
+def test_default_theme_font_family_matches_converged_theme_choice():
+    """default.css was the only one of 6 themes still on "Segoe UI" --
+    all 5 real conference themes independently converged on Roboto."""
+    assert 'font-family: Roboto, Arial, "Helvetica Neue", sans-serif;' in default_theme()

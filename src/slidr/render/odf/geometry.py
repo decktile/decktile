@@ -72,9 +72,8 @@ def annotate_geometry(
     return section_box, global_tags
 
 
-_ICON_ACCENT_RE = re.compile(
-    r'--color-(accent-primary|accent-secondary|accent-contrast)\s*:\s*([^;]+);',
-)
+_VAR_DECL_RE = re.compile(r'(--[\w-]+)\s*:\s*([^;]+);')
+_VAR_REF_RE = re.compile(r'var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)')
 
 
 def _resolve_icon_accent_colors(css: str) -> dict[str, str]:
@@ -83,11 +82,33 @@ def _resolve_icon_accent_colors(css: str) -> dict[str, str]:
     blocks, in source order so a theme's declaration overrides base.css's
     default -- the normal CSS custom-property cascade for the default
     (non-dark) case, which is what matters since every icon in this
-    deck's themes appears on light/default sections."""
-    out: dict[str, str] = {}
+    deck's themes appears on light/default sections.
+
+    Resolves ``var(--other)`` indirection rather than returning it
+    verbatim: base.css's own fallback is ``--color-accent-primary: var(
+    --color-accent)``, and a theme (e.g. the bundled default theme) that
+    never overrides it with a direct hex previously leaked the literal
+    string "var(--color-accent)" through to odfdo's color parser, which
+    crashed (KeyError) trying to look it up as a CSS3 color name."""
+    all_vars: dict[str, str] = {}
     for block in re.finditer(r':root\s*\{([^}]*)\}', css):
-        for m in _ICON_ACCENT_RE.finditer(block.group(1)):
-            out[m.group(1)] = m.group(2).strip()
+        for m in _VAR_DECL_RE.finditer(block.group(1)):
+            all_vars[m.group(1)] = m.group(2).strip()
+
+    def resolve(value: str, seen: frozenset[str]) -> str:
+        m = _VAR_REF_RE.match(value)
+        if not m:
+            return value
+        name = m.group(1)
+        if name in seen or name not in all_vars:
+            return (m.group(2) or value).strip()
+        return resolve(all_vars[name], seen | {name})
+
+    out: dict[str, str] = {}
+    for key in ("accent-primary", "accent-secondary", "accent-contrast"):
+        full_key = f"--color-{key}"
+        if full_key in all_vars:
+            out[key] = resolve(all_vars[full_key], frozenset({full_key}))
     return out
 
 

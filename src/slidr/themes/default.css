@@ -69,7 +69,7 @@ section[data-theme="dark"] {
 section {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 { color: var(--color-foreground); }
