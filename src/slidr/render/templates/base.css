@@ -396,7 +396,8 @@ LOGO_CSS
 }
 .layout-timeline-vertical .card {
   position: relative;
-  width: 44%;
+  width: calc(50% - 2.5em); /* padding (2.5em) on both sides makes the
+                               card-to-spine gap exactly 2.5em either way */
 }
 .layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
@@ -424,23 +425,23 @@ LOGO_CSS
   border: 0.15em solid var(--color-background);
   z-index: 1;
 }
-.layout-timeline-vertical .card:nth-child(odd)::before  { right: -2.3em; top: 1em; }
-.layout-timeline-vertical .card:nth-child(even)::before { left: -2.3em; top: 1em; }
+.layout-timeline-vertical .card:nth-child(odd)::before  { right: -2.8em; top: 1em; }
+.layout-timeline-vertical .card:nth-child(even)::before { left: -2.8em; top: 1em; }
 .layout-timeline-horizontal .card::before { left: 50%; transform: translateX(-50%); }
-.layout-timeline-horizontal .card:nth-child(even)::before { top: -2em; }
-.layout-timeline-horizontal .card:nth-child(odd)::before  { bottom: -2em; }
+.layout-timeline-horizontal .card:nth-child(even)::before { top: -2.3em; }
+.layout-timeline-horizontal .card:nth-child(odd)::before  { bottom: -2.3em; }
 /* connector stub -- the alternating line itself, not just the dot */
 .layout-timeline-vertical .card::after {
   content: "";
   position: absolute;
   top: 1.3em;
   height: 0.08em;
-  width: 2em;
+  width: 2.5em;
   background: var(--color-accent-primary);
   opacity: 0.5;
 }
-.layout-timeline-vertical .card:nth-child(odd)::after  { right: -2em; }
-.layout-timeline-vertical .card:nth-child(even)::after { left: -2em; }
+.layout-timeline-vertical .card:nth-child(odd)::after  { right: -2.5em; }
+.layout-timeline-vertical .card:nth-child(even)::after { left: -2.5em; }
 .layout-timeline-horizontal .card::after {
   content: "";
   position: absolute;
@@ -453,12 +454,20 @@ LOGO_CSS
 }
 .layout-timeline-horizontal .card:nth-child(even)::after { top: -2em; }
 .layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
-/* {focus}: bigger, highlighted */
+/* {focus}: bigger, highlighted -- font-size/padding, not transform:
+   scale(), which would drag the card's own ::before/::after connector
+   (positioned in em relative to the card) off the spine with it. */
 .layout-timeline-vertical .card.focus,
 .layout-timeline-horizontal .card.focus {
-  transform: scale(1.12);
+  font-size: 1.1em;
+  padding: 1.3em;
   box-shadow: 0 0 0 0.12em var(--color-accent-primary);
   z-index: 2;
+}
+.layout-timeline-horizontal .slide-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* ---- slide transitions ---- */
