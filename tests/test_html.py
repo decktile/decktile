@@ -103,3 +103,11 @@ def test_base_css_has_h3_underline_and_kicker_eyebrow_treatment():
     assert "text-transform: uppercase" in css
     assert "letter-spacing: 0.05em" in css
 
+
+def test_base_css_table_sizing_is_compact_not_oversized():
+    """Default table font-size (0.85em) and cell padding (0.5em 0.65em)
+    rendered rows visibly oversized relative to the rest of the slide
+    body -- tightened to match the compactness of card/list text."""
+    css = base_css()
+    assert "table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 0.75em; }" in css
+    assert "th, td { padding: 0.4em 0.6em;" in css
