@@ -367,6 +367,17 @@ LOGO_CSS
   gap: 1.4em;
   padding: 0 2.5em;
 }
+.layout-timeline-vertical .grid::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0.12em;
+  background: var(--color-accent-primary);
+  opacity: 0.4;
+  transform: translateX(-50%);
+}
 .layout-timeline-horizontal .grid {
   flex-direction: row;
   align-items: flex-start;
