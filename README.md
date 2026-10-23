@@ -185,7 +185,8 @@ Grid auto-centers vertically in the slide body.
 Cards alternate sides of a central spine -- left/right for `timeline-vertical`,
 above/below for `timeline-horizontal`. `::: card {focus}` scales an item up and
 highlights it. No explicit `cols=` needed beyond matching the layout's flow
-(`cols=1` for vertical, one row for horizontal).
+(`cols=1` for vertical, one row for horizontal). Vertical cards interleave
+(alternating sides never collide) so 4-5 items fit comfortably on one slide.
 
 ```markdown
 @layout timeline-vertical
@@ -204,6 +205,10 @@ Major public launch.
 ::: card
 ### Q3 2026
 Scale and iterate.
+:::
+::: card
+### Q4 2026
+Expand to new markets.
 :::
 :::
 ```

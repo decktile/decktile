@@ -402,6 +402,10 @@ LOGO_CSS
 }
 .layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
+/* alternating cards never share a side, so they can interleave
+   (overlap) vertically to fit more items -- net spacing is
+   gap(0.6em) + this margin, i.e. ~0.6em of actual overlap */
+.layout-timeline-vertical .card:nth-child(n+2) { margin-top: -1.2em; }
 .layout-timeline-horizontal .card {
   position: relative;
   flex: 1;
@@ -463,11 +467,14 @@ LOGO_CSS
    would throw off the exact spine-alignment math -- padding only. */
 .layout-timeline-vertical .card.focus,
 .layout-timeline-horizontal .card.focus {
-  padding: 1.3em;
   box-shadow: 0 0 0 0.12em var(--color-accent-primary);
   z-index: 2;
 }
+.layout-timeline-horizontal .card.focus {
+  padding: 1.3em;
+}
 .layout-timeline-vertical .card.focus {
+  padding: 0.8em 1.2em;
   font-size: 1.1em;
 }
 .layout-timeline-horizontal .slide-body {

@@ -30,6 +30,10 @@ Major public launch -- the key milestone.
 ### Q3 2026
 Scale and iterate based on feedback.
 :::
+::: card
+### Q4 2026
+Expand to new markets.
+:::
 :::
 
 <!--
