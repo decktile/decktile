@@ -8,6 +8,7 @@ resolved style already reflects whatever ``data-theme`` the section had.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from pathlib import Path
 from typing import Any
@@ -72,55 +73,57 @@ def render(
         shapes: list[Any] = []
 
         if sb is not None:
-            page.master_page = reg.master_for(sb.style, page_width, page_height, add_file, footer=sb.footer)
+            master_name, is_new_master = reg.master_for(
+                sb.style, page_width, page_height, add_file, footer=sb.footer,
+            )
+            page.master_page = master_name
             overlay = _overlay_shape(sb.style, reg, page_width, page_height)
             if overlay is not None:
                 shapes.append(overlay)
+            # Logo/watermark/footer-text/page-number are the same for every
+            # slide sharing this master (same CSS rule, same fixed %-based
+            # position) -- append them to the master page itself, exactly
+            # once, instead of as a shape drawn on top of every single
+            # slide. The footer *bar* fill is already baked into the
+            # master's own background image (master_for); this adds the
+            # bar's text, the page-number field, and the logo/watermark
+            # images.
+            #
+            # Exception: a page whose background still needs a per-slide
+            # overlay rect (a true multi-stop/angled gradient, e.g.
+            # .layout-title, that can't be baked into the master --
+            # reg.overlay_needed) -- master content always paints *beneath*
+            # every per-slide shape in ODF, with no way to interleave by
+            # z-index, so chrome placed on the master would be painted
+            # over (dimmed/washed out) by that overlay on every single
+            # slide using it. Keep chrome per-slide there instead, ordered
+            # after the overlay so it paints on top of it, same as before
+            # this master-chrome change.
+            chrome_on_master = is_new_master and overlay is None
+            chrome_per_slide = overlay is not None
+            if chrome_on_master or chrome_per_slide:
+                max_digits = len(str(len(ir_slides)))
+                scope = "styles" if chrome_on_master else "content"
+                chrome = _chrome_shapes(sb, reg, add_file, max_digits, scope=scope)
+                if chrome_on_master:
+                    mp = reg.master_page_element(master_name)
+                    for shape in chrome:
+                        mp.append(shape)
+                else:
+                    shapes.extend(chrome)
 
-        # Footer/slide-num appended before logo/watermark: in the (rare)
-        # fallback path where the bar isn't baked into the master (no PIL,
-        # or compositing failed), it's still a separate shape, and the
-        # watermark/logo this theme nests inside the bar must paint above
-        # it, not under -- correct either way, since the common baked
-        # path renders no separate bar shape at all for skip_fill to hide.
-        footer_shape = sb and sb.footer and _text_pseudo_frame(
-            sb.footer, reg, skip_fill=reg.footer_bar_baked(sb.style),
-        )
-        if footer_shape is not None:
-            shapes.append(footer_shape)
-        slide_num_shape = sb and sb.slide_num and _text_pseudo_frame(
-            sb.slide_num, reg, page_field=True,
-        )
-        if slide_num_shape is not None:
-            shapes.append(slide_num_shape)
 
-        for e in slide.elements:
-            shapes.extend(render_elem(e, reg, add_file, source_dir, global_tags))
-
-        # Logo (section::before) / watermark (section::after): position,
-        # size, and file come directly from weasyprint's own resolved box
-        # for that pseudo-element -- exactly the HTML's CSS cascade,
-        # including any `--logo: var(--logo-dark)` swap on dark/title
-        # sections, with no separate Python-side light/dark selection.
-        # The Python-side fallback is for a theme with no section::before
-        # CSS at all (sb.logo is None) -- NOT for a box that exists but
-        # legitimately resolves to no image (e.g. `.layout-title { --logo:
-        # var(--logo-dark) }` with no logo_dark set -> background-image:
-        # none): that's the cascade explicitly deciding no logo here, and
-        # falling back to doc.meta.logo/logo_dark directly would silently
-        # override it (regression: a logo reappearing on a title slide
-        # the HTML correctly shows without one).
-        if sb is not None and sb.logo is not None:
-            logo_shape = _pseudo_image_frame(sb.logo, add_file)
-            if logo_shape is not None:
-                shapes.append(logo_shape)
-        elif logo_path or logo_dark_path:
+        # Fallback: a theme with no section::before CSS at all (sb.logo
+        # is None, not just resolved-to-nothing) -- doc.meta.logo/
+        # logo_dark directly, picked per slide.variant since it isn't
+        # tied to any master.
+        if (sb is None or sb.logo is None) and (logo_path or logo_dark_path):
             slide_logo = logo_dark_path if slide.variant == "dark" else logo_path
             if slide_logo:
                 shapes.append(_logo_frame(slide_logo, add_file, page_width, page_height))
-        watermark_shape = sb and sb.watermark and _pseudo_image_frame(sb.watermark, add_file)
-        if watermark_shape is not None:
-            shapes.append(watermark_shape)
+
+        for e in slide.elements:
+            shapes.extend(render_elem(e, reg, add_file, source_dir, global_tags))
 
         # A bitmap-filled master page changes how LibreOffice resolves
         # z-order for un-indexed shapes (confirmed empirically: an
@@ -145,6 +148,57 @@ def _resolve_asset(src: str, source_dir: Path | None) -> str | None:
         return None
     path = str((source_dir / src).resolve()) if source_dir else src
     return path if os.path.isfile(path) else None
+
+
+def _chrome_shapes(
+    sb: Any, reg: StyleRegistry, add_file: Any, max_digits: int, *, scope: str,
+) -> list[Any]:
+    """footer-text, page-number field, logo, watermark -- the four shapes
+    shared across every slide using one background style, built once and
+    placed either on the master (``scope="styles"``) or, for an overlay-
+    needing background, per-slide (``scope="content"``) by the caller."""
+    shapes: list[Any] = []
+    footer_shape = sb.footer and _text_pseudo_frame(
+        sb.footer, reg, skip_fill=reg.footer_bar_baked(sb.style), scope=scope,
+    )
+    if footer_shape is not None:
+        shapes.append(footer_shape)
+    if sb.slide_num is not None:
+        # Measured from the first slide using this master, which may well
+        # be single-digit -- widen for the deck's actual max digit count
+        # (right-aligned, so the extra width grows leftward and the
+        # number stays flush with the original right edge), or a later
+        # double-digit page wraps vertically inside the too-narrow box
+        # instead of shrinking.
+        digit_w = sb.slide_num.h * 0.6
+        needed_w = max_digits * digit_w
+        num_pseudo = sb.slide_num
+        if needed_w > num_pseudo.w:
+            num_pseudo = dataclasses.replace(
+                num_pseudo,
+                x=num_pseudo.x + num_pseudo.w - needed_w,
+                w=needed_w,
+                style=dataclasses.replace(num_pseudo.style, text_align="right"),
+            )
+        page_num_shape = _text_pseudo_frame(num_pseudo, reg, page_field=True, scope=scope)
+        if page_num_shape is not None:
+            shapes.append(page_num_shape)
+    # Logo (section::before) / watermark (section::after): position,
+    # size, and file come directly from weasyprint's own resolved box for
+    # that pseudo-element -- exactly the HTML's CSS cascade, including
+    # any `--logo: var(--logo-dark)` swap on dark/title sections, with no
+    # separate Python-side light/dark selection. sb.logo being present
+    # but resolving to no image (`background-image: none`) is the
+    # cascade explicitly deciding no logo on this variant -- not a
+    # missing-CSS case, so no fallback there.
+    if sb.logo is not None:
+        logo_shape = _pseudo_image_frame(sb.logo, add_file)
+        if logo_shape is not None:
+            shapes.append(logo_shape)
+    watermark_shape = sb.watermark and _pseudo_image_frame(sb.watermark, add_file)
+    if watermark_shape is not None:
+        shapes.append(watermark_shape)
+    return shapes
 
 
 def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
@@ -180,6 +234,7 @@ def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
 
 def _text_pseudo_frame(
     pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = False, page_field: bool = False,
+    scope: str = "styles",
 ) -> Frame | None:
     """<footer>/.slide-num: a real DOM element injected by the HTML
     template (shell.html), not an AST node -- geometry.py captures it by
@@ -199,10 +254,16 @@ def _text_pseudo_frame(
     "current"``, cached display value = the build-time number), which
     Impress recomputes from actual page position regardless of later
     edits.
+    ``scope``: this frame may land on the master page (``"styles"``) or,
+    for an overlay-needing background, on the slide itself (``"content"``)
+    -- Impress resolves text/paragraph styles from whichever XML part the
+    *shape* lives in, not the document as a whole, so the two placements
+    need oppositely-scoped styles or the font/color silently falls back
+    to a default serif/black.
     """
     if not pseudo.text:
         return None
-    para_style = reg.paragraph_style(pseudo.style)
+    para_style = reg.paragraph_style(pseudo.style, scope=scope)
     gfx = reg.graphic_style(
         pseudo.style, fill=not skip_fill and pseudo.style.bg_alpha > 0,
         vertical_align="middle", border=False,

@@ -193,6 +193,7 @@ class _TextKey:
     italic: bool
     text_align: str
     margin_bottom_px: float = 0.0
+    scope: str = "content"
 
 @dataclass(frozen=True)
 class _GraphicKey:
@@ -203,6 +204,7 @@ class _GraphicKey:
     text_align: str
     vertical_align: str
     padding: tuple[float, float, float, float]
+    scope: str = "content"
 
 
 class StyleRegistry:
@@ -222,6 +224,7 @@ class StyleRegistry:
         self._gradients: dict[tuple, str] = {}
         self._opacities: dict[tuple, str] = {}
         self._masters: dict[tuple, str] = {}
+        self._master_objects: dict[str, StyleMasterPage] = {}
         self._tint_baked_keys: set[tuple] = set()
         self._footer_baked: dict[tuple, bool] = {}
         self._label_counters: dict[str, int] = {}
@@ -248,14 +251,22 @@ class StyleRegistry:
     # ---- text (paragraph default + inline run) styles ----
 
     def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False,
-                        margin_bottom_px: float = 0.0) -> str:
-        """Automatic (content.xml) style -- verified empirically: Impress's
-        draw:text-box only resolves text:p/text:span against automatic
-        styles, silently ignoring an identical common (styles.xml) style
-        (same family of pitfall as the table-cell/master-background ones)."""
+                        margin_bottom_px: float = 0.0, scope: str = "content") -> str:
+        """``scope="content"`` (default): an automatic style in content.xml
+        -- verified empirically: Impress's draw:text-box only resolves
+        text:p/text:span against automatic styles there, silently
+        ignoring an identical common (styles.xml) style (same family of
+        pitfall as the table-cell/master-background ones). ``scope=
+        "styles"``: the inverse pitfall, for a shape placed directly on a
+        ``style:master-page`` (styles.xml) -- content.xml's automatic
+        styles aren't in scope there either, and resolve to nothing
+        (verified: LibreOffice silently falls back to a default serif
+        font/black text instead of erroring) -- register into styles.xml's
+        own automatic-styles section instead.
+        """
         key = _TextKey(style.fg, style.font_family, style.font_size_px,
                       style.font_weight, style.font_italic, style.text_align,
-                      round(margin_bottom_px, 1))
+                      round(margin_bottom_px, 1), scope)
         cached = self._paragraph.get(key)
         if cached:
             return cached
@@ -271,14 +282,17 @@ class StyleRegistry:
             size=px_to_pt(style.font_size_px), weight=style.font_weight,
             font_style="italic" if style.font_italic else "normal",
         )
-        self._doc.insert_style(s, automatic=True)
+        if scope == "styles":
+            self._doc.styles.get_element("office:automatic-styles").append(s)
+        else:
+            self._doc.insert_style(s, automatic=True)
         self._paragraph[key] = name
         return name
 
     def run_style(self, fg: str, font_family: str, font_size_px: float,
-                 bold: bool, italic: bool, *, mono: bool = False) -> str:
+                 bold: bool, italic: bool, *, mono: bool = False, scope: str = "content") -> str:
         key = _TextKey(fg, font_family, font_size_px,
-                      "bold" if bold else "normal", italic, "")
+                      "bold" if bold else "normal", italic, "", scope=scope)
         cached = self._run.get(key)
         if cached:
             return cached
@@ -289,7 +303,10 @@ class StyleRegistry:
             area="text", color=fg, font=font_family, font_family=font_family,
             family_generic="modern" if mono else "swiss", size=px_to_pt(font_size_px),
         )
-        self._doc.insert_style(s, automatic=True)
+        if scope == "styles":
+            self._doc.styles.get_element("office:automatic-styles").append(s)
+        else:
+            self._doc.insert_style(s, automatic=True)
         self._run[key] = name
         return name
 
@@ -656,10 +673,13 @@ class StyleRegistry:
         key = _bitmap_tint_key(style)
         return key is not None and self._footer_baked.get(key, False)
 
+    def master_page_element(self, name: str) -> StyleMasterPage:
+        return self._master_objects[name]
+
     def master_for(
         self, style: ResolvedStyle, width_cm: float, height_cm: float,
         add_file: Callable[[str], str], footer: BoxGeometry | None = None,
-    ) -> str:
+    ) -> tuple[str, bool]:
         """Dedup'd master page for a slide's base background (solid/gradient/bitmap).
 
         A uniform overlay tint (every theme's light/dark section
@@ -672,6 +692,12 @@ class StyleRegistry:
         needs a separate per-slide overlay -- ``overlay_needed`` is the
         single source of truth for that. An opaque ``footer`` bar (the
         section's resolved footer box, if any) is baked in the same way.
+
+        Returns ``(name, is_new)``: ``is_new`` is True only the first
+        time this exact key is built -- the caller uses it to append
+        logo/watermark/footer-text/page-number shapes to the master
+        element (``master_page_element``) exactly once per master,
+        instead of as a separate shape drawn on every single slide.
         """
         pl_name = self.ensure_page_layout(width_cm, height_cm)
         bg_image_ok = bool(style.bg_image_url) and os.path.isfile(style.bg_image_url)
@@ -688,7 +714,7 @@ class StyleRegistry:
             key = ("solid", style.bg)
         cached = self._masters.get(key)
         if cached:
-            return cached
+            return cached, False
 
         dp_name = f"SlidrBgDp{next(self._counter)}"
         dp = Style("drawing-page", name=dp_name)
@@ -742,4 +768,5 @@ class StyleRegistry:
         mp = StyleMasterPage(name=master_name, page_layout=pl_name, draw_style_name=dp_name)
         self._doc.insert_style(mp)
         self._masters[key] = master_name
-        return master_name
+        self._master_objects[master_name] = mp
+        return master_name, True

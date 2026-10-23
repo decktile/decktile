@@ -24,7 +24,13 @@ def _build(md: str, tmp_path: Path, theme_css: str = "", source_dir: Path | None
 
 def _frames(odp: OdfDocument, page_index: int = 0):
     page = odp.body.get_draw_pages()[page_index]
-    return page.get_frames()
+    frames = list(page.get_frames())
+    master_name = page.get_attribute("draw:master-page-name")
+    if master_name:
+        master = odp.get_style("master-page", master_name)
+        if master is not None:
+            frames.extend(master.get_frames())
+    return frames
 
 
 def test_page_size_matches_content_dimensions(tmp_path):
@@ -230,9 +236,8 @@ def test_dark_slide_uses_logo_dark(tmp_path):
         "@variant dark\n\n# Dark\n\n---\n\n# Light\n"
     )
     odp = _build(md, tmp_path)
-    pages = odp.body.get_draw_pages()
-    dark_logo_uri = next(f.get_image().url for f in pages[0].get_frames() if f.get_image())
-    light_logo_uri = next(f.get_image().url for f in pages[1].get_frames() if f.get_image())
+    dark_logo_uri = next(f.get_image().url for f in _frames(odp, 0) if f.get_image())
+    light_logo_uri = next(f.get_image().url for f in _frames(odp, 1) if f.get_image())
     assert dark_logo_uri != light_logo_uri
 
 
@@ -492,3 +497,62 @@ def test_content_image_gets_rounded_corners(tmp_path):
         assert im.mode == "RGBA"
         assert im.getchannel("A").getpixel((0, 0)) == 0
         assert im.getchannel("A").getpixel((im.width // 2, im.height // 2)) > 200
+
+
+def test_chrome_shapes_land_on_master_for_uniform_tint(tmp_path):
+    """Logo/watermark/footer/page-number are the same for every slide
+    sharing a uniform-tint background -- they must be appended to the
+    master page once, not duplicated as a separate shape on every slide
+    (the original point of the master-per-layout redesign)."""
+    from PIL import Image
+
+    img_path = tmp_path / "bg.png"
+    Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
+    theme = default_theme() + (
+        '\nsection { background: linear-gradient(rgba(255,255,255,0.9), '
+        'rgba(255,255,255,0.9)), url("bg.png") left top / cover no-repeat; }\n'
+        '\nsection::before { content: ""; position: absolute; width: 10%; '
+        'height: 10%; background: var(--logo); }\n'
+    )
+    logo = tmp_path / "logo.png"
+    Image.new("RGB", (40, 40), (10, 200, 10)).save(logo)
+    md = (
+        "---\ntitle: T\nlogo: logo.png\nfooter: Conf 2026\npaginate: true\n---\n\n"
+        "# One\n\n---\n\n# Two\n\n---\n\n# Three\n"
+    )
+    odp = _build(md, tmp_path, theme_css=theme)
+    pages = odp.body.get_draw_pages()
+    assert len({p.get_attribute("draw:master-page-name") for p in pages}) == 1
+    for p in pages:
+        assert not any(f.get_image() for f in p.get_frames())
+        assert not any("Conf 2026" in f.get_formatted_text() for f in p.get_frames())
+    master_name = pages[0].get_attribute("draw:master-page-name")
+    master = odp.get_style("master-page", master_name)
+    assert any(f.get_image() for f in master.get_frames())
+    assert any("Conf 2026" in f.get_formatted_text() for f in master.get_frames())
+
+
+def test_chrome_falls_back_to_per_slide_for_overlay_background(tmp_path):
+    """A true multi-stop/angled gradient background (.layout-title's
+    directional fade) can't be baked into the master, so it still needs a
+    per-slide overlay rect -- master content always paints *beneath*
+    every per-slide shape in ODF, so chrome placed on the master there
+    would be painted over by that overlay. Must stay per-slide instead,
+    ordered after the overlay."""
+    from PIL import Image
+
+    img_path = tmp_path / "bg.png"
+    Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
+    theme = default_theme() + (
+        '\nsection { background: linear-gradient(90deg, rgba(0,0,0,0.8) 0%, '
+        'rgba(0,0,0,0.2) 100%), url("bg.png") left top / cover no-repeat; }\n'
+        '\nsection::before { content: ""; position: absolute; width: 10%; '
+        'height: 10%; background: var(--logo); }\n'
+    )
+    logo = tmp_path / "logo.png"
+    Image.new("RGB", (40, 40), (10, 200, 10)).save(logo)
+    md = "---\ntitle: T\nlogo: logo.png\nfooter: Conf 2026\npaginate: true\n---\n\n# One\n"
+    odp = _build(md, tmp_path, theme_css=theme)
+    page = odp.body.get_draw_pages()[0]
+    assert any(f.get_image() for f in page.get_frames())
+    assert any("Conf 2026" in f.get_formatted_text() for f in page.get_frames())
