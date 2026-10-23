@@ -10,6 +10,7 @@ keeps the registration/use sites next to each other.
 from __future__ import annotations
 
 import math
+import functools
 import os
 import tempfile
 
@@ -62,8 +63,16 @@ def downscale_image(path: str, width_cm: float, height_cm: float) -> str:
     decode into a cost repeated on every slide carrying it). Preserves
     alpha -- a logo/watermark PNG's transparency must survive, unlike an
     opaque full-bleed background photo. Skipped entirely if already
-    smaller than the target.
+    smaller than the target. Memoized: the same source+box recurring on
+    every slide (a deck-wide logo/watermark) would otherwise re-decode
+    and re-embed as a distinct Pictures/ entry on every call -- add_file
+    dedups by path, and a fresh mkstemp path every call defeats that.
     """
+    return _downscale_image_cached(path, round(width_cm, 2), round(height_cm, 2))
+
+
+@functools.lru_cache(maxsize=256)
+def _downscale_image_cached(path: str, width_cm: float, height_cm: float) -> str:
     try:
         from PIL import Image
     except ImportError:
@@ -535,15 +544,17 @@ class StyleRegistry:
 
     def _bake_footer_bar(
         self, img_path: str, footer: BoxGeometry, width_cm: float, height_cm: float,
-    ) -> bool:
-        """Paints the footer bar directly onto the composited master image
-        at its exact weasyprint-measured position. Baked into the master
-        (painted beneath every per-slide shape automatically) instead of a
-        separate per-slide rect -- also sidesteps having to get z-order
-        right between the bar and the watermark/logo shapes that sit
-        inside it. ``style:repeat="stretch"`` maps the image linearly
-        across the page regardless of its own aspect, so cm -> px uses
-        the image's own size, not the original photo's.
+    ) -> str | None:
+        """Paints the footer bar directly onto a *copy* of the composited
+        master image at its exact weasyprint-measured position, returning
+        the new file's path -- never mutates ``img_path`` in place. On the
+        ``_composite_tint_image`` failure path (or a source already
+        smaller than the downscale target), ``img_path`` can be the
+        theme's own original asset file on disk; writing into it would
+        permanently corrupt the user's source image.
+        ``style:repeat="stretch"`` maps the image linearly across the
+        page regardless of its own aspect, so cm -> px uses the image's
+        own size, not the original photo's.
         """
         try:
             from PIL import Image, ImageDraw
@@ -560,10 +571,12 @@ class StyleRegistry:
                     mask = Image.new("L", im.size, 0)
                     ImageDraw.Draw(mask).rectangle(box, fill=round(alpha * 255))
                     im = Image.composite(overlay, im, mask)
-                im.save(img_path)
-            return True
+                fd, out_path = tempfile.mkstemp(suffix=".png")
+                os.close(fd)
+                im.save(out_path)
+            return out_path
         except Exception:
-            return False
+            return None
 
     def _pil_available(self) -> bool:
         if self._pil_ok is None:
@@ -640,10 +653,11 @@ class StyleRegistry:
                 img_path, _ = self._composite_tint_image(
                     style.bg_image_url, tint_key[2], tint_key[3], width_cm, height_cm,
                 )
-                footer_baked = (
-                    footer is not None and footer.style.bg_alpha > 0
-                    and self._bake_footer_bar(img_path, footer, width_cm, height_cm)
-                )
+                footer_baked = False
+                if footer is not None and footer.style.bg_alpha > 0:
+                    baked_path = self._bake_footer_bar(img_path, footer, width_cm, height_cm)
+                    if baked_path is not None:
+                        img_path, footer_baked = baked_path, True
                 self._footer_baked[key] = footer_baked
             else:
                 img_path = self._prepare_bg_image(style.bg_image_url, width_cm, height_cm)
