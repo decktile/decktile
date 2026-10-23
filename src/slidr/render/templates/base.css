@@ -381,7 +381,7 @@ LOGO_CSS
 .layout-timeline-horizontal .grid {
   flex-direction: row;
   align-items: flex-start;
-  gap: 0.5em;
+  gap: 0;
   margin-top: 8em; /* reserves room for odd cards shifted above the spine */
 }
 .layout-timeline-horizontal .grid::before {
@@ -420,7 +420,7 @@ LOGO_CSS
 }
 /* alternating cards never vertically collide (above/below the spine),
    so they can interleave left-right too, fitting more items */
-.layout-timeline-horizontal .card:nth-child(n+2) { margin-left: -1em; }
+.layout-timeline-horizontal .card:nth-child(n+2) { margin-left: -3em; }
 /* connector dot on the spine */
 .layout-timeline-vertical .card::before,
 .layout-timeline-horizontal .card::before {
