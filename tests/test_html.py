@@ -129,3 +129,16 @@ def test_default_theme_watermark_sits_left_of_page_number():
     css = default_theme()
     assert "right: calc(var(--section-padding-h) + var(--watermark-gap));" in css
     assert "bottom: 0.48em;" in css
+
+
+def test_video_sync_wired_in_both_presenter_and_main_branches():
+    """Presenter and main windows are separate documents (window.open),
+    each with its own independent <video> for the same slide -- playing
+    one never touched the other without this wiring over the existing
+    BroadcastChannel."""
+    html = _full_page(
+        "---\ntitle: T\n---\n\n## Video Slide\n\n@video assets/demo/clip.mp4\n"
+    )
+    assert "_wireVideoSync('#pres-main', bc);" in html
+    assert "_wireVideoSync('body > section', bc);" in html
+    assert "e.data.video" in html
