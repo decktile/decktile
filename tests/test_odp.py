@@ -170,6 +170,22 @@ def test_speaker_notes_multiple_comments_become_separate_paragraphs(tmp_path):
     assert "second point" in texts
 
 
+def test_speaker_notes_multiline_bullets_stay_on_separate_lines(tmp_path):
+    """A single comment with several lines (e.g. bullet points) must not
+    collapse onto one run-on line -- each source line needs its own
+    text:p (ODF ignores an embedded \\n inside one text:p)."""
+    md = (
+        "---\ntitle: T\n---\n\n"
+        "<!--\n- first bullet\n- second bullet\n-->\n\n# Hello\n"
+    )
+    odp = _build(md, tmp_path)
+    page = odp.body.get_draw_pages()[0]
+    notes = page.get_element("presentation:notes")
+    texts = [p.text for p in notes.get_elements("descendant::text:p")]
+    assert "- first bullet" in texts
+    assert "- second bullet" in texts
+
+
 def test_missing_background_image_degrades_to_solid_fill(tmp_path):
     """A theme referencing a nonexistent background image must not crash --
     degrade to the resolved solid/gradient fill (regression: this exact

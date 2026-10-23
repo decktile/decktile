@@ -364,7 +364,11 @@ def _notes_shape(text: str, reg: StyleRegistry) -> PresentationNotes:
     page width/height here clipped every notes line off the right edge
     of the portrait notes page."""
     notes = PresentationNotes()
-    paragraphs = [Paragraph(part) for part in text.split(" | ")]
+    # One Paragraph per source line -- a plain Paragraph("a\nb") renders
+    # "a" and "b" run together (ODF text:p ignores embedded \n; it needs
+    # explicit text:line-break or paragraph breaks), which silently
+    # collapsed multi-line comments and bulleted notes onto one line.
+    paragraphs = [Paragraph(line) for line in text.split("\n")]
     frame = Frame.text_frame(
         paragraphs,
         position=("2.1cm", "14.107cm"),
