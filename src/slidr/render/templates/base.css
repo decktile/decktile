@@ -381,7 +381,7 @@ LOGO_CSS
 .layout-timeline-horizontal .grid {
   flex-direction: row;
   align-items: flex-start;
-  gap: 1em;
+  gap: 0.5em;
   margin-top: 8em; /* reserves room for odd cards shifted above the spine */
 }
 .layout-timeline-horizontal .grid::before {
@@ -404,8 +404,8 @@ LOGO_CSS
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
 /* alternating cards never share a side, so they can interleave
    (overlap) vertically to fit more items -- net spacing is
-   gap(0.6em) + this margin, i.e. ~0.6em of actual overlap */
-.layout-timeline-vertical .card:nth-child(n+2) { margin-top: -1.2em; }
+   gap(0.6em) + this margin, each card starts ~35% up its predecessor */
+.layout-timeline-vertical .card:nth-child(n+2) { margin-top: -2em; }
 .layout-timeline-horizontal .card {
   position: relative;
   flex: 1;
@@ -418,6 +418,9 @@ LOGO_CSS
 .layout-timeline-horizontal .card:nth-child(odd) {
   margin-top: -8em; /* 6em card + 2em stub, shifted above the spine */
 }
+/* alternating cards never vertically collide (above/below the spine),
+   so they can interleave left-right too, fitting more items */
+.layout-timeline-horizontal .card:nth-child(n+2) { margin-left: -1em; }
 /* connector dot on the spine */
 .layout-timeline-vertical .card::before,
 .layout-timeline-horizontal .card::before {
