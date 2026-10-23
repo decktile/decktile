@@ -5,7 +5,7 @@ var slideNotes = [{% for slide in slides %}{{ slide.notes|tojson }}{% if not loo
 
 var KEYS_FWD = ['ArrowRight', 'ArrowDown', 'PageDown', ' '];
 var KEYS_BACK = ['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'];
-var AUTOPLAY_INTERVAL = {{ autoplay }};
+var autoplaySpeed = {{ autoplay }};
 var _autoAdvancing = false;
 
 if (isPresenter) {
@@ -17,6 +17,9 @@ if (isPresenter) {
   var autoplayRunning = false;
   var autoplayTimer = null;
   var autoplayBtn = document.getElementById('pres-autoplay');
+  var speedValEl = document.getElementById('pres-speed-val');
+  var speedDecBtn = document.getElementById('pres-speed-dec');
+  var speedIncBtn = document.getElementById('pres-speed-inc');
 
   function _rawShow(n) {
     if (n < 0 || n >= ms.length) return;
@@ -39,11 +42,18 @@ if (isPresenter) {
   }
 
   function startAutoplay() {
-    if (AUTOPLAY_INTERVAL <= 0) return;
+    if (autoplaySpeed <= 0) return;
     autoplayRunning = true;
     if (autoplayBtn) autoplayBtn.textContent = '⏸';
     clearInterval(autoplayTimer);
-    autoplayTimer = setInterval(function() { _autoAdvance(); }, AUTOPLAY_INTERVAL * 1000);
+    autoplayTimer = setInterval(function() { _autoAdvance(); }, autoplaySpeed * 1000);
+  }
+
+  function setSpeed(v) {
+    autoplaySpeed = Math.max(1, v);
+    if (speedValEl) speedValEl.textContent = autoplaySpeed + 's';
+    if (autoplayRunning) startAutoplay();
+    bc.postMessage({ command: 'autoplay-speed', value: autoplaySpeed });
   }
 
   function stopAutoplay() {
@@ -76,12 +86,19 @@ if (isPresenter) {
   }
 
   if (autoplayBtn) autoplayBtn.addEventListener('click', toggleAutoplay);
+  if (speedDecBtn) speedDecBtn.addEventListener('click', function() { setSpeed(autoplaySpeed - 1); });
+  if (speedIncBtn) speedIncBtn.addEventListener('click', function() { setSpeed(autoplaySpeed + 1); });
 
   var bc = new BroadcastChannel('slidr-' + document.title);
   bc.onmessage = function(e) {
     if (e.data.slide !== undefined && e.data.slide !== current) { _rawShow(e.data.slide); }
     if (e.data.command === 'autoplay-start') { startAutoplay(); }
     if (e.data.command === 'autoplay-stop') { stopAutoplay(); }
+    if (e.data.command === 'autoplay-speed') {
+      autoplaySpeed = e.data.value;
+      if (speedValEl) speedValEl.textContent = autoplaySpeed + 's';
+      if (autoplayRunning) startAutoplay();
+    }
   };
   show(0);
 
@@ -184,15 +201,20 @@ if (isPresenter) {
     if (e.data.slide !== undefined && e.data.slide !== current) { stopAutoplay(); _rawShow(e.data.slide); }
     if (e.data.command === 'autoplay-start') { startAutoplay(); }
     if (e.data.command === 'autoplay-stop') { stopAutoplay(); }
+    if (e.data.command === 'autoplay-speed') {
+      autoplaySpeed = e.data.value;
+      if (autoplayRunning) startAutoplay();
+    }
   };
 
   function startAutoplay() {
-    if (AUTOPLAY_INTERVAL <= 0) return;
+    if (autoplaySpeed <= 0) return;
     autoplayRunning = true;
     if (autoplayBtn) autoplayBtn.textContent = '⏸';
     clearInterval(autoplayTimer);
-    autoplayTimer = setInterval(function() { _autoAdvance(); }, AUTOPLAY_INTERVAL * 1000);
+    autoplayTimer = setInterval(function() { _autoAdvance(); }, autoplaySpeed * 1000);
   }
+
 
   function stopAutoplay() {
     autoplayRunning = false;
