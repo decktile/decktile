@@ -90,6 +90,8 @@ class Card(Node):
     children: list[Node] = field(default_factory=list)
     tag: Optional[str] = None
     class_: str = ""
+    label: str = ""   # ::: card {label="Q1"}: short name rendered on a
+                       # timeline layout's spine, next to the milestone dot
 
 
 @dataclass

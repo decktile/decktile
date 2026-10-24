@@ -169,6 +169,8 @@ def _render_elem(e: Elem) -> str:
         if e.class_:
             cls += f" {e.class_}"
         s = f'<div class="{cls}"{sid}>\n'
+        if e.attrs.get("label"):
+            s += f'<span class="timeline-label">{_maybe_escape(e.attrs["label"])}</span>\n'
         if e.header:
             s += f"<h3>{_maybe_escape(e.header)}</h3>\n"
         for line in e.body:

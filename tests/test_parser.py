@@ -79,6 +79,15 @@ def test_metric_parses_as_card():
     assert "metric" in (cards[0].class_ or "")
 
 
+def test_card_label_attribute_parses_as_free_text_not_class():
+    doc = parse('---\ntheme: t\n---\n\n::: card {focus, label="Q2"}\n### Q2\nbody\n:::')
+    slide = doc.slides[0]
+    cards = [n for n in slide.children if isinstance(n, Card)]
+    assert cards[0].label == "Q2"
+    assert "focus" in (cards[0].class_ or "")
+    assert "label" not in (cards[0].class_ or "")
+
+
 def test_metric_auto_groups_into_grid():
     doc = parse("---\ntheme: t\n---\n\n::: card {metric}\n10x\nSpeed\n:::\n\n::: card {metric}\n50%\nUtilization\n:::")
     slide = doc.slides[0]

@@ -18,19 +18,19 @@ title: Timeline Demo
 ## Project Roadmap
 
 ::: grid {cols=1}
-::: card
+::: card {label="Q1"}
 ### Q1 2026
 Kickoff and planning phase.
 :::
-::: card {focus}
+::: card {focus, label="Q2"}
 ### Q2 2026
 Major public launch -- the key milestone.
 :::
-::: card
+::: card {label="Q3"}
 ### Q3 2026
 Scale and iterate based on feedback.
 :::
-::: card
+::: card {label="Q4"}
 ### Q4 2026
 Expand to new markets.
 :::
@@ -49,19 +49,19 @@ matters most.
 ## Release Timeline
 
 ::: grid {cols=4}
-::: card
+::: card {label="v1"}
 ### v1.0
 Initial release
 :::
-::: card {focus}
+::: card {focus, label="v2"}
 ### v2.0
 Big feature launch
 :::
-::: card
+::: card {label="v2.1"}
 ### v2.1
 Bugfixes
 :::
-::: card
+::: card {label="v3"}
 ### v3.0
 Next major
 :::

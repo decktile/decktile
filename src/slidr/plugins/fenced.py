@@ -126,6 +126,7 @@ def _parse_card(text: str, rest: str = "") -> Card:
 
     class_ = ""
     tag = None
+    label = ""
     raw = rest.split("{", 1)[1].rstrip("}") if "{" in rest else ""
     for attr in raw.split(","):
         attr = attr.strip()
@@ -136,6 +137,8 @@ def _parse_card(text: str, rest: str = "") -> Card:
             k, v = k.strip(), v.strip().strip('"')
             if k == "tag":
                 tag = v
+            elif k == "label":
+                label = v
             else:
                 class_ = (class_ + f" {k}-{v}").strip()
         else:
@@ -145,7 +148,7 @@ def _parse_card(text: str, rest: str = "") -> Card:
     if "metric" in class_ and not header and body:
         header = body.pop(0)
 
-    return Card(header=header, body=body, children=children, tag=tag, class_=class_)
+    return Card(header=header, body=body, children=children, tag=tag, class_=class_, label=label)
 
 
 def _expand_markdown(text: str) -> str:

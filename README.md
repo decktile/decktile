@@ -183,10 +183,20 @@ Grid auto-centers vertically in the slide body.
 ### Timeline layouts
 
 Cards alternate sides of a central spine -- left/right for `timeline-vertical`,
-above/below for `timeline-horizontal`. `::: card {focus}` scales an item up and
-highlights it. No explicit `cols=` needed beyond matching the layout's flow
-(`cols=1` for vertical, one row for horizontal). Vertical cards interleave
-(alternating sides never collide) so 4-5 items fit comfortably on one slide.
+above/below for `timeline-horizontal`. The spine spans the full available
+height/width; `justify-content: space-evenly` auto-spaces however many
+milestones there are along it -- no per-count tuning needed for a
+*reasonable* number of items. `::: card {focus}` scales an item up and
+highlights it. `::: card {label="Q1"}` prints a short name directly on the
+spine next to that card's own dot, separate from the card's fuller `###`
+header. No explicit `cols=` needed beyond matching the layout's flow
+(`cols=1` for vertical, one row for horizontal).
+
+**No automatic collision avoidance beyond that.** `space-evenly` only
+distributes *leftover* space -- once total card height (vertical) or width
+(horizontal) exceeds the spine's fixed length, flexbox has no fallback
+to shrink text, and cards start genuinely overlapping. Keep it to
+**5-6 items per timeline slide**; past that, split into multiple slides.
 
 ```markdown
 @layout timeline-vertical

@@ -353,10 +353,15 @@ LOGO_CSS
 
 /* ---- timeline layouts ---- */
 /* ::: grid {cols=1} of ::: card blocks, flex (not CSS grid) so any item
-   count distributes naturally. Items alternate sides of a central spine
-   -- the connector stub's direction (left card <- stub -> right card,
+   count distributes naturally. The spine spans a fixed length (full
+   available height/width); justify-content: space-evenly auto-spaces
+   however many milestones there are along it -- no manually-tuned
+   gap/margin per item count. Items alternate sides of the spine -- the
+   connector stub's direction (left card <- stub -> right card,
    vertical; above <- stub -> below, horizontal) flips every item, the
-   literal "line going up and down". {focus} on a card scales it up. */
+   literal "line going up and down". {focus} on a card scales it up.
+   {label="Q1"} on a card prints a short name directly on the spine,
+   next to that card's own milestone dot. */
 .layout-timeline-vertical .grid,
 .layout-timeline-horizontal .grid {
   display: flex;
@@ -364,7 +369,8 @@ LOGO_CSS
 }
 .layout-timeline-vertical .grid {
   flex-direction: column;
-  gap: 0.6em;
+  justify-content: space-evenly;
+  height: 100%;
   padding: 0 2.5em;
 }
 .layout-timeline-vertical .grid::before {
@@ -380,8 +386,8 @@ LOGO_CSS
 }
 .layout-timeline-horizontal .grid {
   flex-direction: row;
+  justify-content: space-evenly;
   align-items: flex-start;
-  gap: 0;
   margin-top: 8em; /* reserves room for odd cards shifted above the spine */
 }
 .layout-timeline-horizontal .grid::before {
@@ -402,13 +408,12 @@ LOGO_CSS
 }
 .layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
-/* alternating cards never share a side, so they can interleave
-   (overlap) vertically to fit more items -- net spacing is
-   gap(0.6em) + this margin, each card starts ~35% up its predecessor */
-.layout-timeline-vertical .card:nth-child(n+2) { margin-top: -2em; }
 .layout-timeline-horizontal .card {
   position: relative;
-  flex: 1;
+  flex: 0 0 auto; /* content-sized, not flex:1 -- stretching to fill
+                      would leave no free space for space-evenly to
+                      distribute between items */
+  min-width: 7em;
   height: 6em; /* fixed so the stub below reliably reaches the spine --
                   keep horizontal-timeline card text brief, it won't
                   clip (no overflow:hidden -- that would also clip the
@@ -418,9 +423,6 @@ LOGO_CSS
 .layout-timeline-horizontal .card:nth-child(odd) {
   margin-top: -8em; /* 6em card + 2em stub, shifted above the spine */
 }
-/* alternating cards never vertically collide (above/below the spine),
-   so they can interleave left-right too, fitting more items */
-.layout-timeline-horizontal .card:nth-child(n+2) { margin-left: -3em; }
 /* connector dot on the spine */
 .layout-timeline-vertical .card::before,
 .layout-timeline-horizontal .card::before {
@@ -462,6 +464,34 @@ LOGO_CSS
 }
 .layout-timeline-horizontal .card:nth-child(even)::after { top: -2em; }
 .layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
+/* {label="..."}: short name printed directly on the spine, next to
+   this card's own dot -- distinct from the card's fuller ### header */
+.timeline-label {
+  position: absolute;
+  font-size: 0.6em;
+  font-weight: 700;
+  color: var(--color-accent-primary);
+  white-space: nowrap;
+  z-index: 2;
+}
+.layout-timeline-vertical .card:nth-child(odd) .timeline-label {
+  right: -5.5em;
+  top: 1em;
+}
+.layout-timeline-vertical .card:nth-child(even) .timeline-label {
+  left: -5.5em;
+  top: 1em;
+}
+.layout-timeline-horizontal .card:nth-child(even) .timeline-label {
+  left: 50%;
+  top: -2.3em;
+  transform: translate(calc(-50% + 1.4em), 0);
+}
+.layout-timeline-horizontal .card:nth-child(odd) .timeline-label {
+  left: 50%;
+  bottom: -2.3em;
+  transform: translate(calc(-50% + 1.4em), 0);
+}
 /* {focus}: bigger, highlighted -- font-size/padding, not transform:
    scale(), which would drag the card's own ::before/::after connector
    (positioned in em relative to the card) off the spine with it.

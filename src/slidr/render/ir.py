@@ -404,6 +404,7 @@ def _convert_node(node, styles: dict) -> Elem:
         return Elem(kind="card", header=node.header, body=node.body,
                     tag=node.tag or "", class_=node.class_ or "",
                     children=children,
+                    attrs={"label": node.label} if node.label else {},
                     font_size=base.font_size, color=base.color)
     elif isinstance(node, Arrow):
         content = node.content.strip()
