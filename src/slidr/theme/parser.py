@@ -233,7 +233,7 @@ def _build_theme_dict(styles: dict) -> dict:
         "accent_rgb": _to_rgb(styles.get("--accent", styles.get("--color-accent", ""))),
         "font_body_family": styles.get("font_body_family", "Segoe UI"),
         "font_code_family": styles.get("font_code_family",
-                                        styles.get("--font-mono", "SFMono-Regular")),
+                                        styles.get("--font-mono", "Noto Sans Mono")),
         "font_h1": _parse_size(styles.get("font_h1_size", ""), 32),
         "font_h2": _parse_size(styles.get("font_h2_size", ""), 32),
         "font_h3": _parse_size(styles.get("font_h3_size", ""), 23),
