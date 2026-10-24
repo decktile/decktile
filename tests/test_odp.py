@@ -665,8 +665,8 @@ def test_timeline_layout_renders_spine_dots_and_labels(tmp_path):
     grid once used height:100%, which weasyprint resolved too tall and
     spilled the cards onto an extra page."""
     cards = (
-        '::: card {label="Q1"}\n### Q1\nFirst.\n:::\n'
-        '::: card {focus, label="Q2"}\n### Q2\nSecond.\n:::\n'
+        '::: card {label="L1"}\n### Q1\nFirst.\n:::\n'
+        '::: card {focus, label="L2"}\n### Q2\nSecond.\n:::\n'
     )
     md = (
         "---\ntitle: T\n---\n\n@layout timeline-vertical\n\n## V\n\n"
@@ -677,17 +677,22 @@ def test_timeline_layout_renders_spine_dots_and_labels(tmp_path):
     odp = _build(md, tmp_path)
     pages = odp.body.get_draw_pages()
     assert len(pages) == 2
+
+    def cm(el, attr):
+        return float(el.get_attribute(attr).rstrip("cm"))
+
+    page_h = 720 * 2.54 / 96  # default 16:9 slide, 19.05cm
     for page in pages:
         kids = page.children
         dots = [c for c in kids if c.tag == "draw:ellipse"]
         assert len(dots) == 2  # one round dot per milestone, not squares
+        # label text appears nowhere else, so this proves label frames exist
         texts = " ".join(c.get_formatted_text() for c in kids if c.tag == "draw:frame")
-        assert "Q1" in texts and "Q2" in texts
+        assert "L1" in texts and "L2" in texts
         rects = [c for c in kids if c.tag == "draw:rect"]
-        # spine: the one rect spanning the cards' combined extent
-        spine_len = max(
-            max(float(r.get_attribute("svg:width").rstrip("cm")),
-                float(r.get_attribute("svg:height").rstrip("cm")))
-            for r in rects
-        )
+        spine_len = max(max(cm(r, "svg:width"), cm(r, "svg:height")) for r in rects)
         assert spine_len > 5.0
+        # weasyprint page spill showed up as geometry from the wrong page:
+        # every timeline shape must land inside this slide
+        for c in dots + rects:
+            assert 0 <= cm(c, "svg:y") and cm(c, "svg:y") + cm(c, "svg:height") <= page_h
