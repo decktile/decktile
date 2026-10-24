@@ -367,10 +367,20 @@ LOGO_CSS
   display: flex;
   position: relative;
 }
+/* grid fills the remaining body height via flex:1, not height:100% --
+   weasyprint resolves the percentage against more than the leftover
+   space below the heading, pushing the whole grid onto a new page
+   (broke --pdf/--odp: cards landed on an extra page). */
+.layout-timeline-vertical .slide-body {
+  display: flex;
+  flex-direction: column;
+}
 .layout-timeline-vertical .grid {
   flex-direction: column;
   justify-content: space-evenly;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
   padding: 0 2.5em;
 }
 .layout-timeline-vertical .grid::before {
@@ -482,15 +492,20 @@ LOGO_CSS
   left: -5.5em;
   top: 1em;
 }
+/* beside the dot: centre on it, then shift right. margin-left, not
+   translate(calc(-50% + Xem)) -- weasyprint crashes on calc() inside
+   transform (AttributeError in its cascade), breaking --pdf/--odp. */
 .layout-timeline-horizontal .card:nth-child(even) .timeline-label {
   left: 50%;
   top: -2.3em;
-  transform: translate(calc(-50% + 1.4em), 0);
+  margin-left: 1.4em;
+  transform: translateX(-50%);
 }
 .layout-timeline-horizontal .card:nth-child(odd) .timeline-label {
   left: 50%;
   bottom: -2.3em;
-  transform: translate(calc(-50% + 1.4em), 0);
+  margin-left: 1.4em;
+  transform: translateX(-50%);
 }
 /* {focus}: bigger, highlighted -- font-size/padding, not transform:
    scale(), which would drag the card's own ::before/::after connector

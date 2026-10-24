@@ -656,19 +656,38 @@ def test_page_number_widens_for_multi_digit_slide_counts(tmp_path):
     assert w >= 1.1 * h
 
 
-def test_timeline_layout_renders_spine_and_connector_shapes(tmp_path):
-    """A timeline layout's spine (.grid::before) and each card's connector
-    dot+stub (.card::before/::after) are pure CSS generated content with
-    no AST node of their own -- previously silently dropped from ODP
-    output entirely (cards rendered, but with no connecting line)."""
+def test_timeline_layout_renders_spine_dots_and_labels(tmp_path):
+    """Timeline spine (.grid::before), per-card dot+stub (.card::before/
+    ::after) and {label=} names have no AST node of their own -- they were
+    silently dropped from ODP (bare cards, no line). Covers both axes with
+    labels: the horizontal label CSS once used calc() inside transform,
+    which crashes weasyprint and broke --odp/--pdf outright; the vertical
+    grid once used height:100%, which weasyprint resolved too tall and
+    spilled the cards onto an extra page."""
+    cards = (
+        '::: card {label="Q1"}\n### Q1\nFirst.\n:::\n'
+        '::: card {focus, label="Q2"}\n### Q2\nSecond.\n:::\n'
+    )
     md = (
-        "---\ntitle: T\n---\n\n@layout timeline-vertical\n\n## Roadmap\n\n"
-        "::: grid {cols=1}\n::: card\n### Q1\nFirst.\n:::\n"
-        "::: card\n### Q2\nSecond.\n:::\n:::\n"
+        "---\ntitle: T\n---\n\n@layout timeline-vertical\n\n## V\n\n"
+        f"::: grid {{cols=1}}\n{cards}:::\n\n---\n\n"
+        "@layout timeline-horizontal\n\n## H\n\n"
+        f"::: grid {{cols=2}}\n{cards}:::\n"
     )
     odp = _build(md, tmp_path)
-    page = odp.body.get_draw_pages()[0]
-    rects = [c for c in page.children if c.tag == "draw:rect"]
-    # at least the spine (1) + two cards' dot (2) + stub (2) = 5 decoration
-    # shapes, on top of the two card text frames themselves
-    assert len(rects) >= 5
+    pages = odp.body.get_draw_pages()
+    assert len(pages) == 2
+    for page in pages:
+        kids = page.children
+        dots = [c for c in kids if c.tag == "draw:ellipse"]
+        assert len(dots) == 2  # one round dot per milestone, not squares
+        texts = " ".join(c.get_formatted_text() for c in kids if c.tag == "draw:frame")
+        assert "Q1" in texts and "Q2" in texts
+        rects = [c for c in kids if c.tag == "draw:rect"]
+        # spine: the one rect spanning the cards' combined extent
+        spine_len = max(
+            max(float(r.get_attribute("svg:width").rstrip("cm")),
+                float(r.get_attribute("svg:height").rstrip("cm")))
+            for r in rects
+        )
+        assert spine_len > 5.0

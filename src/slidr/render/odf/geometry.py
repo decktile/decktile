@@ -223,22 +223,31 @@ def _walk(
                     section_box[current_sid].footer = pseudo
             elif section_box[current_sid].slide_num is None:
                 section_box[current_sid].slide_num = pseudo
-        elif tag in ("div::before", "div::after") and current_sid in by_id and (
-            by_id[current_sid].kind in ("grid", "card")
+        elif current_sid in by_id and by_id[current_sid].kind in ("grid", "card") and (
+            tag in ("div::before", "div::after")
+            or (tag == "span" and _has_class(box, "timeline-label"))
         ):
             # Timeline spine (.grid::before) / dot+stub (.card::before/
-            # ::after): pure CSS generated content, no AST node of its
-            # own. Attach to the enclosing grid/card's own box so the
-            # ODP renderer can draw it as a plain shape alongside it.
+            # ::after) / milestone name (span.timeline-label): no AST node
+            # of their own. Attach to the enclosing grid/card's box so the
+            # ODP renderer can draw them alongside it. First match per
+            # label wins -- the span's own line/text child boxes inherit
+            # element_tag "span" and are walked right after.
             host = by_id[current_sid]
-            if host.box is not None:
+            is_label = tag == "span"
+            if host.box is not None and not (
+                is_label and any(d.text for d in host.box.decorations)
+            ):
                 ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
+                dx, dy = _translate_px(box)
+                el = getattr(box, "element", None)
                 host.box.decorations.append(BoxGeometry(
-                    x=(box.border_box_x() - ox) * PX_TO_CM,
-                    y=(box.border_box_y() - oy) * PX_TO_CM,
+                    x=(box.border_box_x() + dx - ox) * PX_TO_CM,
+                    y=(box.border_box_y() + dy - oy) * PX_TO_CM,
                     w=box.border_width() * PX_TO_CM,
                     h=box.border_height() * PX_TO_CM,
-                    style=style,
+                    style=_decoration_style(box, style, parent_bg),
+                    text=(el.text or "").strip() if is_label and el is not None else "",
                 ))
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
@@ -447,6 +456,43 @@ def _hex(rgb01: tuple[float, float, float]) -> str:
 
 def _dim_px(dim: Any) -> float:
     return float(dim.value) if getattr(dim, "unit", "px") == "px" else 0.0
+
+
+def _len_px(dim: Any, ref_px: float) -> float:
+    unit = getattr(dim, "unit", "px")
+    if unit == "px":
+        return float(dim.value)
+    if unit == "%":
+        return float(dim.value) / 100.0 * ref_px
+    return 0.0
+
+
+def _translate_px(box: Any) -> tuple[float, float]:
+    """CSS translate() offset in px. weasyprint box positions are pre-
+    transform (applied only at paint time), so a `left: 50%; transform:
+    translateX(-50%)` centred dot would land half its width off-centre
+    without this."""
+    dx = dy = 0.0
+    for name, args in box.style["transform"] or ():
+        if name == "translate":
+            dx += _len_px(args[0], box.border_width())
+            dy += _len_px(args[1], box.border_height())
+    return dx, dy
+
+
+def _decoration_style(
+    box: Any, style: ResolvedStyle, parent_bg: tuple[float, float, float],
+) -> ResolvedStyle:
+    """A decoration's own style with what _resolve_style drops: `%`
+    border-radius (`50%` -> circle) and element `opacity` (folded into the
+    fill, composited onto the parent bg -- ODF draw:fill-color is opaque)."""
+    radius_dims = box.style["border_top_left_radius"]
+    radius = _len_px(radius_dims[0], min(box.border_width(), box.border_height()))
+    opacity = float(box.style["opacity"])
+    bg = style.bg
+    if opacity < 1.0 and style.bg:
+        bg = _hex(_composite(parent_bg, style.bg_rgb01, opacity))
+    return dataclasses.replace(style, border_radius=radius, bg=bg)
 
 
 def _img_border_radius(box: Any) -> float:

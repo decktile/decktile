@@ -158,12 +158,13 @@ def test_base_css_has_timeline_layouts():
 
 
 def test_base_css_timeline_uses_space_evenly_autolayout():
-    """Milestones auto-space along a fixed-length spine (justify-content:
-    space-evenly over a height/width:-spanning grid) instead of manually-
-    tuned per-count gap/margin values."""
+    """Milestones auto-space along a fixed-length spine: the vertical grid
+    grows to fill the slide body (flex: 1, not height: 100% -- weasyprint
+    resolved that too tall and spilled cards onto a new page) and
+    space-evenly distributes the cards over it."""
     css = base_css()
-    assert "justify-content: space-evenly;" in css
-    assert "height: 100%;" in css
+    assert "justify-content: space-evenly;\n  flex: 1;" in css
+    assert ".layout-timeline-vertical .slide-body {" in css
 
 
 def test_card_label_renders_as_distinct_span():
