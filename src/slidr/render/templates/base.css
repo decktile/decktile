@@ -374,13 +374,15 @@ LOGO_CSS
 .layout-timeline-vertical .slide-body {
   display: flex;
   flex-direction: column;
+  padding-bottom: 0; /* the spine runs to the section padding, not 1.8em
+                        short of it (sat too high, empty band below) */
 }
 .layout-timeline-vertical .grid {
   flex-direction: column;
   justify-content: space-evenly;
   flex: 1;
   min-height: 0;
-  margin: 0;
+  margin: 0.8em 0 0; /* clear the heading: the first card touched it */
   padding: 0 2.5em;
 }
 .layout-timeline-vertical .grid::before {
@@ -418,6 +420,11 @@ LOGO_CSS
 }
 .layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
+/* consecutive cards sit on opposite sides of the spine, so they may
+   overlap vertically: 4 cards stacked end to end overflowed the slide.
+   Card i and i+2 (same side) still clear each other while the card
+   between them is taller than 3em. */
+.layout-timeline-vertical .card + .card { margin-top: -1.5em; }
 .layout-timeline-horizontal .card {
   position: relative;
   flex: 0 1 11em; /* basis 11em, may shrink: few milestones leave free
@@ -484,13 +491,19 @@ LOGO_CSS
   white-space: nowrap;
   z-index: 2;
 }
+/* beside the dot, past the spine, vertically centred on it. Offsets are
+   in the label's own 0.6em font: 5.5em = 3.3 card-em = dot edge + gap;
+   top 1.8em centres it on the dot (top 1em, 0.9em tall). Was above the
+   dot, touching the spine. */
 .layout-timeline-vertical .card:nth-child(odd) .timeline-label {
-  right: -5.5em;
-  top: 1em;
+  left: 100%;
+  margin-left: 5.5em;
+  top: 1.8em;
 }
 .layout-timeline-vertical .card:nth-child(even) .timeline-label {
-  left: -5.5em;
-  top: 1em;
+  right: 100%;
+  margin-right: 5.5em;
+  top: 1.8em;
 }
 /* beside the dot: centre on it, then shift right. margin-left, not
    translate(calc(-50% + Xem)) -- weasyprint crashes on calc() inside
