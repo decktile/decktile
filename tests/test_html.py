@@ -171,3 +171,31 @@ def test_card_label_renders_as_distinct_span():
     html = _title_html('::: card {label="Q1"}\n### Q1 2026\nbody\n:::')
     assert '<span class="timeline-label">Q1</span>' in html
     assert "<h3>Q1 2026</h3>" in html
+
+
+def test_render_notes_with_quotes_do_not_leak_into_slide():
+    """Speaker notes reach the presenter via JSON; an unescaped data-notes
+    attribute let a '"' in the notes end the attribute and spill the rest
+    onto the slide."""
+    html = _full_page('---\ntitle: T\n---\n\n<!-- He said "hello" <b>x</b> -->\n\n## S\n\nBody.')
+    assert "data-notes" not in html
+    assert '<b>x</b>' not in html.split("<body>", 1)[1].split("<script", 1)[0]
+
+
+def test_render_card_text_escaped_once():
+    html = _full_page("---\ntitle: T\n---\n\n## M\n\n::: card {metric}\n>80%\nutilization\n:::\n")
+    assert "<h3>&gt;80%</h3>" in html
+    assert "&amp;gt;" not in html
+
+
+def test_render_table_cells_keep_inline_markup():
+    html = _full_page("---\ntitle: T\n---\n\n## T\n\n| a | b |\n|---|---|\n| **bold** | `x>1` |\n")
+    assert "<td><strong>bold</strong></td>" in html
+    assert "<td><code>x&gt;1</code></td>" in html
+
+
+def test_render_subtitle_inline_markdown():
+    html = _full_page("---\ntitle: T\n---\n\n## Title\n@subtitle Use `nvidia.com/gpu` here\n\nBody.")
+    subtitle = html.split('<p class="subtitle"', 1)[1].split("</p>", 1)[0]
+    assert "<code>nvidia.com/gpu</code>" in subtitle
+    assert "`" not in subtitle

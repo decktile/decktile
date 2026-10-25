@@ -441,16 +441,15 @@ def _convert_node(node, styles: dict) -> Elem:
             return Elem(kind="speaker", content=_escape(node.value), text=text,
                         attrs=attrs,
                         font_size=styles.get("font_speaker", 18), color=base.color)
-        elif node.type == "kicker":
-            return Elem(kind="kicker", content=_escape(node.value), text=node.value,
-                        font_size=styles.get("font_kicker", 14), color=base.accent)
-        elif node.type == "subtitle":
-            return Elem(kind="subtitle", content=_escape(node.value), text=node.value,
-                        font_size=styles.get("font_subtitle", 32), color=base.muted)
-        elif node.type == "tiny":
-            fs = styles.get("font_small", 13)
-            return Elem(kind="tiny", content=_escape(node.value), text=node.value,
-                        font_size=fs, color=base.muted)
+        elif node.type in ("kicker", "subtitle", "tiny"):
+            font_key, default_fs, color = {
+                "kicker": ("font_kicker", 14, base.accent),
+                "subtitle": ("font_subtitle", 32, base.muted),
+                "tiny": ("font_small", 13, base.muted),
+            }[node.type]
+            content, text = _inline_markdown(node.value)
+            return Elem(kind=node.type, content=content, text=text,
+                        font_size=styles.get(font_key, default_fs), color=color)
         elif node.type == "side-image":
             return Elem(kind="side-image", src=node.value, content="")
         elif node.type == "video":
@@ -463,6 +462,18 @@ def _convert_node(node, styles: dict) -> Elem:
 
 def _escape(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _inline_markdown(value: str) -> tuple[str, str]:
+    """Directive text (``@subtitle`` etc.) as inline HTML (code, bold,
+    icons) plus plain text for renderers that can't use HTML (ODP). Was
+    escaped as plain text, so `code` showed literal backticks."""
+    import html
+    import re
+
+    from slidr.plugins.fenced import _expand_markdown
+    rendered = _expand_markdown(value)
+    return rendered, html.unescape(re.sub(r"<[^>]+>", "", rendered))
 
 
 def _render_inline_html(nodes: list) -> str:

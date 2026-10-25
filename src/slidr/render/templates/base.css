@@ -420,10 +420,10 @@ LOGO_CSS
 .layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
 .layout-timeline-horizontal .card {
   position: relative;
-  flex: 0 0 auto; /* content-sized, not flex:1 -- stretching to fill
-                      would leave no free space for space-evenly to
-                      distribute between items */
-  min-width: 7em;
+  flex: 0 1 11em; /* basis 11em, may shrink: few milestones leave free
+                     space for space-evenly; 5-6 shrink to fit the
+                     width instead of overflowing the slide */
+  min-width: 0;
   height: 6em; /* fixed so the stub below reliably reaches the spine --
                   keep horizontal-timeline card text brief, it won't
                   clip (no overflow:hidden -- that would also clip the
@@ -507,15 +507,19 @@ LOGO_CSS
   margin-left: 1.4em;
   transform: translateX(-50%);
 }
-/* {focus}: bigger, highlighted -- font-size/padding, not transform:
-   scale(), which would drag the card's own ::before/::after connector
-   (positioned in em relative to the card) off the spine with it.
-   Vertical gets the font-size bump too; horizontal's height/margin
-   are all in em relative to its own font-size, so bumping it there
-   would throw off the exact spine-alignment math -- padding only. */
+/* {focus}: bigger, highlighted with the theme's own card colours (accent
+   border + accent background) -- not box-shadow, which weasyprint
+   ignores, so the highlight vanished in PDF and ODP. Size via
+   font-size/padding, not transform: scale(), which would drag the card's
+   own ::before/::after connector (positioned in em relative to the card)
+   off the spine with it. Vertical gets the font-size bump too;
+   horizontal's height/margin are all in em relative to its own
+   font-size, so bumping it there would throw off the exact
+   spine-alignment math -- padding only. */
 .layout-timeline-vertical .card.focus,
 .layout-timeline-horizontal .card.focus {
-  box-shadow: 0 0 0 0.12em var(--color-accent-primary);
+  border: 2px solid var(--color-accent-primary);
+  background: var(--color-accent-bg);
   z-index: 2;
 }
 .layout-timeline-horizontal .card.focus {

@@ -15,6 +15,10 @@ from slidr.plugins.directives import preprocess_directives, extract_attrs, parse
 from slidr.plugins.lucide import lucide_plugin
 from slidr.plugins.cards import group_cards
 
+# Renders a table cell's inline tokens to HTML (bold, code, links, icons).
+# Concatenating token .content dropped every inline markup.
+_CELL_MD = MarkdownIt("gfm-like", {"html": True}).use(lucide_plugin)
+
 
 def parse(input_text: str) -> Document:
     post = frontmatter.loads(input_text)
@@ -157,14 +161,9 @@ def _tokens_to_nodes(tokens: list[Token]) -> list:
                     i += 1
                     cell = ""
                     while i < len(tokens) and tokens[i].type not in ("th_close", "td_close"):
-                        if tokens[i].type == "lucide_icon":
-                            cell += _render_lucide_cell(tokens[i])
-                        elif tokens[i].type == "inline":
-                            for c in tokens[i].children or []:
-                                if c.type == "lucide_icon":
-                                    cell += _render_lucide_cell(c)
-                                else:
-                                    cell += c.content or ""
+                        if tokens[i].type == "inline":
+                            cell += _CELL_MD.renderer.renderInline(
+                                tokens[i].children or [], _CELL_MD.options, {})
                         else:
                             cell += tokens[i].content
                         i += 1
@@ -270,13 +269,6 @@ def _walk_inline_children(tokens: list) -> list:
             result.extend(_token_inline(t))
         i += 1
     return result
-
-
-def _render_lucide_cell(token) -> str:
-    """Render a lucide_icon token as SVG for table cells. Delegates to plugin."""
-    from slidr.plugins.lucide import render_icon
-    attrs = dict(token.attrs or {})
-    return render_icon(attrs.pop("name", ""), attrs)
 
 
 def _detect_layout(nodes: list) -> str:

@@ -55,5 +55,11 @@ def lucide_icon_inline(state: StateInline, silent: bool = False) -> bool:
     return True
 
 
+def _render_lucide_token(self, tokens, idx, options, env) -> str:
+    attrs = dict(tokens[idx].attrs or {})
+    return render_icon(attrs.pop("name", ""), attrs)
+
+
 def lucide_plugin(md):
     md.inline.ruler.before("image", "lucide_icon", lucide_icon_inline)
+    md.add_render_rule("lucide_icon", _render_lucide_token)

@@ -83,7 +83,6 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
         render_odp(doc, odp_path, base_css(), theme_css,
                    source_dir=file.parent)
         typer.echo(f"Wrote {odp_path} ({odp_path.stat().st_size} bytes)")
-        return
 
     if image_odp:
         img_path = out_dir / f"{stem}.odp"
