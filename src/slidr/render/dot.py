@@ -8,6 +8,7 @@ Falls back to code highlighting if dot is not installed.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -17,10 +18,9 @@ def render_dot_svg(content: str, font_family: str = "",
                    tag_colors: dict[str, tuple[str, str]] | None = None) -> str | None:
     """Render DOT code to SVG."""
     try:
-        content = _preprocess(content, font_family, font_size)
         result = subprocess.run(
             ["dot", "-Tsvg"],
-            input=content,
+            input=_preprocess(content, font_family, font_size),
             capture_output=True,
             text=True,
             timeout=10,
@@ -28,7 +28,7 @@ def render_dot_svg(content: str, font_family: str = "",
         if result.stdout.strip():
             svg = result.stdout
             svg = _strip_xml_decl(svg)
-            svg = _inject_theme_css(svg, font_family, tag_colors)
+            svg = _inject_theme_css(svg, font_family, tag_colors, content)
             return svg
         return None
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -63,8 +63,14 @@ def _strip_xml_decl(svg: str) -> str:
 
 
 def _inject_theme_css(svg: str, font_family: str,
-                      tag_colors: dict[str, tuple[str, str]] | None) -> str:
-    """Inject a <style> block with colors from CSS theme."""
+                      tag_colors: dict[str, tuple[str, str]] | None,
+                      source: str = "") -> str:
+    """Inject a <style> block with colors from CSS theme.
+
+    Any CSS rule beats an SVG presentation attribute, so a theme rule
+    would silently override colours/fonts the author set in DOT. Each
+    group of rules is only injected when the DOT source leaves that
+    attribute to the theme."""
     fam = font_family.split(",")[0].strip().strip('"') if font_family else "sans-serif"
     tags = tag_colors or {}
     default_fill = tags.get("default", ("#fafafa", "#ddd"))[0]
@@ -74,21 +80,31 @@ def _inject_theme_css(svg: str, font_family: str,
     cyan = tags.get("cyan", ("#e0f7fa", "#67d8ff"))
     yellow = tags.get("yellow", ("#fff9c4", "#ffd166"))
     fg = "#333"
+    # an explicit fontname wins, except CSS generic names: weasyprint
+    # doesn't resolve those inside SVG and falls back to a serif
+    named = {n.lower() for n in re.findall(r'fontname\s*=\s*"?([^",;\]]+)', source)}
+    font = ("" if named - {"sans-serif", "serif", "monospace", "sans"}
+            else f" font-family: {fam} !important;")
 
-    css = f"""\
-    <style>
-      .node > polygon, .graph polygon {{ fill: {default_fill} !important; stroke: {default_stroke} !important; stroke-linejoin: round !important; }}
-      .node.green > polygon   {{ fill: {green[0]} !important; stroke: {green[1]} !important; stroke-linejoin: round !important; }}
-      .node.red > polygon     {{ fill: {red[0]} !important; stroke: {red[1]} !important; stroke-linejoin: round !important; }}
-      .node.cyan > polygon    {{ fill: {cyan[0]} !important; stroke: {cyan[1]} !important; stroke-linejoin: round !important; }}
-      .node.yellow > polygon  {{ fill: {yellow[0]} !important; stroke: {yellow[1]} !important; stroke-linejoin: round !important; }}
-      .graph title {{ stroke: {default_stroke} !important; }}
-      .cluster > text {{ fill: {fg}; font-family: {fam} !important; }}
-      .edge > path, .edge > polygon {{ stroke: {fg} !important; }}
-      .cluster polygon {{ stroke: none !important; }}
-      .node text {{ fill: {fg}; font-family: {fam} !important; }}
-      .edge text {{ fill: {fg}; font-family: {fam} !important; }}
-    </style>"""
-    if "</svg>" in svg:
+    rules = []
+    if "fillcolor" not in source:
+        rules += [
+            f".node > polygon, .graph polygon {{ fill: {default_fill} !important; stroke: {default_stroke} !important; stroke-linejoin: round !important; }}",
+            f".node.green > polygon   {{ fill: {green[0]} !important; stroke: {green[1]} !important; stroke-linejoin: round !important; }}",
+            f".node.red > polygon     {{ fill: {red[0]} !important; stroke: {red[1]} !important; stroke-linejoin: round !important; }}",
+            f".node.cyan > polygon    {{ fill: {cyan[0]} !important; stroke: {cyan[1]} !important; stroke-linejoin: round !important; }}",
+            f".node.yellow > polygon  {{ fill: {yellow[0]} !important; stroke: {yellow[1]} !important; stroke-linejoin: round !important; }}",
+        ]
+    if not re.search(r"\bcolor\s*=", source):  # \b: not fillcolor/fontcolor
+        rules += [
+            f".graph title {{ stroke: {default_stroke} !important; }}",
+            f".edge > path, .edge > polygon {{ stroke: {fg} !important; }}",
+            ".cluster polygon { stroke: none !important; }",
+        ]
+    text_fill = "" if "fontcolor" in source else f" fill: {fg};"
+    if text_fill or font:
+        rules += [f"{sel} {{{text_fill}{font} }}" for sel in (".cluster > text", ".node text", ".edge text")]
+    if rules and "</svg>" in svg:
+        css = "    <style>\n" + "\n".join(f"      {r}" for r in rules) + "\n    </style>"
         svg = svg.replace("</svg>", f"{css}\n</svg>", 1)
     return svg

@@ -74,3 +74,28 @@ def test_dot_missing_cli_returns_none():
         assert result is None
     finally:
         subprocess.run = orig_call
+
+
+def test_render_dot_svg_explicit_colours_not_overridden_by_theme():
+    """Any CSS rule beats an SVG fill/stroke attribute: the injected theme
+    style used to repaint explicit fontcolor/color/fontname to #333 and the
+    theme font, so diagrams on a dark background were unreadable."""
+    svg = render_dot_svg(
+        'digraph { node [fontcolor="#ffffff" color="#7fdbff" fontname="Noto Sans Mono"]; '
+        'edge [color="#7fdbff"]; a -> b; }')
+    style = svg.split("<style>", 1)[1] if "<style>" in svg else ""
+    assert "fill: #333" not in style
+    assert ".edge > path" not in style
+    assert "font-family" not in style
+
+
+def test_render_dot_svg_theme_colours_apply_without_explicit_ones():
+    style = render_dot_svg("digraph { a -> b; }").split("<style>", 1)[1]
+    assert "fill: #333" in style and ".edge > path" in style
+
+
+def test_render_dot_svg_generic_fontname_keeps_theme_font():
+    """weasyprint doesn't resolve generic families inside SVG (sans-serif
+    rendered as a serif), so only a real font name opts out of the theme font."""
+    svg = render_dot_svg('digraph { node [fontname="sans-serif"]; a -> b; }', font_family="Noto Sans")
+    assert "font-family: Noto Sans" in svg
