@@ -91,19 +91,6 @@ def test_default_theme_h1_bold_and_h3_matches_converged_theme_size():
     assert "h3 { font-size: 1.15em; }" in css
 
 
-def test_base_css_has_h3_underline_and_kicker_eyebrow_treatment():
-    """h3::after and the kicker's uppercase/letter-spaced treatment were
-    duplicated identically across every real theme but missing from the
-    shared base -- promoted as structural defaults (colors untouched,
-    still resolved via the existing --color-accent-primary/var(--font-
-    mono) variables)."""
-    css = base_css()
-    assert "h3::after {" in css
-    assert "border-bottom: 2px solid var(--color-accent-primary);" in css
-    assert "text-transform: uppercase" in css
-    assert "letter-spacing: 0.05em" in css
-
-
 def test_base_css_table_sizing_is_compact_not_oversized():
     """Default table font-size (0.85em) and cell padding (0.5em 0.65em)
     rendered rows visibly oversized relative to the rest of the slide

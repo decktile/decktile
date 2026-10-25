@@ -50,7 +50,12 @@ pdm run slidr slides.md --pdf        # + PDF
 pdm run slidr -w slides.md           # watch and rebuild on changes
 pdm run slidr --odp -w slides.md     # watch + ODP
 pdm run slidr --dist slides.md       # HTML + all referenced assets as zip
+pdm run slidr a.md b.md --pdf       # several decks
+pdm run slidr '**/*.md' --pdf       # quoted globs are expanded (recursive with **)
 ```
+
+A missing or failing file is reported (`error: <file>: <reason>`) and skipped;
+the rest still build, and the exit code is 1 if any file failed.
 
 ## Assets
 

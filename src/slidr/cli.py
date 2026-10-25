@@ -1,5 +1,6 @@
 """slidr CLI entry point."""
 
+import glob
 import time
 from pathlib import Path
 from typing import Optional
@@ -17,7 +18,7 @@ app = typer.Typer(help="Markdown to styled HTML + ODP + PDF", no_args_is_help=Tr
 
 @app.callback(invoke_without_command=True)
 def main(
-    file: Path = typer.Argument(None, help="Markdown file to build"),
+    files: Optional[list[Path]] = typer.Argument(None, help="Markdown files to build; globs like '*.md' or 'talks/**/*.md' are expanded"),
     output_dir: Optional[Path] = typer.Option(None, "-o", "--output-dir", help="Output directory (default: <input>/dist/)"),
     pdf: bool = typer.Option(False, "--pdf", help="Generate PDF"),
     odp: bool = typer.Option(False, "--odp", help="Generate ODP (programmatic)"),
@@ -28,13 +29,59 @@ def main(
     debug: bool = typer.Option(False, "--debug", help="Dump AST + write debug CSS"),
     css: Optional[Path] = typer.Option(None, "--css", help="Custom CSS theme file (overrides default)"),
 ):
-    if file is None:
+    if not files:
         raise typer.Exit()
+    if css and not css.is_file():
+        _error(css, "CSS file not found")
+        raise typer.Exit(1)
+
+    paths, missing = _expand(files)
+    for f in missing:
+        _error(f, "no files match" if any(c in str(f) for c in "*?[")
+               else "not a file" if f.exists() else "no such file")
 
     if watch:
-        _watch(file, output_dir, pdf, odp, image_odp, debug, css)
-    else:
-        _build(file, output_dir, pdf, odp, image_odp, dist, optimize_images, debug, css)
+        _watch(paths, output_dir, pdf, odp, image_odp, debug, css)
+        return
+
+    failed = len(missing)
+    for f in paths:
+        try:
+            _build(f, output_dir, pdf, odp, image_odp, dist, optimize_images, debug, css)
+        except Exception as e:
+            if debug:
+                raise
+            _error(f, e)
+            failed += 1
+    if failed:
+        raise typer.Exit(1)
+
+
+def _expand(args: list[Path]) -> tuple[list[Path], list[Path]]:
+    """Expand glob patterns the shell left alone (quoted, or no match);
+    keep order, drop duplicates. Returns (existing files, unmatched args).
+    Duplicates are by resolved path: output dirs hold symlinks back to the
+    source dirs, so '**/*.md' reaches each deck again through every dist/.
+    The real (non-symlinked) path wins, so output lands next to it."""
+    paths: list[Path] = []
+    seen: set[Path] = set()
+    missing: list[Path] = []
+    for a in args:
+        matches = ([Path(m) for m in glob.glob(str(a), recursive=True)]
+                   if any(c in str(a) for c in "*?[") else [a])
+        found = sorted((m for m in matches if m.is_file()),
+                       key=lambda m: (m.resolve() != m.absolute(), str(m)))
+        if not found:
+            missing.append(a)
+        for m in found:
+            if m.resolve() not in seen:
+                seen.add(m.resolve())
+                paths.append(m)
+    return paths, missing
+
+
+def _error(path: Path, msg: object) -> None:
+    typer.echo(f"error: {path}: {msg}", err=True)
 
 
 def _build(file: Path, output_dir: Optional[Path], pdf: bool,
@@ -106,25 +153,31 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
                 typer.echo(f"    {type(n).__name__}: {_node_summary(n)}")
 
 
-def _watch(file: Path, output_dir: Optional[Path], pdf: bool,
+def _watch(files: list[Path], output_dir: Optional[Path], pdf: bool,
            odp: bool, image_odp: bool, debug: bool, css_path: Optional[Path]) -> None:
-    last_mtime = 0
-    _build(file, output_dir, pdf, odp, image_odp, False, False, debug, css_path)
-    typer.echo(f"Watching {file} for changes (Ctrl+C to stop)")
+    if not files:
+        raise typer.Exit(1)
+    mtimes: dict[Path, float] = {}
+    typer.echo(f"Watching {len(files)} file(s) for changes (Ctrl+C to stop)")
 
     while True:
         try:
+            for f in files:
+                try:
+                    mtime = f.stat().st_mtime
+                except FileNotFoundError:
+                    continue  # mid-save rename or deleted: pick it up when it's back
+                if mtimes.get(f) != mtime:
+                    mtimes[f] = mtime
+                    typer.echo("---")
+                    try:
+                        _build(f, output_dir, pdf, odp, image_odp, False, False, debug, css_path)
+                    except Exception as e:
+                        _error(f, e)
             time.sleep(1)
-            mtime = file.stat().st_mtime
-            if mtime != last_mtime:
-                last_mtime = mtime
-                typer.echo("---")
-                _build(file, output_dir, pdf, odp, image_odp, False, False, debug, css_path)
         except KeyboardInterrupt:
             typer.echo("\nStopped watching.")
             break
-        except Exception as e:
-            typer.echo(f"Error: {e}")
 
 
 def _pdf_to_odp(pdf_path: Path, output_path: Path, dims: tuple[int, int]) -> None:
