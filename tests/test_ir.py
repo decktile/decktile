@@ -30,3 +30,20 @@ def test_assemble_css_frontmatter_images_override_theme(tmp_path):
     assert image_urls("background: none\nwatermark: none\n") == {"section": [], "section::after": []}
     custom = image_urls("watermark: assets/mine.svg\n")
     assert custom["section::after"][0].endswith("assets/mine.svg")
+
+
+def test_build_ir_dot_in_blueprint_card_uses_blueprint_palette():
+    """A dot fence inside ::: card {blueprint} draws light-on-blue with a
+    transparent canvas; outside a blueprint card it stays a light panel."""
+    from slidr.parser.markdown import parse
+    from slidr.render.html import base_css, load_theme
+    from slidr.render.ir import build_ir
+
+    dot = "```dot\ndigraph { a -> b }\n```"
+    md = f"---\ntheme: kubecon_japan\n---\n\n## S\n\n::: card {{blueprint}}\n{dot}\n:::\n\n{dot}\n"
+    elems = build_ir(parse(md), base_css(), load_theme("kubecon_japan"))[0].elements
+    card = next(e for e in elems if e.kind == "card")
+    inside = card.children[0].svg
+    outside = next(e for e in elems if e.kind == "code").svg
+    assert ".graph > polygon { fill: none" in inside and "fill: #eaf4ff" in inside
+    assert ".graph > polygon { fill: none" not in outside and "fill: #333" in outside

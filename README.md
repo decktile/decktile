@@ -298,6 +298,7 @@ The arrow block accepts text or images:
 ::: card{ tag="green" }         # colored left border + background
 ::: card{ tag="quote" }         # accent left border, italic, no fill
 ::: card {metric}                      # big number + label card (first line = value, rest = label)
+::: card {blueprint}                   # blue engineering-drawing panel; a ```dot inside uses the blueprint palette
 ::: arrow                       # connector for compare layout
 ::: notes{ tag="green" }        # full-width conclusion card
 > quote text                    # blockquote, renders as .quote div
@@ -350,11 +351,25 @@ digraph {
 ```
 ````
 
-Available node classes: `green`, `cyan`, `yellow`, `red`. Default nodes
-use `var(--color-card-bg)`. To apply the card background to a cluster,
-use `subgraph cluster_` prefix (e.g., `subgraph cluster_main`). CSS
-cascades from the theme - dark mode applies automatically. Font inherits
-from the CSS body font.
+Available node classes: `green`, `cyan`, `yellow`, `red`, on any node
+shape including `style="rounded,filled"`. Clusters (`subgraph cluster_x`)
+get a light border and their label. A diagram is a light panel in the
+theme's card colour, also on dark slides; colours, fonts or `bgcolor` set
+explicitly in the DOT source win over the theme.
+
+Wrap a diagram in `::: card {blueprint}` for an engineering-drawing look:
+blue grid card, light lines and text, translucent node fills, with the
+node classes as brighter accents. Works the same under any theme.
+
+````markdown
+::: card {blueprint}
+```dot
+digraph { rankdir=LR; node [shape=box style="rounded,filled"]
+  pod [label="Pod" class="red"]; sched [label="hami-scheduler" class="cyan"]
+  pod -> sched }
+```
+:::
+````
 
 ## Mermaid diagrams
 

@@ -380,7 +380,8 @@ def _convert_node(node, styles: dict) -> Elem:
             size = styles.get("font_body", 18)
             tags = styles.get("tag_colors", {})
             svg = render_dot_svg(node.content, font_family=fam, font_size=size,
-                                tag_colors=tags) or ""
+                                tag_colors=tags,
+                                blueprint=styles.get("dot_blueprint", False)) or ""
         return Elem(kind="code", content=node.content, text=node.content,
                     language=node.language, font_size=fs, svg=svg, pdf=pdf)
     elif isinstance(node, ListNode):
@@ -403,7 +404,10 @@ def _convert_node(node, styles: dict) -> Elem:
         children = [_convert_node(c, styles) for c in node.children]
         return Elem(kind="grid", cols=node.cols, class_=node.class_ or "", children=children)
     elif isinstance(node, Card):
-        children = [_convert_node(c, styles) for c in node.children]
+        # a ```dot fence inside ::: card {blueprint} draws in the card's palette
+        child_styles = ({**styles, "dot_blueprint": True}
+                        if "blueprint" in (node.class_ or "").split() else styles)
+        children = [_convert_node(c, child_styles) for c in node.children]
         return Elem(kind="card", header=node.header, body=node.body,
                     tag=node.tag or "", class_=node.class_ or "",
                     children=children,

@@ -15,8 +15,9 @@ from pathlib import Path
 
 def render_dot_svg(content: str, font_family: str = "",
                    font_size: int = 14,
-                   tag_colors: dict[str, tuple[str, str]] | None = None) -> str | None:
-    """Render DOT code to SVG."""
+                   tag_colors: dict[str, tuple[str, str]] | None = None,
+                   blueprint: bool = False) -> str | None:
+    """Render DOT code to SVG. blueprint: palette for ::: card {blueprint}."""
     try:
         result = subprocess.run(
             ["dot", "-Tsvg"],
@@ -28,7 +29,7 @@ def render_dot_svg(content: str, font_family: str = "",
         if result.stdout.strip():
             svg = result.stdout
             svg = _strip_xml_decl(svg)
-            svg = _inject_theme_css(svg, font_family, tag_colors, content)
+            svg = _inject_theme_css(svg, font_family, tag_colors, content, blueprint)
             return svg
         return None
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -62,13 +63,22 @@ def _strip_xml_decl(svg: str) -> str:
     return svg
 
 
+# ::: card {blueprint} (base.css): light lines and translucent fills on the
+# card's blue grid; tags keep their meaning as brighter accents
+_BLUEPRINT_TAGS = {"green": ("rgba(126,226,168,0.20)", "#7ee2a8"),
+                   "red": ("rgba(255,138,138,0.20)", "#ff8a8a"),
+                   "cyan": ("rgba(103,216,255,0.22)", "#67d8ff"),
+                   "yellow": ("rgba(255,209,102,0.20)", "#ffd166")}
+
+
 def _inject_theme_css(svg: str, font_family: str,
                       tag_colors: dict[str, tuple[str, str]] | None,
-                      source: str = "") -> str:
+                      source: str = "", blueprint: bool = False) -> str:
     """Inject a <style> block with colors from the (light) CSS theme.
 
-    A diagram is always a light panel, also on dark slides: the canvas
-    gets the theme's light card colour unless DOT sets bgcolor.
+    A diagram is a light panel, also on dark slides: the canvas gets the
+    theme's light card colour unless DOT sets bgcolor. Inside a blueprint
+    card it is transparent and drawn in the blueprint palette instead.
 
     Any CSS rule beats an SVG presentation attribute, so a theme rule
     would silently override colours/fonts the author set in DOT. Each
@@ -76,8 +86,16 @@ def _inject_theme_css(svg: str, font_family: str,
     attribute to the theme."""
     fam = font_family.split(",")[0].strip().strip('"') if font_family else "sans-serif"
     tags = tag_colors or {}
-    default_fill, default_stroke = tags.get("default", ("#fafafa", "#ddd"))
-    fg = "#333"
+    if blueprint:
+        canvas, default_fill, default_stroke = "none", "rgba(143,211,255,0.08)", "#8fd3ff"
+        fg, line, cluster = "#eaf4ff", "#8fd3ff", "rgba(143,211,255,0.55); stroke-dasharray: 4 3"
+        tag_fills = _BLUEPRINT_TAGS
+    else:
+        default_fill, default_stroke = tags.get("default", ("#fafafa", "#ddd"))
+        canvas, fg, line, cluster = default_fill, "#333", "#333", default_stroke
+        fallback = {"green": ("#e8f5e9", "#0fd05d"), "red": ("#ffebee", "#ff7a7a"),
+                    "cyan": ("#e0f7fa", "#67d8ff"), "yellow": ("#fff9c4", "#ffd166")}
+        tag_fills = {t: tags.get(t, c) for t, c in fallback.items()}
     # an explicit fontname wins, except CSS generic names: weasyprint
     # doesn't resolve those inside SVG and falls back to a serif
     named = {n.lower() for n in re.findall(r'fontname\s*=\s*"?([^",;\]]+)', source)}
@@ -88,19 +106,16 @@ def _inject_theme_css(svg: str, font_family: str,
 
     rules = []
     if "bgcolor" not in source:
-        rules.append(f".graph > polygon {{ fill: {default_fill} !important; stroke: none !important; }}")
+        rules.append(f".graph > polygon {{ fill: {canvas} !important; stroke: none !important; }}")
     if "fillcolor" not in source:
         rules.append(f"{shape('.node')} {{ fill: {default_fill} !important; stroke: {default_stroke} !important; stroke-linejoin: round !important; }}")
-        fallback = {"green": ("#e8f5e9", "#0fd05d"), "red": ("#ffebee", "#ff7a7a"),
-                    "cyan": ("#e0f7fa", "#67d8ff"), "yellow": ("#fff9c4", "#ffd166")}
-        for tag, (fill, stroke) in fallback.items():
-            fill, stroke = tags.get(tag, (fill, stroke))
+        for tag, (fill, stroke) in tag_fills.items():
             rules.append(f"{shape('.node.' + tag)} {{ fill: {fill} !important; stroke: {stroke} !important; }}")
     if not re.search(r"\bcolor\s*=", source):  # \b: not fillcolor/fontcolor
         rules += [
-            f".edge > path {{ stroke: {fg} !important; }}",
-            f".edge > polygon {{ fill: {fg} !important; stroke: {fg} !important; }}",
-            f"{shape('.cluster')} {{ fill: none !important; stroke: {default_stroke} !important; }}",
+            f".edge > path {{ stroke: {line} !important; }}",
+            f".edge > polygon {{ fill: {line} !important; stroke: {line} !important; }}",
+            f"{shape('.cluster')} {{ fill: none !important; stroke: {cluster} !important; }}",
         ]
     text_fill = "" if "fontcolor" in source else f" fill: {fg};"
     if text_fill or font:

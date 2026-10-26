@@ -246,6 +246,25 @@ LOGO_CSS
   height: auto;
 }
 
+/* ---- ::: card {blueprint}: engineering-drawing panel for diagrams ----
+   Theme-independent on purpose (same blue on light and dark slides); a
+   ```dot fence inside it renders with the matching blueprint palette
+   (render/dot.py). Grid = minor 0.6em + major 3em lines over the blue. */
+.card.blueprint {
+  background:
+    linear-gradient(rgba(143,211,255,0.16) 1px, transparent 1px) 0 0 / 3em 3em,
+    linear-gradient(90deg, rgba(143,211,255,0.16) 1px, transparent 1px) 0 0 / 3em 3em,
+    linear-gradient(rgba(143,211,255,0.07) 1px, transparent 1px) 0 0 / 0.6em 0.6em,
+    linear-gradient(90deg, rgba(143,211,255,0.07) 1px, transparent 1px) 0 0 / 0.6em 0.6em,
+    linear-gradient(160deg, #123f78 0%, #0b2f5c 100%);
+  border: 1px solid #8fd3ff;
+  color: #eaf4ff;
+  padding: 0.6em 0.8em;
+}
+.card.blueprint h3 { color: #8fd3ff; }
+.card.blueprint h3::after { border-bottom-color: #8fd3ff; }
+.card.blueprint p { color: #eaf4ff; }
+
 /* ---- predefined slide layouts ---- */
 .layout-cols {
   display: grid;
