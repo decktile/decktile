@@ -99,3 +99,10 @@ def test_render_dot_svg_generic_fontname_keeps_theme_font():
     rendered as a serif), so only a real font name opts out of the theme font."""
     svg = render_dot_svg('digraph { node [fontname="sans-serif"]; a -> b; }', font_family="Noto Sans")
     assert "font-family: Noto Sans" in svg
+
+
+def test_render_dot_svg_explicit_fills_get_transparent_canvas():
+    """With the theme fill rules skipped, graphviz's white canvas showed as a
+    white box behind diagrams on dark slides."""
+    svg = render_dot_svg('digraph { node [style=filled fillcolor="#123456"]; a -> b; }')
+    assert ".graph > polygon { fill: none" in svg

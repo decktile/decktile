@@ -95,6 +95,9 @@ def _inject_theme_css(svg: str, font_family: str,
             f".node.cyan > polygon    {{ fill: {cyan[0]} !important; stroke: {cyan[1]} !important; stroke-linejoin: round !important; }}",
             f".node.yellow > polygon  {{ fill: {yellow[0]} !important; stroke: {yellow[1]} !important; stroke-linejoin: round !important; }}",
         ]
+    elif "bgcolor" not in source:
+        # graphviz's own canvas is white: a white box on dark slides
+        rules.append(".graph > polygon { fill: none !important; }")
     if not re.search(r"\bcolor\s*=", source):  # \b: not fillcolor/fontcolor
         rules += [
             f".graph title {{ stroke: {default_stroke} !important; }}",
