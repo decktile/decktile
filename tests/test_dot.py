@@ -101,8 +101,21 @@ def test_render_dot_svg_generic_fontname_keeps_theme_font():
     assert "font-family: Noto Sans" in svg
 
 
-def test_render_dot_svg_explicit_fills_get_transparent_canvas():
-    """With the theme fill rules skipped, graphviz's white canvas showed as a
-    white box behind diagrams on dark slides."""
-    svg = render_dot_svg('digraph { node [style=filled fillcolor="#123456"]; a -> b; }')
-    assert ".graph > polygon { fill: none" in svg
+def test_render_dot_svg_canvas_is_light_panel_unless_bgcolor():
+    """Diagrams are a light panel on any slide: the canvas takes the theme's
+    light card colour even when nodes set their own fills."""
+    tags = {"default": ("#f5f5f5", "#ccc")}
+    svg = render_dot_svg('digraph { node [style=filled fillcolor="#123456"]; a -> b; }', tag_colors=tags)
+    assert ".graph > polygon { fill: #f5f5f5" in svg
+    svg = render_dot_svg('digraph { bgcolor="#000000"; a -> b; }', tag_colors=tags)
+    assert ".graph > polygon" not in svg
+
+
+def test_render_dot_svg_tag_class_colours_rounded_nodes():
+    """style=rounded nodes are drawn as <path>; the tag rules only matched
+    <polygon>, so class="green" nodes rendered in the default grey."""
+    svg = render_dot_svg('digraph { a [class="green" shape=box style="rounded,filled"]; }',
+                         tag_colors={"green": ("#e8f5e9", "#2e7d32")})
+    node = svg.split('class="node green"', 1)[1].split("</g>", 1)[0]
+    assert "<path" in node
+    assert ".node.green > path" in svg and "#e8f5e9" in svg

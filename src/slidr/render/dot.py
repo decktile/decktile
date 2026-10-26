@@ -65,7 +65,10 @@ def _strip_xml_decl(svg: str) -> str:
 def _inject_theme_css(svg: str, font_family: str,
                       tag_colors: dict[str, tuple[str, str]] | None,
                       source: str = "") -> str:
-    """Inject a <style> block with colors from CSS theme.
+    """Inject a <style> block with colors from the (light) CSS theme.
+
+    A diagram is always a light panel, also on dark slides: the canvas
+    gets the theme's light card colour unless DOT sets bgcolor.
 
     Any CSS rule beats an SVG presentation attribute, so a theme rule
     would silently override colours/fonts the author set in DOT. Each
@@ -73,36 +76,31 @@ def _inject_theme_css(svg: str, font_family: str,
     attribute to the theme."""
     fam = font_family.split(",")[0].strip().strip('"') if font_family else "sans-serif"
     tags = tag_colors or {}
-    default_fill = tags.get("default", ("#fafafa", "#ddd"))[0]
-    default_stroke = tags.get("default", ("#fafafa", "#ddd"))[1]
-    green = tags.get("green", ("#e8f5e9", "#0fd05d"))
-    red = tags.get("red", ("#ffebee", "#ff7a7a"))
-    cyan = tags.get("cyan", ("#e0f7fa", "#67d8ff"))
-    yellow = tags.get("yellow", ("#fff9c4", "#ffd166"))
+    default_fill, default_stroke = tags.get("default", ("#fafafa", "#ddd"))
     fg = "#333"
     # an explicit fontname wins, except CSS generic names: weasyprint
     # doesn't resolve those inside SVG and falls back to a serif
     named = {n.lower() for n in re.findall(r'fontname\s*=\s*"?([^",;\]]+)', source)}
     font = ("" if named - {"sans-serif", "serif", "monospace", "sans"}
             else f" font-family: {fam} !important;")
+    # node outline: style=rounded draws a <path>, the rest <polygon>/<ellipse>
+    shape = lambda sel: ", ".join(f"{sel} > {s}" for s in ("polygon", "path", "ellipse"))
 
     rules = []
+    if "bgcolor" not in source:
+        rules.append(f".graph > polygon {{ fill: {default_fill} !important; stroke: none !important; }}")
     if "fillcolor" not in source:
-        rules += [
-            f".node > polygon, .graph polygon {{ fill: {default_fill} !important; stroke: {default_stroke} !important; stroke-linejoin: round !important; }}",
-            f".node.green > polygon   {{ fill: {green[0]} !important; stroke: {green[1]} !important; stroke-linejoin: round !important; }}",
-            f".node.red > polygon     {{ fill: {red[0]} !important; stroke: {red[1]} !important; stroke-linejoin: round !important; }}",
-            f".node.cyan > polygon    {{ fill: {cyan[0]} !important; stroke: {cyan[1]} !important; stroke-linejoin: round !important; }}",
-            f".node.yellow > polygon  {{ fill: {yellow[0]} !important; stroke: {yellow[1]} !important; stroke-linejoin: round !important; }}",
-        ]
-    elif "bgcolor" not in source:
-        # graphviz's own canvas is white: a white box on dark slides
-        rules.append(".graph > polygon { fill: none !important; }")
+        rules.append(f"{shape('.node')} {{ fill: {default_fill} !important; stroke: {default_stroke} !important; stroke-linejoin: round !important; }}")
+        fallback = {"green": ("#e8f5e9", "#0fd05d"), "red": ("#ffebee", "#ff7a7a"),
+                    "cyan": ("#e0f7fa", "#67d8ff"), "yellow": ("#fff9c4", "#ffd166")}
+        for tag, (fill, stroke) in fallback.items():
+            fill, stroke = tags.get(tag, (fill, stroke))
+            rules.append(f"{shape('.node.' + tag)} {{ fill: {fill} !important; stroke: {stroke} !important; }}")
     if not re.search(r"\bcolor\s*=", source):  # \b: not fillcolor/fontcolor
         rules += [
-            f".graph title {{ stroke: {default_stroke} !important; }}",
-            f".edge > path, .edge > polygon {{ stroke: {fg} !important; }}",
-            ".cluster polygon { stroke: none !important; }",
+            f".edge > path {{ stroke: {fg} !important; }}",
+            f".edge > polygon {{ fill: {fg} !important; stroke: {fg} !important; }}",
+            f"{shape('.cluster')} {{ fill: none !important; stroke: {default_stroke} !important; }}",
         ]
     text_fill = "" if "fontcolor" in source else f" fill: {fg};"
     if text_fill or font:
