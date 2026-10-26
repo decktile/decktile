@@ -27,7 +27,8 @@ theme: dynamia           # theme name (default, dynamia, kubecon_japan)
 variant: dark            # global dark mode
 logo: assets/logo.svg    # top-right logo (replaces theme default)
 logo_dark: assets/logo-white.png  # dark mode variant of logo
-watermark: assets/brand-mark.svg  # bottom-right watermark (conference logo)
+watermark: assets/brand-mark.svg  # bottom-right watermark (conference logo); none = off
+background: none                  # slide background image (replaces theme default); none = off
 style: |                 # raw CSS override
   :root { --color-accent: #e91e63; }
 ---

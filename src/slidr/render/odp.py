@@ -47,7 +47,7 @@ def render(
     page_width, page_height = dims[0] * PX_TO_CM, dims[1] * PX_TO_CM
     css = assemble_css(
         base_css, theme_css, dims, doc.meta.logo, doc.meta.watermark,
-        doc.meta.pygments_style or "default", doc.meta.logo_dark,
+        doc.meta.pygments_style or "default", doc.meta.logo_dark, doc.meta.background,
     )
 
     ir_slides = build_ir(doc, base_css, theme_css)

@@ -184,18 +184,21 @@ def resolve_styles(base_css: str, theme_css: str) -> dict:
 
 def assemble_css(base_css: str, theme_css: str, dims: tuple[int, int],
                  logo: str = "", watermark: str = "", pygments_style: str = "default",
-                 logo_dark: str = "") -> str:
+                 logo_dark: str = "", background: str = "") -> str:
     """Assemble the final CSS for HTML output: base + theme + logo + pygments."""
     css = base_css.replace("SLIDE_W", str(dims[0])).replace("SLIDE_H", str(dims[1]))
     css = css.replace("LOGO_CSS", "").replace("{logo_css}", "")
     css = css.replace("THEME_CSS", theme_css).replace("{theme_css}", "")
     css = css.replace("IMG_MAX_H", str(int(dims[1] * 0.70)))
-    if logo:
-        css = css.replace(":root {", f":root {{ --logo: url(\"{logo}\"); ")
-    if logo_dark:
-        css = css.replace(":root {", f":root {{ --logo-dark: url(\"{logo_dark}\"); ")
-    if watermark:
-        css = css.replace(":root {", f":root {{ --watermark: url(\"{watermark}\"); ")
+    # frontmatter images go in a :root rule AFTER the theme: injected into
+    # base.css's :root, a theme's own --watermark/--bg-image always won.
+    # "none" switches the theme's image off (e.g. another event's art).
+    images = {"--logo": logo, "--logo-dark": logo_dark,
+              "--watermark": watermark, "--bg-image": background}
+    decls = " ".join(f"{k}: {'none' if v == 'none' else f'url(\"{v}\")'};"
+                     for k, v in images.items() if v)
+    if decls:
+        css += f"\n:root {{ {decls} }}\n"
     if pygments_style:
         from slidr.render.html import _pygments_css
         css += _pygments_css(pygments_style)

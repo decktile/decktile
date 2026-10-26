@@ -107,7 +107,7 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
     # Assemble CSS: base.css (with dims) + theme + logo + pygments
     css = assemble_css(base_css(), theme_css, dims, doc.meta.logo,
                        doc.meta.watermark, doc.meta.pygments_style or "default",
-                       doc.meta.logo_dark)
+                       doc.meta.logo_dark, doc.meta.background)
 
     html = render_html(doc, theme_css, css, dims, doc.meta.logo)
     html_path = out_dir / f"{stem}.html"

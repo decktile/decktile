@@ -26,6 +26,7 @@ class Meta:
     logo: str = ""
     logo_dark: str = ""
     watermark: str = ""
+    background: str = ""
     pygments_style: str = "default"
     seaborn_theme: str = ""
     theme_variant: str = "light"
