@@ -1,6 +1,6 @@
 [project]
-name = "slidr"
-version = "0.1.1"
+name = "slidr-cli"
+dynamic = ["version"]
 description = "Markdown to styled PPTX + PDF"
 authors = [
     {name = "Reza Jelveh", email = "git@jelveh.me"},
@@ -40,4 +40,7 @@ addopts = ["-v", "--tb=short"]
 
 [tool.pdm]
 distribution = true
+
+[tool.pdm.version]
+source = "scm"
 
