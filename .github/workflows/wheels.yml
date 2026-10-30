@@ -30,19 +30,37 @@ jobs:
         python: ["3.11", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python }}
+      - name: Install Pango (macOS)
+        if: runner.os == 'macOS'
+        run: brew install pango
+      - name: Install Pango (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-pango
+          path-type: inherit
+      - name: Point WeasyPrint at MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "WEASYPRINT_DLL_DIRECTORIES=$(cygpath -w "${RUNNER_TEMP}/msys64/ucrt64/bin")" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
-      - name: Install wheel and smoke test
+      - name: Install wheel and build HTML + PDF
         shell: bash
         run: |
           uv venv
           uv pip install dist/*.whl
+          rm -rf src
           uv run --no-project slidr --help
+          uv run --no-project slidr -o out --pdf examples/features_demo.md
+          ls out/*.html out/*.pdf
 
   publish:
     needs: test

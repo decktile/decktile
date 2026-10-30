@@ -36,6 +36,22 @@ style: |                 # raw CSS override
 ## Install
 
 ```bash
+pip install slidr-cli    # or: uv tool install slidr-cli
+```
+
+HTML output works everywhere. PDF and ODP output use WeasyPrint, which needs Pango
+from your system:
+
+- **Linux:** usually present; otherwise `apt install libpango-1.0-0 libpangoft2-1.0-0`
+- **macOS:** `brew install pango`
+- **Windows:** install [MSYS2](https://www.msys2.org/), run
+  `pacman -S mingw-w64-ucrt-x86_64-pango`, then set
+  `WEASYPRINT_DLL_DIRECTORIES=C:\msys64\ucrt64\bin`
+
+See [WeasyPrint's install guide](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)
+for details. From a checkout:
+
+```bash
 pdm install          # core + HTML/PDF/ODP
 pdm install -G plot  # + seaborn/matplotlib for inline charts
 ```
