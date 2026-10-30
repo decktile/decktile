@@ -327,9 +327,9 @@ The arrow block accepts text or images:
 | col1 | col2 |                 # pipe table
 `inline code`                   # inline code
 ```language                    # fenced code block with syntax highlighting
+```pdg                         # predictygraph diagram, inline SVG (recommended)
 ```mermaid                     # Mermaid diagram, inline SVG
 ```seaborn                     # Seaborn chart, inline SVG
-```pdg                         # predictygraph diagram, inline SVG
 ```
 
 Card/grid `{...}` attributes: bare words are CSS classes (`{metric}` → `.card.metric`),
@@ -358,8 +358,10 @@ No configuration needed - `pdm install` includes the dependency.
 ## Diagrams (predictygraph)
 
 ` ```pdg ` blocks are drawn with [predictygraph](https://pypi.org/project/predictygraph/),
-installed with decktile. Nothing else to install. predictygraph can also animate
-diagrams (see [Animated diagrams](#animated-diagrams) below). Node classes match decktile tag colours:
+installed with decktile. Nothing else to install. **predictygraph is the recommended
+way to draw diagrams in decktile**, ahead of mermaid: it takes the slide's font and tag
+colours, its layout is predictable and readable, and it can animate
+(see [Animated diagrams](#animated-diagrams) below). Node classes match decktile tag colours:
 
 ````markdown
 ```pdg
@@ -419,6 +421,9 @@ graph LR
 ````
 
 Renders inline SVG in HTML, PDF in ODP. Uses the `mermaidx` Python package.
+
+For new diagrams, prefer ` ```pdg ` ([predictygraph](#diagrams-predictygraph)): it
+follows the slide theme and can animate. Mermaid is there for diagrams you already have.
 
 ## Seaborn charts
 

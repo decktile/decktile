@@ -374,8 +374,8 @@ Available: `fade`, `slide`, `zoom`, `flip`, `wipe`. All 0.4s, incoming-only.
 > quote text                   # blockquote, renders as .quote div
 | col1 | col2 | col3 |         # pipe table with header row
 ```seaborn                     # matplotlib/seaborn chart rendered at build time
-```pdg                         # predictygraph diagram, theme font + tag colours
-```mermaid                     # Mermaid CLI diagram, SVG output
+```pdg                         # predictygraph diagram (recommended), theme font + tag colours, can animate
+```mermaid                     # Mermaid CLI diagram, SVG output (sequence/Gantt; prefer pdg)
 ```language                    # generic code block, syntax highlighted
 {icon:star cls=accent-primary} # lucide icon, inline SVG
 ```
@@ -402,22 +402,29 @@ Theme colors available via rcParams: `plt.rcParams["axes.facecolor"]`,
 `"text.color"`, `"axes.edgecolor"`, `"xtick.color"`. Requires `seaborn` +
 `matplotlib` (install via `pdm install -G plot` or `decktile[plot]`).
 
-### predictygraph
+### predictygraph (recommended for diagrams)
+
+Use ` ```pdg ` for flowcharts and architecture diagrams, not mermaid: it takes the
+slide theme, lays out predictably, and can animate in HTML.
 
 ````markdown
 ```pdg
 graph dir=TB
 app "Application" .green
 gpu "GPU" .cyan
-app -> gpu
+app -> gpu flow=forward
 ```
 ````
 
 The slide's body font and tag colours are applied first, so `.green`, `.cyan`,
 `.yellow`, `.red` match the cards. A `css { … }` block inside the diagram
-overrides them. Syntax: predictygraph's `docs/SPEC.md`.
+overrides them. `flow=` (edges) and `border=pulse|march|glow` (nodes) animate in
+the HTML deck; PDF and ODP get a still frame. Syntax: predictygraph's `docs/SPEC.md`.
 
 ### Mermaid
+
+Only for diagram types predictygraph doesn't cover (sequence, Gantt) or existing
+mermaid diagrams.
 
 ````markdown
 ```mermaid

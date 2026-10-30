@@ -180,8 +180,8 @@ Decktile supports multiple fenced block types for diagrams and visualizations:
 
 | Language | Renderer | Description |
 |----------|----------|-------------|
-| `pdg` | [predictygraph](https://pypi.org/project/predictygraph/) | Flowcharts, architecture diagrams, per-group layouts; theme font + tag colours applied |
-| `mermaid` | Mermaid CLI | Flowcharts, sequence diagrams, Gantt charts |
+| `pdg` | [predictygraph](https://pypi.org/project/predictygraph/) | **Recommended.** Flowcharts, architecture diagrams, per-group layouts; theme font + tag colours applied; can animate (`flow=`, `border=`) |
+| `mermaid` | Mermaid CLI | Sequence diagrams, Gantt charts; use `pdg` for flowcharts and architecture |
 | `seaborn` | matplotlib/seaborn | Statistical charts, bar plots, gauge charts |
 
 Grid, card, and metric syntax uses `:::` fences (pre-processed, not markdown-it):
