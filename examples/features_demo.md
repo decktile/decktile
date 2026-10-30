@@ -5,7 +5,7 @@ paginate: true
 size: 16:9
 # logo: "assets/brand/hami-logo.png"
 title: HAMi Demo
-footer: "HAMi · Hardware Affinity Manager for Inference"
+footer: "HAMi · Heterogeneous AI Computing Virtualization Middleware"
 pygments_style: ayu-mirage
 ---
 
@@ -14,9 +14,9 @@ pygments_style: ayu-mirage
 
 # HAMi
 
-@subtitle Hardware Affinity Manager for Inference
+@subtitle Heterogeneous AI Computing Virtualization Middleware
 
-@speaker name="Reza Jelveh" role="Solution Architect, Dynamia AI — Makers of HAMi" github=github.com/fishman twitter=@rezaio email=reza@dynamia.io
+@speaker name="Reza Jelveh" role="Solution Architect, Dynamia AI — Makers of HAMi" github=github.com/fishman twitter=@fishmanticoder email=reza@dynamia.ai
 
 <!--
 Welcome to the HAMi demo. This deck showcases all decktile features: layouts, grids, cards, tables, quotes, speaker notes, and the new @layout directive.
@@ -438,4 +438,4 @@ Multi-region active-active deployment. Zero-downtime rolling updates.
 # {icon:message-circle cls=accent-primary} Thank You
 
 
-@speaker name="Reza Jelveh" role="reza@dynamia.io"
+@speaker name="Reza Jelveh" role="reza@dynamia.ai"
