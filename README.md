@@ -358,7 +358,8 @@ No configuration needed - `pdm install` includes the dependency.
 ## Diagrams (predictygraph)
 
 ` ```pdg ` blocks are drawn with [predictygraph](https://pypi.org/project/predictygraph/),
-installed with decktile. Nothing else to install. Node classes match decktile tag colours:
+installed with decktile. Nothing else to install. predictygraph can also animate
+diagrams (see [Animated diagrams](#animated-diagrams) below). Node classes match decktile tag colours:
 
 ````markdown
 ```pdg
