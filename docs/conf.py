@@ -1,40 +1,40 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+# Configuration for the decktile documentation (Sphinx + MyST).
+# Built and published to https://decktile.github.io/decktile/ by .github/workflows/docs.yml.
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+import os
+import sys
+from importlib.metadata import PackageNotFoundError, version as _version
 
-project = 'Decktile'
-copyright = '2026, Reza Jelveh'
-author = 'Reza Jelveh'
+sys.path.insert(0, os.path.abspath("../src"))
 
-version = '0.1.0'
-release = '0.1.0'
-
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+project = "decktile"
+copyright = "2026, Reza Jelveh"
+author = "Reza Jelveh"
+try:
+    release = _version("decktile")
+except PackageNotFoundError:
+    release = "dev"
+version = release
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
-    'myst_parser',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.githubpages",
+    "myst_parser",
 ]
+myst_enable_extensions = ["colon_fence"]
+myst_heading_anchors = 3
+suppress_warnings = ["myst.header", "myst.xref_missing"]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "superpowers", "Thumbs.db", ".DS_Store"]
+language = "en"
 
-language = 'en'
-
-# -- Options for HTML output -------------------------------------------------
-
-html_theme = 'furo'
-html_static_path = ['_static']
-html_title = 'Decktile'
-
-# -- Path setup --------------------------------------------------------------
-
-import os, sys
-sys.path.insert(0, os.path.abspath('..'))
+html_theme = "furo"
+html_title = "decktile"
+html_logo = "../assets/logo/decktile-mark.svg"
+html_favicon = "../assets/logo/decktile-mark.svg"
+html_theme_options = {
+    "source_repository": "https://github.com/decktile/decktile",
+    "source_branch": "master",
+    "source_directory": "docs/",
+}

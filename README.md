@@ -520,7 +520,7 @@ back to light mode on the next slide.
 ## Theming
 
 Colors, borders, and spacing use CSS custom properties. Override them via
-frontmatter `style:` block or a custom theme file. See [THEMING.md](docs/THEMING.md)
+frontmatter `style:` block or a custom theme file. See [THEMING.md](docs/theming.md)
 for the full variable reference.
 
 ```yaml

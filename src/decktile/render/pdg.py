@@ -1,8 +1,8 @@
-"""predictygraph renderer for decktile ```pdg blocks.
+"""predictygraph renderer for decktile ``pdg`` fenced blocks.
 
 The slide theme's body font and tag colours are passed to predictygraph as a
-stylesheet layered under the diagram's own css, so `node.green`, `node.cyan`,
-`node.yellow` and `node.red` match decktile cards and anything in the block wins.
+stylesheet layered under the diagram's own css, so ``node.green``, ``node.cyan``,
+``node.yellow`` and ``node.red`` match decktile cards and anything in the block wins.
 """
 
 from __future__ import annotations
@@ -52,9 +52,10 @@ def render_pdg_svg(content: str, font_family: str = "", font_size: int = 0,
                    blueprint: bool = False, animated: bool = False) -> str | None:
     """Render a predictygraph diagram to SVG, or None if it fails to parse.
 
-    blueprint: palette for ``::: card {blueprint}`` (light lines, translucent fills).
-    animated: keep predictygraph's SMIL animation (flow=, border=) for HTML.
-        The default is a still frame, which PDF and ODP need.
+    ``blueprint`` uses the palette for ``::: card {blueprint}`` (light lines,
+    translucent fills). ``animated`` keeps predictygraph's SMIL animation
+    (``flow=``, ``border=``) for HTML; the default is a still frame, which PDF
+    and ODP need.
     """
     import predictygraph
 
