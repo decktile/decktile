@@ -3,10 +3,15 @@ theme: default
 variant: light # optional, defaults to light
 paginate: true
 size: 16:9
-# logo: "assets/brand/hami-logo.png"
+logo: "assets/brand/hami-logo.png"
 title: HAMi Demo
 footer: "HAMi · Heterogeneous AI Computing Virtualization Middleware"
 pygments_style: ayu-mirage
+transition: fade        # default slide transition; @transition overrides per slide
+seaborn_theme: default  # chart colours follow this theme
+style: |
+  /* raw CSS, injected after the theme */
+  .kicker { letter-spacing: .08em; }
 ---
 
 @variant dark
@@ -433,7 +438,174 @@ Multi-region active-active deployment. Zero-downtime rolling updates.
 
 ---
 
+@layout metrics
+
+## Where We Are Today
+
+@subtitle `@layout metrics`: big numbers with a source line
+
+::: grid {cols=4}
+::: card {metric}
+100%
+Hardware pool utilization
+Ke Holdings
+:::
+::: card {metric}
+10x
+GPU utilization in CI
+NIO
+:::
+::: card {metric}
+30%
+Fewer GPU hours
+China Merchants Bank
+:::
+::: card {metric}
+11
+Device types
+NVIDIA, Ascend, Cambricon, ...
+:::
+:::
+
+---
+
+@layout timeline-horizontal
+
+## Rollout Plan
+
+@subtitle `@layout timeline-horizontal` with `{label=...}` cards; `::: notes` underneath
+
+::: grid {cols=5}
+::: card {label="1"}
+### Measure
+Find the 5-15% jobs
+:::
+::: card {label="2"}
+### Enforce
+Memory + compute
+:::
+::: card {label="3"}
+### Schedule
+Your scheduler
+:::
+::: card {label="4"}
+### Sell
+SKUs + quotas
+:::
+::: card {label="5"}
+### Operate
+Upgrades, usage
+:::
+:::
+
+::: notes {tag="yellow"}
+Step zero: decide what stays whole. Big training jobs keep whole cards.
+:::
+
+---
+
+@layout ecosystem
+
+## Community & Adopters
+
+@subtitle `@layout ecosystem`: `####` section labels over metric rows and logo cards
+
+#### Open Source, CNCF Backed
+::: grid {cols=3}
+::: card {metric}
+4.1k
+GitHub stars
+:::
+::: card {metric}
+325k
+Docker pulls
+:::
+::: card {metric}
+500+
+Contributors
+:::
+:::
+
+#### Device Support
+::: grid {cols=1}
+::: card
+![NVIDIA](assets/ecosystem/devices/nvidia.png) ![AMD](assets/ecosystem/devices/amd.png) ![Ascend](assets/ecosystem/devices/ascend.png) ![Cambricon](assets/ecosystem/devices/cambricon.png) ![Hygon](assets/ecosystem/devices/hygon.png) ![Metax](assets/ecosystem/devices/metax.png) ![Moore Threads](assets/ecosystem/devices/moorethreads.png) ![Kunlunxin](assets/ecosystem/devices/kunlunxin.png) ![Enflame](assets/ecosystem/devices/enflame.png) ![AWS](assets/ecosystem/devices/aws.png)
+:::
+:::
+
+#### Getting Started
+1. Install the chart
+2. Label your GPU nodes
+3. Request `nvidia.com/gpumem` in a pod
+
+---
+
+@transition none
+
+## Blueprint Diagram
+
+@subtitle `::: card {blueprint}` around a ` ```pdg ` diagram; this slide has `@transition none`
+
+::: card {blueprint}
+```pdg
+graph dir=LR
+pod "Pod" .red
+hook "Webhook" .cyan
+sched "hami-scheduler" .cyan
+dp "Device plugin" .green
+pod -> hook -> sched -> dp flow=forward
+```
+:::
+
+---
+
+## Config And Output
+
+@layout two-col
+
+```json
+{
+  "nvidia.com/gpu": 1,
+  "nvidia.com/gpumem": 3000,
+  "nvidia.com/gpucores": 30
+}
+```
+
+@col
+
+```text
+$ nvidia-smi
+|  0  NVIDIA H200   3000MiB / 3000MiB   30% |
+```
+
+---
+
+## Embedding A Demo Video
+
+@subtitle `@video` plays in the HTML deck; PDF shows the poster image next to the clip
+
+```markdown
+@video assets/demo/llm_test.mp4
+```
+
+- Put `llm_test.png` next to the clip as its poster and print image
+- Presenter view keeps play, pause and seek in sync across windows
+- ODP skips the video (add a screenshot slide if you need one there)
+
+---
+
+## Talk Credits
+
+@subtitle `@contributor` sits beside `@speaker`; both take github, linkedin, twitter, email, website
+
+@speaker name="Reza Jelveh" role="Solution Architect, Dynamia AI — Makers of HAMi" github=github.com/fishman linkedin=linkedin.com/in/rezajelveh twitter=@fishmanticoder
+
+@contributor name="Contributor Name" role="LFX Mentorship mentee" github=github.com/example linkedin=linkedin.com/in/example
+
+---
+
 @kicker Questions
+@side-image assets/brand/hami-logo.png
 
 # {icon:message-circle cls=accent-primary} Thank You
 

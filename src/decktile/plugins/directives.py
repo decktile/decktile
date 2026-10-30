@@ -5,12 +5,25 @@ from decktile.parser.ast import AttrNode, Paragraph, Text, Node
 
 
 def preprocess_directives(content: str) -> str:
-    """Convert @directive lines to HTML comment markers."""
+    """Convert @directive lines to HTML comment markers.
+
+    Lines inside fenced code blocks (``` or ~~~) are left alone, so a code
+    sample can show directive syntax without it being applied.
+    """
     lines = content.split("\n")
     result = []
+    fence = None
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("@") and not stripped.startswith("@@"):
+        m = re.match(r"(`{3,}|~{3,})", stripped)
+        if m:
+            if fence is None:
+                fence = m.group(1)
+            elif stripped.startswith(fence) and not stripped[len(fence):].strip():
+                fence = None
+            result.append(line)
+            continue
+        if fence is None and stripped.startswith("@") and not stripped.startswith("@@"):
             parts = stripped[1:].split(" ", 1)
             typ = parts[0]
             value = parts[1] if len(parts) > 1 else ""

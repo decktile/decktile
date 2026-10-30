@@ -173,3 +173,13 @@ def test_group_cards_without_blank_lines_before_paragraph():
     nodes = parse("---\ntitle: t\n---\n\n" + md + "\nAfter.\n").slides[0].children
     assert [type(n).__name__ for n in nodes] == ["Grid", "Paragraph"]
     assert [c.tag for c in nodes[0].children] == ["cyan", "green", "red"]
+
+
+def test_directive_inside_code_fence_is_left_as_code():
+    from decktile.parser.ast import AttrNode
+    from decktile.parser.markdown import parse
+    md = "## S\n\n```markdown\n@video clip.mp4\n@layout two-col\n```\n"
+    slide = parse(md).slides[0]
+    assert not any(isinstance(n, AttrNode) for n in slide.children)
+    code = [n for n in slide.children if getattr(n, "language", None) == "markdown"]
+    assert code and "@video clip.mp4" in code[0].content
