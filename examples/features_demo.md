@@ -39,53 +39,29 @@ API calls transparently -- no container modification required.
 
 @col
 
-```dot
-digraph standard_mode {
-    rankdir=TB;
-    compound=true;
-    newrank=true;
-
-    subgraph cluster_main {
-        label="Standard Mode";
-        penwidth=2;
-        fontsize=18;
-        fontname="sans-serif";
-        margin=8;
-        node [width=2.2];
-
-        app [label="Application" shape=box style=filled];
-        mem [label="Memory Interception" class="cyan" shape=box style=filled];
-        comp [label="Compute Interception" class="cyan" shape=box style=filled];
-        gpu [label="Physical GPU" class="green" shape=box style=filled];
-
-        app -> mem -> comp -> gpu;
-    }
+```pdg
+graph dir=TB
+group main "Standard Mode" {
+  default node min-width=170
+  app "Application"
+  mem "Memory Interception" .cyan
+  comp "Compute Interception" .cyan
+  gpu "Physical GPU" .green
+  app -> mem -> comp -> gpu
 }
 ```
 
 @row
 
-```dot
-digraph standard_mode {
-    rankdir=TB;
-    compound=true;
-    newrank=true;
-
-    subgraph cluster_main {
-        label="Standard Mode";
-        penwidth=2;
-        fontsize=18;
-        fontname="sans-serif";
-        margin=8;
-        node [width=2.2];
-
-        app [label="Application" shape=box style=filled];
-        mem [label="Memory Interception" class="cyan" shape=box style=filled];
-        comp [label="Compute Interception" class="cyan" shape=box style=filled];
-        gpu [label="Physical GPU" class="green" shape=box style=filled];
-
-        app -> mem -> comp -> gpu;
-    }
+```pdg
+graph dir=TB
+group main "Standard Mode" {
+  default node min-width=170
+  app "Application"
+  mem "Memory Interception" .cyan
+  comp "Compute Interception" .cyan
+  gpu "Physical GPU" .green
+  app -> mem -> comp -> gpu
 }
 ```
 

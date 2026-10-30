@@ -233,13 +233,13 @@ THEME_CSS
 
 LOGO_CSS
 
-.mermaid, .seaborn-plot, .graphviz-plot {
+.mermaid, .seaborn-plot, .pdg-plot {
   max-width: 100%;
   max-height: 100%;
   overflow: hidden;
   text-align: center;
 }
-.mermaid svg, .seaborn-plot svg, .graphviz-plot svg {
+.mermaid svg, .seaborn-plot svg, .pdg-plot svg {
   max-width: 100%;
   height: auto;
 }

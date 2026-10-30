@@ -320,7 +320,7 @@ def _image_aspect(path: str) -> float | None:
     if path.lower().endswith(".svg"):
         import re
 
-        svg = Path(path).read_text(errors="ignore")
+        svg = Path(path).read_text(encoding="utf-8", errors="ignore")
         m = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
         if m:
             w, h = float(m.group(1)), float(m.group(2))

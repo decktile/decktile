@@ -16,7 +16,7 @@ _CODEPOINT_RE = re.compile(r'\.icon-([a-z0-9-]+)::before\s*\{\s*content:\s*"\\e(
 
 @lru_cache(maxsize=1)
 def _codepoints() -> dict[str, str]:
-    css = (FONT_DIR / "lucide.css").read_text()
+    css = (FONT_DIR / "lucide.css").read_text(encoding="utf-8")
     return {name: chr(int("e" + hexcode, 16)) for name, hexcode in _CODEPOINT_RE.findall(css)}
 
 

@@ -36,7 +36,9 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install Pango (macOS)
         if: runner.os == 'macOS'
-        run: brew install pango
+        run: |
+          brew install pango
+          echo "DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"
       - name: Install Pango (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2

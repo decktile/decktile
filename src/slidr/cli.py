@@ -40,7 +40,7 @@ def main(
 def _build(file: Path, output_dir: Optional[Path], pdf: bool,
            odp: bool, image_odp: bool, dist: bool, optimize_images: bool,
            debug: bool, css_path: Optional[Path]) -> None:
-    content = file.read_text()
+    content = file.read_text(encoding="utf-8")
     doc = parse(content)
     dims = doc.meta.dimensions()
 
@@ -54,7 +54,7 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
     else:
         theme_css = default_theme()
     if css_path and css_path.is_file():
-        theme_css += "\n" + css_path.read_text()
+        theme_css += "\n" + css_path.read_text(encoding="utf-8")
     theme_css += "\n" + (doc.meta.style or "")
 
     # Assemble CSS: base.css (with dims) + theme + logo + pygments
@@ -64,7 +64,7 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
 
     html = render_html(doc, theme_css, css, dims, doc.meta.logo)
     html_path = out_dir / f"{stem}.html"
-    html_path.write_text(html)
+    html_path.write_text(html, encoding="utf-8")
     typer.echo(f"Wrote {html_path} ({len(html)} bytes)")
 
     if dist:
@@ -75,7 +75,7 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
         css = css.replace("THEME_CSS", theme_css)
         css = css.replace("LOGO_CSS", "").replace("{theme_css}", "").replace("{logo_css}", "")
         css_path = out_dir / f"{stem}.css"
-        css_path.write_text(css)
+        css_path.write_text(css, encoding="utf-8")
         typer.echo(f"Wrote {css_path} (debug CSS, {len(css)} bytes)")
 
     if odp:

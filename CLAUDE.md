@@ -180,7 +180,7 @@ Slidr supports multiple fenced block types for diagrams and visualizations:
 
 | Language | Renderer | Description |
 |----------|----------|-------------|
-| `dot` | Graphviz `dot` | Directed graphs, record shapes, HTML-like labels |
+| `pdg` | [predictygraph](https://pypi.org/project/predictygraph/) | Flowcharts, architecture diagrams, per-group layouts; theme font + tag colours applied |
 | `mermaid` | Mermaid CLI | Flowcharts, sequence diagrams, Gantt charts |
 | `seaborn` | matplotlib/seaborn | Statistical charts, bar plots, gauge charts |
 

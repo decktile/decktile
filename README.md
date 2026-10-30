@@ -242,7 +242,7 @@ The arrow block accepts text or images:
 ```language                    # fenced code block with syntax highlighting
 ```mermaid                     # Mermaid diagram, inline SVG
 ```seaborn                     # Seaborn chart, inline SVG
-```dot                         # Graphviz diagram, inline SVG
+```pdg                         # predictygraph diagram, inline SVG
 ```
 
 Card/grid `{...}` attributes: bare words are CSS classes (`{metric}` → `.card.metric`),
@@ -268,29 +268,24 @@ to match theme accent colors instead of hardcoded hex values.
 
 No configuration needed - `pdm install` includes the dependency.
 
-## Graphviz diagrams
+## Diagrams (predictygraph)
 
-Graphviz renders DOT language to SVG via the `dot` CLI. Requires `graphviz`
-installed. Nodes use CSS classes matching slidr tag colors:
+` ```pdg ` blocks are drawn with [predictygraph](https://pypi.org/project/predictygraph/),
+installed with slidr. Nothing else to install. Node classes match slidr tag colours:
 
 ````markdown
-```dot
-digraph {
-    node [shape=box]
-    subgraph {
-        app [label="Application" class="green"]
-        db [label="Database" class="cyan"]
-        app -> db
-    }
-}
+```pdg
+graph dir=LR
+app "Application" .green
+db "Database" .cyan shape=cylinder
+app -> db
 ```
 ````
 
-Available node classes: `green`, `cyan`, `yellow`, `red`. Default nodes
-use `var(--color-card-bg)`. To apply the card background to a cluster,
-use `subgraph cluster_` prefix (e.g., `subgraph cluster_main`). CSS
-cascades from the theme - dark mode applies automatically. Font inherits
-from the CSS body font.
+Available node classes: `green`, `cyan`, `yellow`, `red`. The diagram uses the
+slide's body font. Put a `css { … }` block inside the diagram to change anything.
+See predictygraph's [spec](https://github.com/predictygraph/predictygraph/blob/master/docs/SPEC.md)
+for the full syntax.
 
 ## Mermaid diagrams
 
@@ -435,11 +430,11 @@ They appear in the presenter view.
 `examples/features_demo.md` is a 17-slide deck exercising every feature:
 title slides, `@layout two-col`, `@layout image-right`, `@layout compare`,
 grids with tagged cards, tables, fenced code blocks, mermaid diagrams,
-seaborn charts, graphviz graphs, lucide icons, blockquotes, speaker notes,
+seaborn charts, predictygraph diagrams, lucide icons, blockquotes, speaker notes,
 and all directives.
 
 See also: `examples/mermaid_demo.md`, `examples/seaborn_demo.md`,
-`examples/graphviz_demo.md`, `examples/lucide_demo.md`.
+`examples/pdg_demo.md`, `examples/lucide_demo.md`.
 
 ## Pipeline
 

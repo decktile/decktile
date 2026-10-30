@@ -374,7 +374,7 @@ Available: `fade`, `slide`, `zoom`, `flip`, `wipe`. All 0.4s, incoming-only.
 > quote text                   # blockquote, renders as .quote div
 | col1 | col2 | col3 |         # pipe table with header row
 ```seaborn                     # matplotlib/seaborn chart rendered at build time
-```dot                         # Graphviz diagram, injected with theme colors
+```pdg                         # predictygraph diagram, theme font + tag colours
 ```mermaid                     # Mermaid CLI diagram, SVG output
 ```language                    # generic code block, syntax highlighted
 {icon:star cls=accent-primary} # lucide icon, inline SVG
@@ -402,16 +402,20 @@ Theme colors available via rcParams: `plt.rcParams["axes.facecolor"]`,
 `"text.color"`, `"axes.edgecolor"`, `"xtick.color"`. Requires `seaborn` +
 `matplotlib` (install via `pdm install -G plot` or `slidr[plot]`).
 
-### Graphviz
+### predictygraph
 
 ````markdown
-```dot
-digraph G { a -> b; }
+```pdg
+graph dir=TB
+app "Application" .green
+gpu "GPU" .cyan
+app -> gpu
 ```
 ````
 
-Theme CSS variables available: `--color-card-bg` → bgcolor, `--color-foreground`
-→ fontcolor, `--color-accent` → edgecolor.
+The slide's body font and tag colours are applied first, so `.green`, `.cyan`,
+`.yellow`, `.red` match the cards. A `css { … }` block inside the diagram
+overrides them. Syntax: predictygraph's `docs/SPEC.md`.
 
 ### Mermaid
 

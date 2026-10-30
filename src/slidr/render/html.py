@@ -36,18 +36,18 @@ _env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=False)
 
 def default_theme() -> str:
     p = THEME_DIR / "default.css"
-    return p.read_text() if p.exists() else ""
+    return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
 def load_theme(name: str) -> str:
     """Load a named theme CSS file. Falls back to default if not found."""
     p = THEME_DIR / f"{name}.css"
-    return p.read_text() if p.exists() else default_theme()
+    return p.read_text(encoding="utf-8") if p.exists() else default_theme()
 
 
 def base_css() -> str:
     p = TEMPLATE_DIR / "base.css"
-    return p.read_text() if p.exists() else ""
+    return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
 def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, int], logo: str = "") -> str:
@@ -125,8 +125,8 @@ def _render_elem(e: Elem) -> str:
             return _render_mermaid(e.content, e.svg, sid)
         if e.language == "seaborn":
             return _render_seaborn_html(e.content, e.svg, sid)
-        if e.language == "dot":
-            return _render_dot_html(e.content, e.svg, sid)
+        if e.language == "pdg":
+            return _render_pdg_html(e.content, e.svg, sid)
         return _highlight_code(e.content, e.language, sid)
     elif e.kind == "list":
         s = f"<ul{sid}>\n"
@@ -255,10 +255,10 @@ def _render_mermaid(content: str, svg: str = "", sid: str = "") -> str:
     return f'<pre class="mermaid-fallback"{sid}><code>{_escape(content)}</code></pre>'
 
 
-def _render_dot_html(content: str, svg: str = "", sid: str = "") -> str:
+def _render_pdg_html(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
-        return f'<div class="graphviz-plot"{sid}>\n{svg}\n</div>'
-    return f'<pre class="dot-fallback"{sid}><code>{_escape(content)}</code></pre>'
+        return f'<div class="pdg-plot"{sid}>\n{svg}\n</div>'
+    return f'<pre class="pdg-fallback"{sid}><code>{_escape(content)}</code></pre>'
 
 
 def _normalize_viewbox(svg: str) -> str:

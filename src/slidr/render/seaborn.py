@@ -42,7 +42,7 @@ def _css_theme_rcparams(name: str) -> dict | None:
     css_path = _THEME_DIR / f"{name}.css"
     if not css_path.is_file():
         return None
-    raw = css_path.read_text()
+    raw = css_path.read_text(encoding="utf-8")
 
     # Extract only :root block (light theme), not [data-theme="dark"]
     root_match = re.search(r":root\s*\{([^}]*)\}", raw, re.DOTALL)
