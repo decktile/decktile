@@ -24,7 +24,7 @@ def main(
     odp: bool = typer.Option(False, "--odp", help="Generate ODP (programmatic)"),
     image_odp: bool = typer.Option(False, "--image-odp", help="Generate ODP (PDF screenshots)"),
     dist: bool = typer.Option(False, "--dist", help="Package HTML + referenced assets into a zip"),
-    optimize_images: bool = typer.Option(False, "--optimize-images/--no-optimize-images", help="Optimize images in PDF output (jpeg_quality=85, dpi=150)"),
+    optimize_images: bool = typer.Option(True, "--optimize-images/--no-optimize-images", help="Compress images in PDF output (jpeg_quality=85, dpi=150). On by default; --no-optimize-images keeps full-resolution images"),
     watch: bool = typer.Option(False, "-w", "--watch", help="Watch file and rebuild on changes"),
     debug: bool = typer.Option(False, "--debug", help="Dump AST + write debug CSS"),
     css: Optional[Path] = typer.Option(None, "--css", help="Custom CSS theme file (overrides default)"),

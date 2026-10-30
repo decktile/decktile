@@ -68,7 +68,8 @@ pdm install -G plot  # + seaborn/matplotlib for inline charts
 pdm run decktile slides.md              # HTML + presenter view
 pdm run decktile slides.md --odp        # + ODP (programmatic)
 pdm run decktile slides.md --image-odp  # + ODP (screenshots from PDF)
-pdm run decktile slides.md --pdf        # + PDF
+pdm run decktile slides.md --pdf        # + PDF (images compressed)
+pdm run decktile slides.md --pdf --no-optimize-images  # + PDF, full-resolution images
 pdm run decktile -w slides.md           # watch and rebuild on changes
 pdm run decktile --odp -w slides.md     # watch + ODP
 pdm run decktile --dist slides.md       # HTML + all referenced assets as zip

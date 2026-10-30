@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-def render(html_path: Path, output_path: Path, optimize_images: bool = False) -> None:
+def render(html_path: Path, output_path: Path, optimize_images: bool = True) -> None:
     from weasyprint import HTML  # lazy: needs system Pango, only for PDF/ODP output
 
     if optimize_images:
