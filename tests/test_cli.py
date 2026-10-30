@@ -1,6 +1,6 @@
 from typer.testing import CliRunner
 
-from slidr.cli import app
+from decktile.cli import app
 
 
 def test_build_pdf_and_odp_together(tmp_path):
@@ -25,7 +25,7 @@ def test_main_missing_file_reports_error_and_exits_1(tmp_path):
 
 def test_main_quoted_glob_builds_each_deck_once(tmp_path, monkeypatch):
     """'**/*.md' must not rebuild decks reached again through the source
-    symlinks slidr puts in every dist/ dir."""
+    symlinks decktile puts in every dist/ dir."""
     (tmp_path / "sub").mkdir()
     for p in ("a.md", "b.md", "sub/c.md"):
         (tmp_path / p).write_text(DECK)

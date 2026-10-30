@@ -1,5 +1,5 @@
 services:
-  slidr:
+  decktile:
     build: .
     working_dir: /app
     environment:

@@ -6,7 +6,7 @@ title: Seaborn Demo
 
 @kicker Data visualization with Python
 
-@speaker name="Slidr" role="Code-to-image rendering"
+@speaker name="Decktile" role="Code-to-image rendering"
 
 ---
 

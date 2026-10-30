@@ -6,7 +6,7 @@ title: Mermaid Demo
 
 @kicker Declarative diagramming from text
 
-@speaker name="Slidr" role="Text-to-diagram rendering"
+@speaker name="Decktile" role="Text-to-diagram rendering"
 
 ---
 

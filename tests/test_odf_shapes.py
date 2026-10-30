@@ -1,6 +1,6 @@
 """Unit tests for render/odf/shapes.py helpers."""
 
-from slidr.render.odf.shapes import _normalize_svg_viewbox, _svg_dims
+from decktile.render.odf.shapes import _normalize_svg_viewbox, _svg_dims
 
 
 def test_normalize_svg_negative_origin():

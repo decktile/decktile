@@ -1,19 +1,19 @@
-# Slidr
+# Decktile
 
 Markdown to styled HTML slides with PDF and ODP output.
 
 ## Why
 
 Building a slide deck in PowerPoint is tedious. Writing markdown is fast.
-Slidr turns markdown into slides. Content lives in markdown files. Styling
+Decktile turns markdown into slides. Content lives in markdown files. Styling
 lives in CSS. No `.pptx` editing, no inline HTML, no copy-paste hell.
 
 Other tools (Marp, Slidev) mix HTML and CSS into the markdown. This breaks
 separation of concerns - your slides become `<div>` soup that's hard to
-change later. Slidr keeps them apart: directives (`@kicker`, `@layout`,
+change later. Decktile keeps them apart: directives (`@kicker`, `@layout`,
 `::: card`) are semantic; all styling is in theme CSS files.
 
-Slidr is opinionated. It ships with card layouts, accent-colored quotes,
+Decktile is opinionated. It ships with card layouts, accent-colored quotes,
 `▸` bullet markers, dark mode. You theme it via CSS variables. If you want
 pixel-level custom layouts, use raw HTML. If you want a deck that looks
 good out of the box with minimal markup, this is the one.
@@ -37,7 +37,7 @@ style: |                 # raw CSS override
 ## Install
 
 ```bash
-pip install slidr-cli    # or: uv tool install slidr-cli
+pip install decktile    # or: uv tool install decktile
 ```
 
 HTML output works everywhere. PDF and ODP output use WeasyPrint, which needs Pango
@@ -60,15 +60,15 @@ pdm install -G plot  # + seaborn/matplotlib for inline charts
 ## Usage
 
 ```bash
-pdm run slidr slides.md              # HTML + presenter view
-pdm run slidr slides.md --odp        # + ODP (programmatic)
-pdm run slidr slides.md --image-odp  # + ODP (screenshots from PDF)
-pdm run slidr slides.md --pdf        # + PDF
-pdm run slidr -w slides.md           # watch and rebuild on changes
-pdm run slidr --odp -w slides.md     # watch + ODP
-pdm run slidr --dist slides.md       # HTML + all referenced assets as zip
-pdm run slidr a.md b.md --pdf       # several decks
-pdm run slidr '**/*.md' --pdf       # quoted globs are expanded (recursive with **)
+pdm run decktile slides.md              # HTML + presenter view
+pdm run decktile slides.md --odp        # + ODP (programmatic)
+pdm run decktile slides.md --image-odp  # + ODP (screenshots from PDF)
+pdm run decktile slides.md --pdf        # + PDF
+pdm run decktile -w slides.md           # watch and rebuild on changes
+pdm run decktile --odp -w slides.md     # watch + ODP
+pdm run decktile --dist slides.md       # HTML + all referenced assets as zip
+pdm run decktile a.md b.md --pdf       # several decks
+pdm run decktile '**/*.md' --pdf       # quoted globs are expanded (recursive with **)
 ```
 
 A missing or failing file is reported (`error: <file>: <reason>`) and skipped;
@@ -76,12 +76,12 @@ the rest still build, and the exit code is 1 if any file failed.
 
 ## Assets
 
-Image paths in markdown are relative to the source file. On build, slidr
+Image paths in markdown are relative to the source file. On build, decktile
 symlinks all directories from the source folder into `dist/`. Files and
 `.md` files are skipped, only directories are linked.
 
 ```bash
-pdm run slidr slides.md    # symlinks slides/assets/ → slides/dist/assets/
+pdm run decktile slides.md    # symlinks slides/assets/ → slides/dist/assets/
 ```
 
 `--odp` is the production-ready ODP path: a native ODF renderer (styles.py,
@@ -96,7 +96,7 @@ per slide embedded as an image) for decks the native renderer doesn't handle
 well yet.
 
 If you know the ODF spec or `odfdo` internals, contributions to the native ODP
-renderer are welcome. See `src/slidr/render/odp.py` and `src/slidr/render/odf/`.
+renderer are welcome. See `src/decktile/render/odp.py` and `src/decktile/render/odf/`.
 
 An Obsidian plugin that renders `.md` slides to HTML in-pane would be great.
 The Python CLI makes distribution tricky; if you've tackled that problem
@@ -352,7 +352,7 @@ No configuration needed - `pdm install` includes the dependency.
 ## Diagrams (predictygraph)
 
 ` ```pdg ` blocks are drawn with [predictygraph](https://pypi.org/project/predictygraph/),
-installed with slidr. Nothing else to install. Node classes match slidr tag colours:
+installed with decktile. Nothing else to install. Node classes match decktile tag colours:
 
 ````markdown
 ```pdg

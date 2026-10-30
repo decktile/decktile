@@ -9,9 +9,9 @@ from pathlib import Path
 
 from odfdo import Document as OdfDocument
 
-from slidr.parser.markdown import parse
-from slidr.render.html import base_css, default_theme
-from slidr.render.odp import render
+from decktile.parser.markdown import parse
+from decktile.render.html import base_css, default_theme
+from decktile.render.odp import render
 
 
 def _build(md: str, tmp_path: Path, theme_css: str = "", source_dir: Path | None = None) -> OdfDocument:
@@ -35,7 +35,7 @@ def _frames(odp: OdfDocument, page_index: int = 0):
 
 def test_page_size_matches_content_dimensions(tmp_path):
     odp = _build("---\ntitle: T\nsize: 1280x720\n---\n\n# Hello\n", tmp_path)
-    pl = odp.get_style("page-layout", "SlidrPageLayout")
+    pl = odp.get_style("page-layout", "DecktilePageLayout")
     props = pl.get_properties()
     w_cm = float(props["fo:page-width"].rstrip("cm"))
     h_cm = float(props["fo:page-height"].rstrip("cm"))
@@ -133,7 +133,7 @@ def test_frames_stay_within_page_bounds(tmp_path):
         "Some body text.\n\n- item one\n- item two\n"
     )
     odp = _build(md, tmp_path)
-    pl = odp.get_style("page-layout", "SlidrPageLayout")
+    pl = odp.get_style("page-layout", "DecktilePageLayout")
     props = pl.get_properties()
     page_w = float(props["fo:page-width"].rstrip("cm"))
     page_h = float(props["fo:page-height"].rstrip("cm"))
@@ -245,7 +245,7 @@ def test_svg_logo_keeps_its_own_aspect_ratio(tmp_path):
     instead (its own, separate, already-correct aspect handling) --
     _logo_frame is the fallback for a theme with no --logo CSS wiring,
     not exercised by a normal build."""
-    from slidr.render.odp import _logo_frame
+    from decktile.render.odp import _logo_frame
 
     logo = tmp_path / "logo.svg"
     logo.write_text('<svg viewBox="0 0 1305 298" xmlns="http://www.w3.org/2000/svg"></svg>')
@@ -454,7 +454,7 @@ def test_arrow_icon_renders_as_colored_font_glyph(tmp_path):
 
 def test_footer_and_slide_num_render_as_shapes(tmp_path):
     """<footer>/.slide-num are template-injected (shell.html), not AST
-    nodes -- they carried no data-slidr-id and were silently dropped by
+    nodes -- they carried no data-decktile-id and were silently dropped by
     the by-id geometry match, so they never appeared in ODP at all.
     default.css sets no --footer-bg (CSS default: transparent) -- the
     frame must have no fill, not an opaque box painted over the gradient
@@ -490,7 +490,7 @@ def test_footer_bar_gets_its_own_box_not_its_text_line_box(tmp_path):
     props = gfx.get_properties(area="graphic")
     assert props.get("draw:fill") == "solid"
     assert props.get("draw:fill-color") == "#123456"
-    pl = odp.get_style("page-layout", "SlidrPageLayout")
+    pl = odp.get_style("page-layout", "DecktilePageLayout")
     page_w_cm = float(pl.get_properties()["fo:page-width"].rstrip("cm"))
     frame_w_cm = float(footer_frame.get_attribute("svg:width").rstrip("cm"))
     assert frame_w_cm > page_w_cm * 0.9

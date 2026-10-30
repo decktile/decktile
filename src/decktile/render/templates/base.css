@@ -1,0 +1,741 @@
+/* decktile base layout -- structural CSS only, no colors */
+
+/* ---- reset ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ---- variables ---- */
+:root {
+  --radius: 0.18em;
+  --img-radius: 0.45em;
+  --gap: 1em;
+  --font-mono: "Noto Sans Mono", Consolas, "SFMono-Regular", Menlo, monospace;
+  --section-padding-v: 2.8em;
+  --section-padding-h: 3.6em;
+  --card-border: 1px solid var(--color-border);
+  --color-accent-primary: var(--color-accent);
+  --color-accent-secondary: var(--color-accent);
+  --color-accent-contrast: var(--color-accent);
+  --bg-image: none;
+  --bg-overlay: transparent;
+  --watermark: none;
+  --logo: none;
+  --logo-dark: var(--logo);
+}
+
+
+/* ---- logo (top-right, override via logo: frontmatter) ---- */
+section::before {
+  content: "";
+  position: absolute;
+  top: 4%;
+  right: 5%;
+  width: 14%;
+  height: 0;
+  padding-bottom: 6%;
+  background: var(--logo) center / contain no-repeat;
+  opacity: 0.92;
+  z-index: 1;
+}
+[data-theme="dark"] section::before,
+section[data-theme="dark"]::before {
+  /* Repeats the full shorthand, not just background-image: weasyprint
+     fails to resolve a var()-based background-image longhand override
+     applied after an earlier background shorthand -- it resets to
+     `none` instead of swapping just the image (confirmed via isolated
+     repro, unrelated to CSS custom-property chaining itself, which
+     weasyprint handles fine on its own). Real browsers resolve this
+     correctly either way; this avoids relying on a longhand override
+     weasyprint (both the --pdf output and the ODP renderer's geometry
+     capture) gets wrong. */
+  background: var(--logo-dark) center / contain no-repeat;
+}
+
+
+/* ---- watermark (conference logo, brand mark) ---- */
+section::after {
+  display: block;
+  content: "";
+  position: absolute;
+  bottom: 4%;
+  right: 5%;
+  width: 10%;
+  height: 10%;
+  background: var(--watermark) right bottom / contain no-repeat;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.accent-primary { color: var(--color-accent-primary); stroke: var(--color-accent-primary); }
+.accent-secondary { color: var(--color-accent-secondary); stroke: var(--color-accent-secondary); }
+.accent-contrast { color: var(--color-accent-contrast); stroke: var(--color-accent-contrast); }
+svg.accent-primary, svg.accent-secondary, svg.accent-contrast { fill: none; }
+
+/* ---- layout defaults ---- */
+section {
+  font-size: 18pt;
+  padding: var(--section-padding-v) var(--section-padding-h);
+  display: flex;
+  flex-direction: column;
+}
+.slide-body {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 1.8em;
+}
+
+h1, h2, h3, h4, h5, h6 { margin: 0; }
+h2 { padding-top: 0; margin-bottom: 0.15em; }
+h4 { margin: 0.4em 0 0.15em; }
+h3::after {
+  display: block;
+  content: "";
+  width: 100%;
+  height: 0;
+  /* same 1px weight as the card border (--card-border); 2px accent read
+     as heavier than the light grey frame around it */
+  border-bottom: 1px solid var(--color-accent-primary);
+  margin-top: 0.3em;
+  opacity: 0.3;
+}
+.card.side-image {
+  align-self: center;
+  justify-self: center;
+  padding: 0.3em;
+  background: none;
+  border: none;
+}
+.card.side-image img { max-width: 8em; }
+.subtitle { margin-bottom: 0.6em; }
+h2 + .subtitle { font-size: 0.85em; }
+p { margin-bottom: 0.5em; }
+ul { margin: 0 14pt; }
+li { margin: 0.4em 0; line-height: 1.5; overflow-wrap: break-word; }
+ul { list-style: var(--list-style); }
+ul li::marker { color: var(--color-accent); font-weight: bold; }
+
+img { max-width: 100%; height: auto; border-radius: var(--img-radius); }
+section img { max-height: IMG_MAX_Hpx; object-fit: contain; display: block; margin-left: auto; margin-right: auto; }
+figure.video { margin: 0; display: flex; align-items: center; justify-content: center; height: 100%; min-height: 0; }
+figure.video video { width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--img-radius); }
+img.video-print { display: none; }
+[data-theme="dark"] section img,
+section[data-theme="dark"] img { max-height: 16em; }
+a { text-decoration: none; }
+
+blockquote {
+  border-left: 4px solid;
+  padding-left: 0.9em;
+  margin: 0.5em 0;
+}
+
+code {
+  font-family: var(--font-mono);
+}
+
+.note {
+  border-left: 0.25em solid var(--color-accent);
+  
+  padding: 0.5em 0.8em;
+  margin: 0.5em 0;
+  font-size: 0.8em;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+pre {
+  overflow: hidden;
+  border-radius: var(--radius);
+  padding: 0.55em 0.8em;
+  margin: 0.5em 0;
+  font-size: 0.75em;
+}
+pre code {
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 0.75em; }
+th, td { padding: 0.4em 0.6em; text-align: left; vertical-align: top; overflow-wrap: break-word; }
+th { font-weight: 700; }
+
+.grid { display: grid; gap: var(--gap); margin: 0 0 var(--gap) 0; }
+.grid > * { min-width: 0; }
+
+.card {
+  border-radius: var(--radius);
+  padding: 1em;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+.card h3 { margin-top: 0; margin-bottom: 0.5em; }
+.card p { margin-bottom: 0.5em; }
+.card p:last-child { margin-bottom: 0; }
+
+/* ---- metric cards (::: card {metric}) ---- */
+.card.metric {
+  text-align: center;
+  padding: 0.5em 0.2em;
+}
+.card.metric h3 {
+  font-size: 2.4em;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0 0 0.15em;
+  color: var(--color-accent-primary);
+}
+.card.metric h3::after { display: none; }
+.card.metric p {
+  color: var(--color-dimmed);
+  line-height: 1.3;
+  margin: 0;
+}
+/* metrics-N layout: center grid vertically in slide body */
+[class*="layout-metrics"] .slide-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+[class*="layout-metrics"] .slide-body .grid { width: 100%; margin: 0; }
+[class*="layout-metrics"] .slide-body .row { width: 100%; }
+
+.quote {
+  border-left: 0.25em solid;
+  padding-left: 1em;
+}
+
+.kicker { font-family: var(--font-mono); font-size: 0.75em; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.speaker { font-size: 1.05em; font-weight: 700; margin-top: 1.8em; }
+.speaker + .speaker { margin-top: 0.3em; }
+.contributor { font-size: 0.85em; }
+.contributor-label { font-family: var(--font-mono); font-size: 0.7em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.75; }
+.speaker-links { font-weight: 400; font-size: 0.8em; }
+.speaker-links a { margin-right: 0.6em; }
+.speaker-links svg { height: 0.9em; width: auto; vertical-align: middle; }
+
+footer {
+  position: absolute;
+  bottom: 1em;
+  left: var(--section-padding-h);
+  font-size: 0.6em;
+  text-align: left;
+  background: var(--footer-bg);
+  color: var(--footer-color);
+}
+.slide-num {
+  position: absolute;
+  bottom: 1em;
+  right: var(--section-padding-h);
+  font-size: 0.6em;
+  text-align: right;
+}
+
+/* ---- theme ---- */
+THEME_CSS
+
+LOGO_CSS
+
+.mermaid, .seaborn-plot, .pdg-plot {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  text-align: center;
+}
+.mermaid svg, .seaborn-plot svg, .pdg-plot svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---- ::: card {blueprint}: engineering-drawing panel for diagrams ----
+   Theme-independent on purpose (same blue on light and dark slides); a
+   ```pdg fence inside it renders with the matching blueprint palette
+   (render/dot.py). Grid = minor 0.6em + major 3em lines over the blue. */
+.card.blueprint {
+  background:
+    linear-gradient(rgba(143,211,255,0.16) 1px, transparent 1px) 0 0 / 3em 3em,
+    linear-gradient(90deg, rgba(143,211,255,0.16) 1px, transparent 1px) 0 0 / 3em 3em,
+    linear-gradient(rgba(143,211,255,0.07) 1px, transparent 1px) 0 0 / 0.6em 0.6em,
+    linear-gradient(90deg, rgba(143,211,255,0.07) 1px, transparent 1px) 0 0 / 0.6em 0.6em,
+    linear-gradient(160deg, #123f78 0%, #0b2f5c 100%);
+  border: 1px solid #8fd3ff;
+  color: #eaf4ff;
+  padding: 0.6em 0.8em;
+}
+.card.blueprint h3 { color: #8fd3ff; }
+.card.blueprint h3::after { border-bottom-color: #8fd3ff; }
+.card.blueprint p { color: #eaf4ff; }
+
+/* ---- predefined slide layouts ---- */
+.layout-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  align-items: start;
+  height: 100%;
+}
+
+.layout-image-right .col-right,
+.layout-image-left .col-left {
+  height: 100%;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.col-right img, .col-left img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.layout-cols img { max-height: none; }
+
+.result-full {
+  margin-top: 1em;
+  width: 100%;
+}
+.result-full img {
+  max-height: IMG_MAX_Hpx;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.col-left, .col-right {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.compare {
+  grid-template-columns: 1fr auto 1fr !important;
+  align-items: center;
+  height: 80%;
+  margin-bottom: 0;
+}
+.compare .col-left,
+.compare .col-right {
+  justify-content: center;
+}
+.card-arrow {
+  font-size: 2em;
+  padding: 0 0.3em;
+}
+.notes {
+  border-radius: var(--radius);
+  padding: 1em;
+  margin-top: 0.5em;
+  font-style: italic;
+}
+.notes.tag-green { background: var(--tag-green-bg); border-left: 0.25em solid var(--tag-green-border); }
+.notes.tag-yellow { background: var(--tag-yellow-bg); border-left: 0.25em solid var(--tag-yellow-border); }
+.notes.tag-red { background: var(--tag-red-bg); border-left: 0.25em solid var(--tag-red-border); }
+
+.note-green  { border-left-color: var(--tag-green-border); background: var(--tag-green-bg); }
+.note-yellow { border-left-color: var(--tag-yellow-border); background: var(--tag-yellow-bg); }
+.note-red    { border-left-color: var(--tag-red-border); background: var(--tag-red-bg); }
+
+.tag-compare {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  margin: 0.1em;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---- ecosystem layout ---- */
+.layout-ecosystem h3 { font-size: 0.7em; margin-bottom: 0.1em; }
+.layout-ecosystem h3::after { display: none; }
+.layout-ecosystem .card { padding: 0.3em 0.5em; margin-bottom: 0.4em; }
+.layout-ecosystem .card p { margin: 0; line-height: 1.2; display: inline; }
+.layout-ecosystem .card.metric p { display: block; }
+.layout-ecosystem .card.metric {
+  padding: 0.2em 0.15em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.layout-ecosystem .card.metric h3 { font-size: 1.3em; margin-bottom: 0.05em; }
+.layout-ecosystem .card.metric p { font-size: 0.6em; }
+.layout-ecosystem .card img {
+  height: 0.9em;
+  width: 2.5em;
+  object-fit: contain;
+  display: inline-block;
+  margin: 0.08em 0.2em;
+  vertical-align: middle;
+}
+.layout-ecosystem .grid { margin: 0; gap: 0.4em; }
+.layout-ecosystem .card.metric h3 {
+  font-size: 1.5em;
+}
+
+/* ---- timeline layouts ---- */
+/* ::: grid {cols=1} of ::: card blocks, flex (not CSS grid) so any item
+   count distributes naturally. The spine spans a fixed length (full
+   available height/width); justify-content: space-evenly auto-spaces
+   however many milestones there are along it -- no manually-tuned
+   gap/margin per item count. Items alternate sides of the spine -- the
+   connector stub's direction (left card <- stub -> right card,
+   vertical; above <- stub -> below, horizontal) flips every item, the
+   literal "line going up and down". {focus} on a card scales it up.
+   {label="Q1"} on a card prints a short name directly on the spine,
+   next to that card's own milestone dot. */
+.layout-timeline-vertical .grid,
+.layout-timeline-horizontal .grid {
+  display: flex;
+  position: relative;
+}
+/* grid fills the remaining body height via flex:1, not height:100% --
+   weasyprint resolves the percentage against more than the leftover
+   space below the heading, pushing the whole grid onto a new page
+   (broke --pdf/--odp: cards landed on an extra page). */
+.layout-timeline-vertical .slide-body {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0; /* the spine runs to the section padding, not 1.8em
+                        short of it (sat too high, empty band below) */
+}
+.layout-timeline-vertical .grid {
+  flex-direction: column;
+  justify-content: space-evenly;
+  flex: 1;
+  min-height: 0;
+  margin: 0.8em 0 0; /* clear the heading: the first card touched it */
+  padding: 0 2.5em;
+}
+.layout-timeline-vertical .grid::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0.12em;
+  background: var(--color-accent-primary);
+  opacity: 0.4;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .grid {
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: flex-start;
+  margin-top: 8em; /* reserves room for odd cards shifted above the spine */
+}
+.layout-timeline-horizontal .grid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0.12em;
+  background: var(--color-accent-primary);
+  opacity: 0.4;
+}
+.layout-timeline-vertical .card {
+  position: relative;
+  width: calc(50% - 2.5em); /* padding (2.5em) on both sides makes the
+                               card-to-spine gap exactly 2.5em either way */
+  padding: 0.6em 1em;
+}
+.layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
+.layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
+/* consecutive cards sit on opposite sides of the spine, so they may
+   overlap vertically: 4 cards stacked end to end overflowed the slide.
+   Card i and i+2 (same side) still clear each other while the card
+   between them is taller than 3em. */
+.layout-timeline-vertical .card + .card { margin-top: -1.5em; }
+.layout-timeline-horizontal .card {
+  position: relative;
+  flex: 0 1 11em; /* basis 11em, may shrink: few milestones leave free
+                     space for space-evenly; 5-6 shrink to fit the
+                     width instead of overflowing the slide */
+  min-width: 0;
+  height: 6em; /* fixed so the stub below reliably reaches the spine --
+                  keep horizontal-timeline card text brief, it won't
+                  clip (no overflow:hidden -- that would also clip the
+                  card's own connector dot/stub below) */
+  margin-top: 2em; /* stub gap below the spine */
+}
+.layout-timeline-horizontal .card:nth-child(odd) {
+  margin-top: -8em; /* 6em card + 2em stub, shifted above the spine */
+}
+/* connector dot on the spine */
+.layout-timeline-vertical .card::before,
+.layout-timeline-horizontal .card::before {
+  content: "";
+  position: absolute;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  border: 0.15em solid var(--color-background);
+  z-index: 1;
+}
+.layout-timeline-vertical .card:nth-child(odd)::before  { right: -2.8em; top: 1em; }
+.layout-timeline-vertical .card:nth-child(even)::before { left: -2.8em; top: 1em; }
+.layout-timeline-horizontal .card::before { left: 50%; transform: translateX(-50%); }
+.layout-timeline-horizontal .card:nth-child(even)::before { top: -2.3em; }
+.layout-timeline-horizontal .card:nth-child(odd)::before  { bottom: -2.3em; }
+/* connector stub -- the alternating line itself, not just the dot */
+.layout-timeline-vertical .card::after {
+  content: "";
+  position: absolute;
+  top: 1.3em;
+  height: 0.08em;
+  width: 2.5em;
+  background: var(--color-accent-primary);
+  opacity: 0.5;
+}
+.layout-timeline-vertical .card:nth-child(odd)::after  { right: -2.5em; }
+.layout-timeline-vertical .card:nth-child(even)::after { left: -2.5em; }
+.layout-timeline-horizontal .card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0.08em;
+  height: 2em;
+  background: var(--color-accent-primary);
+  opacity: 0.5;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .card:nth-child(even)::after { top: -2em; }
+.layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
+/* {label="..."}: short name printed directly on the spine, next to
+   this card's own dot -- distinct from the card's fuller ### header */
+.timeline-label {
+  position: absolute;
+  font-size: 0.6em;
+  font-weight: 700;
+  color: var(--color-accent-primary);
+  white-space: nowrap;
+  z-index: 2;
+}
+/* beside the dot, past the spine, vertically centred on it. Offsets are
+   in the label's own 0.6em font: 5.5em = 3.3 card-em = dot edge + gap;
+   top 1.8em centres it on the dot (top 1em, 0.9em tall). Was above the
+   dot, touching the spine. */
+.layout-timeline-vertical .card:nth-child(odd) .timeline-label {
+  left: 100%;
+  margin-left: 5.5em;
+  top: 1.8em;
+}
+.layout-timeline-vertical .card:nth-child(even) .timeline-label {
+  right: 100%;
+  margin-right: 5.5em;
+  top: 1.8em;
+}
+/* beside the dot: centre on it, then shift right. margin-left, not
+   translate(calc(-50% + Xem)) -- weasyprint crashes on calc() inside
+   transform (AttributeError in its cascade), breaking --pdf/--odp. */
+.layout-timeline-horizontal .card:nth-child(even) .timeline-label {
+  left: 50%;
+  top: -2.3em;
+  margin-left: 1.4em;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .card:nth-child(odd) .timeline-label {
+  left: 50%;
+  bottom: -2.3em;
+  margin-left: 1.4em;
+  transform: translateX(-50%);
+}
+/* {focus}: bigger, highlighted with the theme's own card colours (accent
+   border + accent background) -- not box-shadow, which weasyprint
+   ignores, so the highlight vanished in PDF and ODP. Size via
+   font-size/padding, not transform: scale(), which would drag the card's
+   own ::before/::after connector (positioned in em relative to the card)
+   off the spine with it. Vertical gets the font-size bump too;
+   horizontal's height/margin are all in em relative to its own
+   font-size, so bumping it there would throw off the exact
+   spine-alignment math -- padding only. */
+.layout-timeline-vertical .card.focus,
+.layout-timeline-horizontal .card.focus {
+  border: 2px solid var(--color-accent-primary);
+  background: var(--color-accent-bg);
+  z-index: 2;
+}
+.layout-timeline-horizontal .card.focus {
+  padding: 1.3em;
+}
+.layout-timeline-vertical .card.focus {
+  padding: 0.8em 1.2em;
+  font-size: 1.1em;
+}
+.layout-timeline-horizontal .slide-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ---- slide transitions ---- */
+section[data-transition]:not([data-transition="none"]).active > .slide-body {
+  animation-duration: .4s;
+  animation-fill-mode: both;
+}
+
+section[data-transition="fade"].active > .slide-body   { animation-name: sldr-fade; }
+section[data-transition="slide"].active > .slide-body  { animation-name: sldr-slide; }
+section[data-transition="zoom"].active > .slide-body   { animation-name: sldr-zoom; }
+section[data-transition="wipe"].active > .slide-body   { animation-name: sldr-wipe; }
+
+@keyframes sldr-fade {
+  from { opacity: 0; }
+}
+@keyframes sldr-slide {
+  from { opacity: 0; translate: 3em 0; }
+}
+@keyframes sldr-zoom {
+  from { opacity: 0; scale: .85; }
+}
+@keyframes sldr-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+}
+
+/* ---- outgoing slide crossfade ---- */
+section[data-transition]:not([data-transition="none"]).outgoing {
+  display: flex !important;
+  z-index: -1;
+}
+
+/* ---- screen mode ---- */
+@media screen {
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #111;
+  }
+  body > section {
+    display: none !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: SLIDE_Wpx;
+    height: SLIDE_Hpx;
+    transform-origin: center center;
+    transform: translate(-50%, -50%) scale(var(--s));
+    overflow: hidden !important;
+  }
+  body > section.active {
+    display: flex !important;
+  }
+}
+
+.layout-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 3.2em;
+}
+.layout-title h1 {
+  font-size: var(--title-h1-size, 3.5em);
+  max-width: 62%;
+}
+.layout-title .subtitle {
+  margin-bottom: 0.3em;
+  font-size: var(--title-subtitle-size, 1.8em);
+  max-width: 62%;
+}
+.layout-title .side-image {
+  position: absolute;
+  right: 8%;
+  bottom: 22%;
+  max-width: 26%;
+  z-index: 1;
+}
+.layout-title .side-image img {
+  max-width: 100%;
+  max-height: 14em;
+  object-fit: contain;
+  display: block;
+}
+
+/* ---- print mode ---- */
+@media print {
+  body > section {
+    position: relative !important;
+    transform: none !important;
+    width: SLIDE_Wpx;
+    height: SLIDE_Hpx;
+    overflow: hidden;
+    page-break-before: always;
+    break-before: page;
+  }
+  body > section:first-child { page-break-before: avoid; }
+  body > section:last-child { page-break-after: avoid; }
+  #decktile-nav, #presenter-panel { display: none !important; }
+  .slide-body {
+    flex: 1;
+    min-height: auto;
+    padding-bottom: 1.8em;
+    overflow: hidden;
+  }
+  pre {
+    max-height: none;
+    overflow: visible;
+  }
+  /* video slides: single big screenshot centered. The figure is
+     absolutely positioned: weasyprint collapses height:100% through the
+     .slide-body flex layout, and a flowed figure would spill to a second
+     page. Absolute pinning makes the img size resolvable and keeps it
+     off the page flow. */
+  figure.video {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  figure.video video { display: none; }
+  figure.video img.video-print {
+    display: block;
+    max-height: none;
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+  }
+}
+
+@page {
+  size: SLIDE_Wpx SLIDE_Hpx;
+  margin: 0;
+}
+
+/* ---- nav bar (screen only) ---- */
+#decktile-nav { display: none; }
+@media screen {
+  #decktile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 27pt;
+    align-items: center;
+    justify-content: center;
+    gap: 12pt;
+    background: rgba(0,0,0,0.7);
+    color: #aaa;
+    font-family: system-ui, sans-serif;
+    font-size: 10pt;
+    z-index: 1000;
+    user-select: none;
+  }
+  #decktile-nav button {
+    background: none;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 2pt 9pt;
+    border-radius: 3pt;
+    cursor: pointer;
+    font-size: 10pt;
+  }
+  #decktile-nav button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  #decktile-nav button:disabled { opacity: 0.3; cursor: default; }
+  #decktile-nav span { min-width: 45pt; text-align: center; }
+  #decktile-nav.hidden { opacity: 0; pointer-events: none; }
+  #decktile-nav { transition: opacity 0.4s; }
+}

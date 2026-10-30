@@ -19,7 +19,7 @@ pygments_style: ayu-mirage
 @speaker name="Reza Jelveh" role="Solution Architect, Dynamia AI — Makers of HAMi" github=github.com/fishman twitter=@rezaio email=reza@dynamia.io
 
 <!--
-Welcome to the HAMi demo. This deck showcases all slidr features: layouts, grids, cards, tables, quotes, speaker notes, and the new @layout directive.
+Welcome to the HAMi demo. This deck showcases all decktile features: layouts, grids, cards, tables, quotes, speaker notes, and the new @layout directive.
 -->
 
 ---

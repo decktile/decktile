@@ -1,0 +1,156 @@
+/* decktile KubeCon CloudNativeCon Japan 2026 theme */
+
+:root {
+  --color-background: #ffffff;
+  --color-background-stripe: #e8e8f0;
+  --color-foreground: #2a2a5a;
+  --color-dimmed: #6a7a99;
+  --color-accent: #3939D8;
+  --color-accent-bg: rgba(57, 57, 216, 0.12);
+  --color-border: #c0c4d6;
+  --color-card-bg: #f5f6fa;
+  --bg-image: url("assets/brand/kubecon_japan/background.png");
+  --bg-overlay: rgba(255,255,255,0.96);
+  --watermark: url("assets/brand/kubecon_japan/cncf_logo.svg");
+  --logo-dark: url("assets/brand/dynamia-logo-white.png");
+  --tag-green-bg: #e8f5e9;
+  --tag-cyan-bg: #e3f0ff;
+  --tag-yellow-bg: #fff9e6;
+  --tag-red-bg: #ffe8eb;
+  --tag-default-bg: #f5f5f5;
+  --tag-green-border: #2e7d32;
+  --tag-cyan-border: #3939D8;
+  --tag-yellow-border: #f9a825;
+  --tag-red-border: #DB1E3D;
+  --tag-default-border: #ccc;
+
+  --color-accent-primary: #3939D8;
+  --color-accent-secondary: #DB1E3D;
+  --color-accent-contrast: #1D1D6B;
+  --list-style: "\25B8  ";
+  --title-h1-size: 2.5em;
+}
+
+body {
+  background: #1D1D6B;
+}
+
+[data-theme="dark"] {
+  --color-background: #06062D;
+  --color-background-stripe: #0d0d3d;
+  --color-foreground: #e0e0f0;
+  --color-dimmed: #8899bb;
+  --color-accent: #5b5bf0;
+  --color-accent-bg: rgba(91, 91, 240, 0.15);
+  --color-border: #1a1a44;
+  --color-card-bg: #0d0d3d;
+  --bg-overlay: rgba(6, 6, 45, 0.90);
+  --tag-green-bg: #1a2e1a;
+  --tag-cyan-bg: #1a2a3a;
+  --tag-yellow-bg: #2e2a1a;
+  --tag-red-bg: #2e1a1a;
+  --tag-default-bg: #1a1a2e;
+  --tag-green-border: #2d8a3e;
+  --tag-cyan-border: #3939D8;
+  --tag-yellow-border: #8a7a2d;
+  --tag-red-border: #DB1E3D;
+  --tag-default-border: #2a2a4a;
+
+  --color-accent-primary: #5b5bf0;
+  --color-accent-secondary: #ff4d6a;
+  --color-accent-contrast: #8899cc;
+}
+
+section {
+  background: linear-gradient(var(--bg-overlay), var(--bg-overlay)), var(--bg-image) left top / cover no-repeat;
+  color: var(--color-foreground);
+  font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
+}
+
+/* Title slide hides watermark */
+.layout-title section::after {
+  background-image: none;
+}
+section::after {
+  opacity: 0.9;
+}
+.layout-title {
+  background: linear-gradient(135deg, rgba(29,29,107,0.85) 0%, rgba(57,57,216,0.85) 60%, rgba(10,10,58,0.85) 100%), var(--bg-image) left top / cover no-repeat;
+  color: #ffffff;
+}
+.layout-title h1,
+.layout-title h2,
+.layout-title h3,
+.layout-title h4,
+.layout-title h5,
+.layout-title h6 { color: #ffffff; }
+.layout-title .kicker { color: rgba(255,255,255,0.8); }
+.layout-title .subtitle { color: rgba(255,255,255,0.7); }
+.layout-title .speaker { color: rgba(255,255,255,0.8); }
+.layout-title .speaker .role { color: rgba(255,255,255,0.5); }
+.layout-title .speaker-links a { color: rgba(255,255,255,0.75); }
+.layout-title .speaker-links svg { stroke: rgba(255,255,255,0.75); }
+
+.layout-title { --logo: var(--logo-dark); }
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-foreground);
+  font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
+}
+h1 { font-size: 2.5em; font-weight: 700; }
+h2 { font-size: 1.8em; padding-top: 0; margin-bottom: 0.15em; }
+h3 { font-size: 1.15em; }
+h4 { font-size: 0.85em; }
+h3::after {
+  display: block;
+  content: "";
+  width: 100%;
+  height: 0;
+  border-bottom: 2px solid var(--color-accent-primary);
+  margin-top: 0.3em;
+  opacity: 0.4;
+}
+
+li { font-size: 0.9em; padding-left: 0.3em; }
+ul li::marker { color: var(--color-accent-primary); font-weight: bold; }
+
+blockquote {
+  border-left-color: var(--color-accent-primary);
+  color: var(--color-dimmed);
+}
+
+th { background: var(--color-accent-bg); color: var(--color-foreground); font-weight: 700; }
+th, td { border: 1px solid var(--color-border); }
+tr:nth-child(even) { background: var(--color-background-stripe); }
+
+a { color: var(--color-accent-primary); }
+
+.card {
+  background: var(--color-card-bg);
+  border: var(--card-border);
+}
+.card p { font-size: 0.9em; }
+
+.quote { border-left-color: var(--color-accent-primary); color: var(--color-accent-primary); }
+
+.kicker { color: var(--color-accent-primary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.75em; }
+.speaker { color: var(--color-foreground); }
+.speaker .role { color: var(--color-dimmed); }
+
+footer { color: var(--color-dimmed); }
+.slide-num { color: var(--color-dimmed); }
+
+.subtitle { color: var(--color-dimmed); }
+h2 + .subtitle { font-size: 0.85em; }
+.tiny { font-size: 0.7em; color: var(--color-dimmed); }
+.muted { color: var(--color-dimmed); }
+
+.accent-primary { color: var(--color-accent-primary); fill: var(--color-accent-primary); stroke: var(--color-accent-primary); }
+.accent-secondary { color: var(--color-accent-secondary); fill: var(--color-accent-secondary); stroke: var(--color-accent-secondary); }
+.accent-contrast { color: var(--color-accent-contrast); fill: var(--color-accent-contrast); stroke: var(--color-accent-contrast); }
+
+.tag-green  { border-color: var(--tag-green-border); background: var(--tag-green-bg); }
+.tag-cyan   { border-color: var(--tag-cyan-border); background: var(--tag-cyan-bg); }
+.tag-yellow { border-color: var(--tag-yellow-border); background: var(--tag-yellow-bg); }
+.tag-red    { border-color: var(--tag-red-border); background: var(--tag-red-bg); }
+.tag-quote  { border-left: 0.25em solid var(--color-accent-primary); font-style: italic; background: none; }

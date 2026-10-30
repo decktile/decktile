@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Slidr'
+project = 'Decktile'
 copyright = '2026, Reza Jelveh'
 author = 'Reza Jelveh'
 
@@ -32,7 +32,7 @@ language = 'en'
 
 html_theme = 'furo'
 html_static_path = ['_static']
-html_title = 'Slidr'
+html_title = 'Decktile'
 
 # -- Path setup --------------------------------------------------------------
 

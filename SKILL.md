@@ -1,10 +1,10 @@
-# Slidr slide creation
+# Decktile slide creation
 
-Create markdown presentations for slidr (markdown to styled HTML slides with PDF output).
+Create markdown presentations for decktile (markdown to styled HTML slides with PDF output).
 
 ## Quick start
 
-Generate a `.md` file and build with `pdm run slidr file.md`. Slides are separated
+Generate a `.md` file and build with `pdm run decktile file.md`. Slides are separated
 by `---` on its own line. The first YAML frontmatter block sets global options.
 
 ## Frontmatter
@@ -400,7 +400,7 @@ ax.barh(0, 70, color="#22c55e")
 
 Theme colors available via rcParams: `plt.rcParams["axes.facecolor"]`,
 `"text.color"`, `"axes.edgecolor"`, `"xtick.color"`. Requires `seaborn` +
-`matplotlib` (install via `pdm install -G plot` or `slidr[plot]`).
+`matplotlib` (install via `pdm install -G plot` or `decktile[plot]`).
 
 ### predictygraph
 
@@ -502,10 +502,10 @@ footer, .slide-num { color: var(--color-dimmed); }
 .tag-red   { border-color: #ff7a7a; }
 ```
 
-Apply via: `pdm run slidr slides.md --theme ./my-theme.css` or reference by filename
+Apply via: `pdm run decktile slides.md --theme ./my-theme.css` or reference by filename
 in frontmatter: `theme: my-theme`.
 
 ## Reference
 
 See `examples/features_demo.md` for a complete 10-slide deck exercising all features.
-See `src/slidr/themes/default.css` for the default theme structure.
+See `src/decktile/themes/default.css` for the default theme structure.

@@ -1,24 +1,24 @@
-# CLAUDE.md — Slidr (Python)
+# CLAUDE.md — Decktile (Python)
 
-Slidr is a Python CLI that turns markdown into styled HTML + PDF + ODP. Uses markdown-it-py for parsing, weasyprint for both PDF and ODP layout, odfdo for ODP, Jinja2 for templates. CSS passthrough, no CSS parser needed for HTML/PDF. ODP geometry and color come from weasyprint's own resolved layout, not a separate parser.
+Decktile is a Python CLI that turns markdown into styled HTML + PDF + ODP. Uses markdown-it-py for parsing, weasyprint for both PDF and ODP layout, odfdo for ODP, Jinja2 for templates. CSS passthrough, no CSS parser needed for HTML/PDF. ODP geometry and color come from weasyprint's own resolved layout, not a separate parser.
 
 ## Build & test
 
 ```bash
 pdm install                # install deps
-pdm run slidr slides.md    # build HTML
-pdm run slidr slides.md --odp     # + ODP
-pdm run slidr slides.md --pdf     # + PDF
-pdm run slidr --dist slides.md    # HTML + assets as zip
+pdm run decktile slides.md    # build HTML
+pdm run decktile slides.md --odp     # + ODP
+pdm run decktile slides.md --pdf     # + PDF
+pdm run decktile --dist slides.md    # HTML + assets as zip
 pdm run pytest             # run tests
 ```
 
 ## Architecture
 
 ```
-src/slidr/
+src/decktile/
 ├── __init__.py
-├── __main__.py           # python -m slidr entry
+├── __main__.py           # python -m decktile entry
 ├── cli.py                # Typer CLI (single callback pattern)
 ├── parser/
 │   ├── ast.py            # Node types (Heading, Paragraph, Grid, Card, Table, Quote, ListNode, AttrNode, Inline)
@@ -32,8 +32,8 @@ src/slidr/
 │   ├── parser.py         # tinycss2: parse base.css + theme CSS → PPTX style dict (colors, fonts, padding)
 │   └── loader.py         # Raw CSS passthrough + variable extraction (legacy)
 ├── render/
-│   ├── ir.py             # AST → SlideIR intermediate representation. build_ir(), _convert_node(), _apply_layout_ir(). Elem.id (data-slidr-id) + Elem.box (BoxGeometry, filled by odf/geometry.py) for ODP only
-│   ├── html.py           # Jinja2: SlideIR → HTML, with data-slidr-id on every emitted tag. render_from_ir() split out so odp.py renders the exact same IR/HTML pairing
+│   ├── ir.py             # AST → SlideIR intermediate representation. build_ir(), _convert_node(), _apply_layout_ir(). Elem.id (data-decktile-id) + Elem.box (BoxGeometry, filled by odf/geometry.py) for ODP only
+│   ├── html.py           # Jinja2: SlideIR → HTML, with data-decktile-id on every emitted tag. render_from_ir() split out so odp.py renders the exact same IR/HTML pairing
 │   ├── pdf.py            # weasyprint: HTML file → PDF
 │   ├── odf/              # ODP renderer internals (see below)
 │   ├── odp.py            # thin orchestrator: build_ir → odf.geometry.annotate_geometry → one DrawPage per slide via odf.shapes + odf.styles
@@ -41,7 +41,7 @@ src/slidr/
 │       ├── shell.html    # Main HTML template (Jinja2)
 │       ├── presenter.html # Presenter view (grid: main slide | next preview / notes)
 │       ├── base.css      # Structural CSS (reset, layout, screen/print media, nav bar)
-│       ├── slidr.js      # Shared JS: navigation, fullscreen, presenter, wheel, keyboard
+│       ├── decktile.js      # Shared JS: navigation, fullscreen, presenter, wheel, keyboard
 │       └── presenter.html # Presenter view template
 └── themes/
     ├── default.css       # Built-in light theme (CSS variables, card, quote, table, tag colors)
@@ -53,7 +53,7 @@ src/slidr/
 ## ODP rendering (render/odf/)
 
 ODP output is **geometry-driven**, not a second layout/paint engine: the
-same HTML string (with a `data-slidr-id` on every element) is rendered
+same HTML string (with a `data-decktile-id` on every element) is rendered
 through weasyprint, and its resolved layout box tree supplies exact
 position, size, and computed CSS style for each `Elem`.
 
@@ -146,12 +146,12 @@ slides.md
 - **CSS is raw passthrough.** The `style:` frontmatter block is injected directly into `<style>`. No CSS parser. The browser (or weasyprint) handles everything. tinycss2 is used ONLY for extracting theme colors for PPTX.
 - **Card auto-grouping.** Two or more consecutive `::: card` blocks without a `::: grid` wrapper are automatically wrapped in a Grid with cols=N. This simplifies the markdown syntax.
 - **Jinja2 templates.** Both shell.html and presenter.html use Jinja2. CSS injection uses plain text placeholders (SLIDE_W, THEME_CSS, LOGO_CSS) replaced by Python before Jinja2 processes the template, avoiding escaping conflicts.
-- **Bidirectional presenter sync.** `window.slidrCurrent` is an `Object.defineProperty` setter that calls `show()`. The presenter polls `window.opener.slidrCurrent` every 300ms. Clicking the presenter's main slide advances both windows.
+- **Bidirectional presenter sync.** `window.decktileCurrent` is an `Object.defineProperty` setter that calls `show()`. The presenter polls `window.opener.decktileCurrent` every 300ms. Clicking the presenter's main slide advances both windows.
 - **Print CSS in base.css.** `@media print` resets absolute positioning from screen mode. `@page { size: Wpx Hpx; margin: 0 }` sets page dimensions for weasyprint. `page-break-before: always` on sections.
 - **Screen scaling via CSS transform.** `body > section` renders at native pixel size (e.g., 1280x720px), then scales to fit viewport via `transform: translate(-50%, -50%) scale(var(--s))` where `--s` is computed by JavaScript.
 - **Subtitle extraction.** `build_ir` extracts `@subtitle` AttrNode immediately after the h2 heading and places it outside layout columns. `_render_slide` in html.py does the same for HTML-only path. This keeps subtitles tight to the heading via `h2 { margin-bottom: 0.15em }` (kubecon values; h2 also gets `padding-top: 0`) and sizes them 0.85em via `h2 + .subtitle`.
 - **Title font size configurable.** `--title-h1-size` (default `3.5em`) and `--title-subtitle-size` (default `1.8em`) are CSS variables in base.css. Themes override them in `:root`.
-- **Plot deps as optional-dependencies.** `seaborn` and `pillow` are in `[project.optional-dependencies] plot` for workspace inheritance. The `plot` dependency-group exists for CI. Both declared so `slidr[plot]` resolves via PEP 621 and `pdm install -G plot` works in CI.
+- **Plot deps as optional-dependencies.** `seaborn` and `pillow` are in `[project.optional-dependencies] plot` for workspace inheritance. The `plot` dependency-group exists for CI. Both declared so `decktile[plot]` resolves via PEP 621 and `pdm install -G plot` works in CI.
 - **Slide transitions.** `@transition <name>` directive per slide, `transition: <name>` in frontmatter for default. Supported: `fade`, `slide`, `zoom`, `flip`, `wipe`. Implemented via CSS `@keyframes` triggered by `.active` class. 0.4s duration, incoming-only.
 - **Grid card variants.** `::: card {side-image}` sits beside content without affecting row sizing -- centered, no background/border.
 
@@ -168,7 +168,7 @@ user style: block (frontmatter overrides)
 ## File conventions
 
 - `base.css` uses `SLIDE_W`, `SLIDE_H`, `THEME_CSS`, `LOGO_CSS` as text placeholders. Python replaces them before Jinja2.
-- `shell.html` uses `{% include "slidr.js" %}` for shared JS.
+- `shell.html` uses `{% include "decktile.js" %}` for shared JS.
 - `presenter.html` has its own inline JS (different from main -- grid layout, sync polling, notes).
 - ALL font sizes use `em` (relative to 18pt base on section). No `px` for text.
 - Spacing uses `em` for consistency. Percentages converted: `10%` of 720px slide height = 72px / 18 = 4em.
@@ -176,7 +176,7 @@ user style: block (frontmatter overrides)
 
 ## Fenced blocks
 
-Slidr supports multiple fenced block types for diagrams and visualizations:
+Decktile supports multiple fenced block types for diagrams and visualizations:
 
 | Language | Renderer | Description |
 |----------|----------|-------------|
@@ -232,12 +232,12 @@ Layout-ecosystem specifics:
 ## Seaborn styles
 
 The `seaborn_theme` frontmatter field accepts a seaborn palette name
-(`Paired` default, `deep`, `muted`, `pastel`, etc.) or a slidr theme name
-matching a CSS file in `slidr/themes/<name>.css`. CSS `:root` variables
+(`Paired` default, `deep`, `muted`, `pastel`, etc.) or a decktile theme name
+matching a CSS file in `decktile/themes/<name>.css`. CSS `:root` variables
 are parsed and mapped to matplotlib rcParams (card bg → axes.facecolor,
 foreground → text.color, accent → edgecolor, dimmed → tick colors, font).
 
-Style modules in `slidr.seaborn_styles.<name>` take precedence over CSS
+Style modules in `decktile.seaborn_styles.<name>` take precedence over CSS
 for themes needing rcParams not derivable from CSS variables (e.g. custom
 palette overrides, special matplotlib settings).
 
@@ -261,7 +261,7 @@ default palette for all themes unless overridden.
 ## Testing
 
 - Always add tests after implementing new features. Tests are mandatory, not optional.
-- Place tests in `tests/test_<component>.py` where `<component>` matches the module name (e.g. `tests/test_odp.py` for `src/slidr/render/odp.py`, `tests/test_parser.py` for `src/slidr/parser/markdown.py`).
+- Place tests in `tests/test_<component>.py` where `<component>` matches the module name (e.g. `tests/test_odp.py` for `src/decktile/render/odp.py`, `tests/test_parser.py` for `src/decktile/parser/markdown.py`).
 - If a feature spans multiple components, put tests in the file matching the primary component.
 - Run `pdm run pytest` after writing tests to confirm they pass.
 - Test naming: `test_<function_name>_<scenario>` (e.g. `test_merge_text_elements_separated_by_card`).

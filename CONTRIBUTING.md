@@ -2,7 +2,7 @@
 
 ## ODP output
 
-Slidr has two ODP output modes. Neither is complete, but the screenshot
+Decktile has two ODP output modes. Neither is complete, but the screenshot
 approach is production-ready.
 
 - **`--image-odp` (production-ready)**: Renders each slide to PNG via weasyprint +
@@ -15,7 +15,7 @@ approach is production-ready.
 The recommended workflow for editable slides:
 
 ```bash
-pdm run slidr slides.md --pdf
+pdm run decktile slides.md --pdf
 # Open in LibreOffice Draw → Select All → Copy → Paste into LibreOffice Impress
 ```
 
@@ -28,7 +28,7 @@ Areas that need help with the programmatic ODP renderer:
 
 ## Obsidian extension
 
-An Obsidian plugin that renders `.md` files as slidr presentations directly
+An Obsidian plugin that renders `.md` files as decktile presentations directly
 in the editor. Key features: live preview panel, build-on-save, presenter
 mode in a separate pane. Requires familiarity with the Obsidian plugin API
 and TypeScript.
@@ -38,21 +38,21 @@ and TypeScript.
 ```bash
 pdm install                # core + HTML/PDF/ODP
 pdm install -G plot        # + seaborn/matplotlib
-pdm run slidr slides.md
+pdm run decktile slides.md
 ```
 
 ## seaborn support (done)
 
 ` ```seaborn ` fenced blocks execute Python in-process and render as inline SVG.
-Requires `pdm install -G plot`. See `src/slidr/render/seaborn.py` and `README.md`.
+Requires `pdm install -G plot`. See `src/decktile/render/seaborn.py` and `README.md`.
 
 ## Diagrams (done)
 
 ` ```pdg ` fenced blocks render with [predictygraph](https://pypi.org/project/predictygraph/),
-a Python dependency (no system tools). See `src/slidr/render/pdg.py` and `README.md`.
+a Python dependency (no system tools). See `src/decktile/render/pdg.py` and `README.md`.
 
 ## mermaid support (done)
 
 ` ```mermaid ` fenced blocks render via the `mmdc` Python package to SVG (HTML)
 and PDF (ODP). The `mmdc` package is bundled as a dependency. See
-`src/slidr/render/ir.py` mermaid handling and `README.md`.
+`src/decktile/render/ir.py` mermaid handling and `README.md`.

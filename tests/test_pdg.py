@@ -1,6 +1,6 @@
 """Tests for ```pdg blocks rendered with predictygraph."""
 
-from slidr.render.pdg import render_pdg_svg, theme_css
+from decktile.render.pdg import render_pdg_svg, theme_css
 
 
 def test_pdg_renders_svg():

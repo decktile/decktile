@@ -6,7 +6,7 @@ title: predictygraph Demo
 
 @kicker Readable diagrams inside slides
 
-@speaker name="Slidr" role="Text-to-graph rendering"
+@speaker name="Decktile" role="Text-to-graph rendering"
 
 ---
 

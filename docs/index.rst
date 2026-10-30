@@ -1,4 +1,4 @@
-Slidr
+Decktile
 =====
 
 Markdown to styled HTML slides with PDF and ODP output.
@@ -17,36 +17,36 @@ Quickstart
 .. code-block:: bash
 
    pdm install
-   pdm run slidr slides.md
+   pdm run decktile slides.md
 
 API Reference
 -------------
 
-.. automodule:: slidr.parser.ast
+.. automodule:: decktile.parser.ast
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: slidr.parser.markdown
+.. automodule:: decktile.parser.markdown
    :members:
    :undoc-members:
 
-.. automodule:: slidr.render.ir
+.. automodule:: decktile.render.ir
    :members:
    :undoc-members:
 
-.. automodule:: slidr.render.html
+.. automodule:: decktile.render.html
    :members:
    :undoc-members:
 
-.. automodule:: slidr.render.odp
+.. automodule:: decktile.render.odp
    :members:
    :undoc-members:
 
-.. automodule:: slidr.render.pdf
+.. automodule:: decktile.render.pdf
    :members:
    :undoc-members:
 
-.. automodule:: slidr.cli
+.. automodule:: decktile.cli
    :members:
    :undoc-members:

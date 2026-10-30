@@ -1,6 +1,6 @@
-# Slidr Theme Guide
+# Decktile Theme Guide
 
-Slidr themes use CSS custom properties. Override them via frontmatter
+Decktile themes use CSS custom properties. Override them via frontmatter
 `style:` block or by creating a new theme file.
 
 ## Theme structure

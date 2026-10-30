@@ -1,6 +1,6 @@
 import pytest
-from slidr.parser.markdown import parse
-from slidr.parser.ast import Heading, Paragraph, Table, Quote, Card, Grid
+from decktile.parser.markdown import parse
+from decktile.parser.ast import Heading, Paragraph, Table, Quote, Card, Grid
 
 
 def test_parse_simple():
@@ -55,7 +55,7 @@ def test_parse_slide_notes_first_line_indentation_preserved():
 def test_hidden_slide():
     doc = parse("---\ntheme: t\n---\n\n# First\n\n---\n\n@hidden\n\n# Hidden\n\n---\n\n# Third")
     assert len(doc.slides) == 2
-    from slidr.parser.ast import Heading
+    from decktile.parser.ast import Heading
     headings = []
     for s in doc.slides:
         for n in s.children:
@@ -160,7 +160,7 @@ def test_parse_paragraph_touching_card_kept_separate():
 
 
 def test_parse_notes_strips_blockquote_marker():
-    from slidr.parser.ast import Notes
+    from decktile.parser.ast import Notes
     nodes = parse("---\ntitle: t\n---\n\n::: notes\n> quoted note\n:::\n").slides[0].children
     notes = next(n for n in nodes if isinstance(n, Notes))
     assert notes.content == "quoted note"

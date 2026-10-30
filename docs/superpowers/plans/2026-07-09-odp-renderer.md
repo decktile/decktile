@@ -2,9 +2,9 @@
 
 > **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
 
-**目标：** Add ODP output to Slidr via odfdo, consuming the SlideIR intermediate representation.
+**目标：** Add ODP output to Decktile via odfdo, consuming the SlideIR intermediate representation.
 
-**架构：** Single new file `src/slidr/render/odp.py` with style registries, layout engine, and element renderers. Small IR changes: add `inlines` and `item_inlines` fields to `Elem`. CLI gets `--odp` flag.
+**架构：** Single new file `src/decktile/render/odp.py` with style registries, layout engine, and element renderers. Small IR changes: add `inlines` and `item_inlines` fields to `Elem`. CLI gets `--odp` flag.
 
 **技术栈：** odfdo, Python dataclasses, the existing ir.py/build_ir pipeline
 
@@ -13,7 +13,7 @@
 ### Task 1: IR changes -- add inline fields to Elem
 
 **File:**
-- 修改：`src/slidr/render/ir.py`
+- 修改：`src/decktile/render/ir.py`
 
 - [ ] **步骤 1：Add `inlines` and `item_inlines` fields to Elem dataclass**
 
@@ -100,7 +100,7 @@ pdm run pytest
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src/slidr/render/ir.py
+git add src/decktile/render/ir.py
 git commit -m "feat(ir): add inlines and item_inlines fields to Elem for ODP rendering"
 ```
 
@@ -109,7 +109,7 @@ git commit -m "feat(ir): add inlines and item_inlines fields to Elem for ODP ren
 ### Task 2: ODP renderer -- registries and layout context
 
 **File:**
-- 创建：`src/slidr/render/odp.py`
+- 创建：`src/decktile/render/odp.py`
 
 - [ ] **步骤 1：Create file with imports and dataclasses**
 
@@ -129,8 +129,8 @@ from odfdo import (
 )
 from odfdo.element import Element
 
-from slidr.parser.ast import Document as ASTDocument, Image
-from slidr.render.ir import build_ir, SlideIR, Elem
+from decktile.parser.ast import Document as ASTDocument, Image
+from decktile.render.ir import build_ir, SlideIR, Elem
 
 
 @dataclass(frozen=True)
@@ -175,7 +175,7 @@ class GraphicStyleRegistry:
 
     def register(self, key: StyleKey) -> str:
         if key not in self._styles:
-            self._styles[key] = f"SlidrG_{next(self._counter):03d}"
+            self._styles[key] = f"DecktileG_{next(self._counter):03d}"
         return self._styles[key]
 
     def insert_all(self, document: Document) -> None:
@@ -211,7 +211,7 @@ class TextStyleRegistry:
 
     def register(self, key: TextStyleKey) -> str:
         if key not in self._styles:
-            self._styles[key] = f"SlidrT_{next(self._counter):03d}"
+            self._styles[key] = f"DecktileT_{next(self._counter):03d}"
         return self._styles[key]
 
     def insert_all(self, document: Document) -> None:
@@ -257,7 +257,7 @@ def _tag_to_color(tag: str) -> str:
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src/slidr/render/odp.py
+git add src/decktile/render/odp.py
 git commit -m "feat(odp): add style registries and layout context"
 ```
 
@@ -266,7 +266,7 @@ git commit -m "feat(odp): add style registries and layout context"
 ### Task 3: ODP renderer -- text element rendering
 
 **File:**
-- 修改：`src/slidr/render/odp.py`
+- 修改：`src/decktile/render/odp.py`
 
 - [ ] **步骤 1：Add `_style_key_for` and `_build_paragraph` utilities**
 
@@ -287,7 +287,7 @@ def _style_key_for(elem: Elem) -> StyleKey:
 
 
 def _build_paragraph(inlines: list, tr: TextStyleRegistry) -> Paragraph:
-    from slidr.parser.ast import (
+    from decktile.parser.ast import (
         Text, Strong, Emphasis, Strikethrough, CodeSpan, SoftBreak,
     )
     p = Paragraph()
@@ -323,7 +323,7 @@ def _build_paragraph(inlines: list, tr: TextStyleRegistry) -> Paragraph:
 
 
 def _walk_text_children(children: list) -> list:
-    from slidr.parser.ast import Text, Strong, Emphasis, Strikethrough, CodeSpan
+    from decktile.parser.ast import Text, Strong, Emphasis, Strikethrough, CodeSpan
     result = []
     for child in children:
         if isinstance(child, Text):
@@ -339,7 +339,7 @@ def _walk_text_children(children: list) -> list:
 
 ```python
 def _is_image_elem(elem: Elem) -> bool:
-    from slidr.parser.ast import Image as ASTImage
+    from decktile.parser.ast import Image as ASTImage
     return (
         elem.kind == "text"
         and len(elem.inlines) == 1
@@ -348,7 +348,7 @@ def _is_image_elem(elem: Elem) -> bool:
 
 
 def _render_image(elem: Elem, ctx: LayoutContext, odp: Document) -> list[Element]:
-    from slidr.parser.ast import Image as ASTImage
+    from decktile.parser.ast import Image as ASTImage
     img = elem.inlines[0]
     if not img.src or not os.path.isfile(img.src):
         return _render_text(elem, ctx, GraphicStyleRegistry(), TextStyleRegistry(), odp)
@@ -422,7 +422,7 @@ def _render_text(
 - [ ] **步骤 3：Commit**
 
 ```bash
-git add src/slidr/render/odp.py
+git add src/decktile/render/odp.py
 git commit -m "feat(odp): add text/image element rendering"
 ```
 
@@ -431,7 +431,7 @@ git commit -m "feat(odp): add text/image element rendering"
 ### Task 4: ODP renderer -- speaker, list, table, grid, card rendering
 
 **File:**
-- 修改：`src/slidr/render/odp.py`
+- 修改：`src/decktile/render/odp.py`
 
 - [ ] **步骤 1：Add `_render_speaker`, `_render_list`**
 
@@ -616,7 +616,7 @@ def _render_card(
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src/slidr/render/odp.py
+git add src/decktile/render/odp.py
 git commit -m "feat(odp): add speaker, list, table, grid, card rendering"
 ```
 
@@ -625,7 +625,7 @@ git commit -m "feat(odp): add speaker, list, table, grid, card rendering"
 ### Task 5: ODP renderer -- dispatch, entry point, logo
 
 **File:**
-- 修改：`src/slidr/render/odp.py`
+- 修改：`src/decktile/render/odp.py`
 
 - [ ] **步骤 1：Add `_render_elem` dispatch and `render` entry point**
 
@@ -715,7 +715,7 @@ def render(
 - [ ] **步骤 2：Commit**
 
 ```bash
-git add src/slidr/render/odp.py
+git add src/decktile/render/odp.py
 git commit -m "feat(odp): add dispatch, entry point, logo overlay"
 ```
 
@@ -724,12 +724,12 @@ git commit -m "feat(odp): add dispatch, entry point, logo overlay"
 ### Task 6: CLI integration
 
 **File:**
-- 修改：`src/slidr/cli.py`
+- 修改：`src/decktile/cli.py`
 
 - [ ] **步骤 1：Add import and --odp option**
 
 ```python
-from slidr.render.odp import render as render_odp
+from decktile.render.odp import render as render_odp
 ```
 
 Add `odp` parameter to callback:
@@ -757,7 +757,7 @@ pdm run pytest
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src/slidr/cli.py
+git add src/decktile/cli.py
 git commit -m "feat(cli): add --odp flag for ODP output"
 ```
 
@@ -810,10 +810,10 @@ Body text
 EOF
 ```
 
-- [ ] **步骤 2：Run slidr with --odp**
+- [ ] **步骤 2：Run decktile with --odp**
 
 ```bash
-pdm run slidr /tmp/test_odp.md --odp
+pdm run decktile /tmp/test_odp.md --odp
 ```
 
 - [ ] **步骤 3：Verify output**

@@ -1,7 +1,7 @@
 """Tests for the HTML renderer's element rendering."""
-from slidr.parser.markdown import parse
-from slidr.render.html import _render_elem, base_css, default_theme, render
-from slidr.render.ir import Elem
+from decktile.parser.markdown import parse
+from decktile.render.html import _render_elem, base_css, default_theme, render
+from decktile.render.ir import Elem
 
 
 def test_speaker_linkedin_uses_brand_svg_not_placeholder():
@@ -36,9 +36,9 @@ def test_speaker_github_still_uses_lucide_icon():
 
 
 def _title_html(md: str) -> str:
-    from slidr.parser.markdown import parse
-    from slidr.render.html import _render_slide
-    from slidr.render.ir import build_ir
+    from decktile.parser.markdown import parse
+    from decktile.render.html import _render_slide
+    from decktile.render.ir import build_ir
     return _render_slide(build_ir(parse(md))[0])
 
 

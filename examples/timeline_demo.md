@@ -9,7 +9,7 @@ title: Timeline Demo
 
 # Timeline Layouts
 
-@speaker name="slidr"
+@speaker name="decktile"
 
 ---
 

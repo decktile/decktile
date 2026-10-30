@@ -1,6 +1,6 @@
 ---
 name: creating-slide-qr-codes
-description: Use when a slidr deck needs a QR code (talk link, landing page, repo) on the title or closing slide, optionally with a project logo in the middle
+description: Use when a decktile deck needs a QR code (talk link, landing page, repo) on the title or closing slide, optionally with a project logo in the middle
 ---
 
 # Creating slide QR codes
@@ -14,7 +14,7 @@ Generate the PNG with `make_qr.py` (segno, error correction H so a centred logo 
 1. Generate from the deck repo root:
 
    ```bash
-   pdm run python slidr/skills/creating-slide-qr-codes/make_qr.py \
+   pdm run python decktile/skills/creating-slide-qr-codes/make_qr.py \
      https://go.dynamia.ai/observability-summit-europe \
      assets/brand/<event>/qr-code-<event>.png \
      --icon assets/hami-graph-color.png
@@ -29,7 +29,7 @@ Generate the PNG with `make_qr.py` (segno, error correction H so a centred logo 
    @kicker ...
    ```
 
-3. Rebuild (`pdm run slidr <deck>.md --pdf`) and look at page 1 and the last page. Scan it with a phone before the talk.
+3. Rebuild (`pdm run decktile <deck>.md --pdf`) and look at page 1 and the last page. Scan it with a phone before the talk.
 
 ## Common mistakes
 

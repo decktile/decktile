@@ -5,9 +5,9 @@ def test_assemble_css_frontmatter_images_override_theme(tmp_path):
     before the theme, so a theme's own --watermark/--bg-image always won and
     `none` could not remove another event's branding."""
     import weasyprint
-    from slidr.parser.markdown import parse
-    from slidr.render.html import base_css, load_theme, render
-    from slidr.render.ir import assemble_css
+    from decktile.parser.markdown import parse
+    from decktile.render.html import base_css, load_theme, render
+    from decktile.render.ir import assemble_css
 
     def image_urls(front: str) -> dict:
         doc = parse(f"---\ntheme: kubecon_japan\n{front}---\n\n## S\n\nBody.\n")
@@ -35,9 +35,9 @@ def test_assemble_css_frontmatter_images_override_theme(tmp_path):
 def test_build_ir_pdg_in_blueprint_card_uses_blueprint_palette():
     """A pdg fence inside ::: card {blueprint} draws in the blueprint palette;
     outside a blueprint card it uses the theme colours."""
-    from slidr.parser.markdown import parse
-    from slidr.render.html import base_css, load_theme
-    from slidr.render.ir import build_ir
+    from decktile.parser.markdown import parse
+    from decktile.render.html import base_css, load_theme
+    from decktile.render.ir import build_ir
 
     pdg = "```pdg\na -> b\n```"
     md = f"---\ntheme: kubecon_japan\n---\n\n## S\n\n::: card {{blueprint}}\n{pdg}\n:::\n\n{pdg}\n"

@@ -8,8 +8,8 @@ import importlib.metadata
 
 from weasyprint import HTML
 
-from slidr.render.ir import BoxGeometry, ResolvedStyle, SlideIR, Elem
-from slidr.render.odf.geometry import annotate_geometry
+from decktile.render.ir import BoxGeometry, ResolvedStyle, SlideIR, Elem
+from decktile.render.odf.geometry import annotate_geometry
 
 EXPECTED_WEASYPRINT = "69."  # pinned major.minor; pyproject.toml requires >=69.0
 
@@ -26,7 +26,7 @@ def test_weasyprint_pinned_major_version():
 def test_box_tree_exposes_required_private_api():
     rendered = HTML(
         string='<html><body><section style="width:100px;height:50px;'
-        'background:red;color:#fff"><div data-slidr-id="x">hi</div>'
+        'background:red;color:#fff"><div data-decktile-id="x">hi</div>'
         "</section></body></html>",
         base_url=".",
     ).render()
@@ -45,7 +45,7 @@ def test_box_tree_exposes_required_private_api():
     div_box = next(b for b in found if getattr(b, "element_tag", None) == "div")
     assert hasattr(div_box, "border_box_x") and hasattr(div_box, "border_box_y")
     assert hasattr(div_box, "border_width") and hasattr(div_box, "border_height")
-    assert div_box.element.get("data-slidr-id") == "x"
+    assert div_box.element.get("data-decktile-id") == "x"
     style = div_box.style
     for key in ("background_color", "background_image", "color", "border_left_color",
                 "border_left_width", "border_top_left_radius", "font_family",
@@ -87,7 +87,7 @@ def test_annotate_geometry_fills_elem_box():
 
 
 def _ir_from(content: str):
-    from slidr.parser.markdown import parse
+    from decktile.parser.markdown import parse
 
     class _Meta:
         footer = ""
@@ -100,7 +100,7 @@ def _ir_from(content: str):
     class _Doc:
         meta = _Meta()
 
-    from slidr.render.ir import build_ir
+    from decktile.render.ir import build_ir
 
     doc = parse(content)
     return build_ir(doc), _Doc()
@@ -112,7 +112,7 @@ def test_background_image_ignores_unrelated_ancestor_bg():
     inherit an unrelated ancestor's flat color (e.g. a <body> background
     meant only for screen-mode letterboxing, never visible behind a
     section)."""
-    from slidr.render.ir import Elem, SlideIR
+    from decktile.render.ir import Elem, SlideIR
 
     ir_slides = [SlideIR(id="s0", layout="content", elements=[
         Elem(kind="heading", id="e1", level=1, content="Hello"),
@@ -163,7 +163,7 @@ def test_table_zebra_stripe_scoped_to_tbody():
 
 def test_pseudo_elements_captured_despite_sharing_section_sid():
     """section::before/::after share the originating section's own
-    data-slidr-id -- which the outer walk's seen-dedup gate already
+    data-decktile-id -- which the outer walk's seen-dedup gate already
     marked seen while processing the section itself, moments earlier in
     the same recursion. Without a bypass for pseudo-elements, that gate
     silently drops logo/watermark capture entirely (verified: every
@@ -172,7 +172,7 @@ def test_pseudo_elements_captured_despite_sharing_section_sid():
     weasyprint's own render)."""
     import pathlib
 
-    from slidr.render.odf.geometry import annotate_geometry
+    from decktile.render.odf.geometry import annotate_geometry
 
     ir_slides, doc = _ir_from("---\ntitle: T\n---\n\nHello world.\n")
     css = (
@@ -195,7 +195,7 @@ def test_resolve_icon_accent_colors_follows_var_indirection():
     leak the literal "var(--color-accent)" string through (that crashed
     odfdo's color parser downstream, KeyError on an unrecognized CSS
     color name)."""
-    from slidr.render.odf.geometry import _resolve_icon_accent_colors
+    from decktile.render.odf.geometry import _resolve_icon_accent_colors
 
     css = (
         ':root { --color-accent: #0288d1; --color-accent-primary: var(--color-accent); '
@@ -211,7 +211,7 @@ def test_resolve_icon_accent_colors_direct_hex_overrides_var_indirection():
     """A theme overriding --color-accent-primary with a direct hex (the
     conference-theme pattern) must win verbatim, unaffected by the var()
     resolution added for the default-theme case."""
-    from slidr.render.odf.geometry import _resolve_icon_accent_colors
+    from decktile.render.odf.geometry import _resolve_icon_accent_colors
 
     css = (
         ':root { --color-accent-primary: var(--color-accent); }\n'

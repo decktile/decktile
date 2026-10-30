@@ -1,10 +1,10 @@
 # ODP Renderer Design
 
-Build ODP output from the Slidr IR, parallel to the existing PPTX renderer.
+Build ODP output from the Decktile IR, parallel to the existing PPTX renderer.
 
 ## Architecture
 
-New file: `src/slidr/render/odp.py`. Same signature as pptx.py:
+New file: `src/decktile/render/odp.py`. Same signature as pptx.py:
 
 ```python
 def render(doc: Document, output_path: Path, base_css: str = "", theme_css: str = "") -> None
@@ -105,7 +105,7 @@ style.set_properties(
 )
 ```
 
-Style names are `"SlidrG_001"`, `"SlidrG_002"`, etc.
+Style names are `"DecktileG_001"`, `"DecktileG_002"`, etc.
 
 ### TextStyleRegistry
 
@@ -129,7 +129,7 @@ Style("text", name=name, bold=(key.weight == "bold"),
       size=f"{key.font_size}pt" if key.font_size else None)
 ```
 
-Names: `"SlidrT_001"`, etc.
+Names: `"DecktileT_001"`, etc.
 
 ## Layout context
 
@@ -625,7 +625,7 @@ def _estimate_elem_height(elem: Elem, width_cm: float) -> float:
 
 ```python
 # cli.py
-from slidr.render.odp import render as render_odp
+from decktile.render.odp import render as render_odp
 
 @app.callback(invoke_without_command=True)
 def main(file, output_dir, pdf, pptx, odp, debug):

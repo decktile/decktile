@@ -1,9 +1,9 @@
 """Tests for the @video directive: parse, IR, HTML render, ODP skip."""
 
-from slidr.render.html import _render_elem
-from slidr.render.ir import build_ir
-from slidr.render.odf.shapes import render_elem
-from slidr.parser.markdown import parse
+from decktile.render.html import _render_elem
+from decktile.render.ir import build_ir
+from decktile.render.odf.shapes import render_elem
+from decktile.parser.markdown import parse
 
 
 def _video_elem():
@@ -13,7 +13,7 @@ def _video_elem():
 
 
 def test_parse_video_directive_becomes_attrnode():
-    from slidr.parser.ast import AttrNode
+    from decktile.parser.ast import AttrNode
     node = parse("@video assets/demo/llm_test.mp4\n").slides[0].children[0]
     assert isinstance(node, AttrNode)
     assert node.type == "video"
@@ -35,7 +35,7 @@ def test_html_video_renders_video_and_print_fallback():
 
 
 def test_odp_skips_video_elem():
-    from slidr.render.ir import BoxGeometry
+    from decktile.render.ir import BoxGeometry
 
     elem = _video_elem()
     elem.box = BoxGeometry()  # geometry present: still must skip, not emit a near-empty frame

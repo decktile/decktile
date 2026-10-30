@@ -1,7 +1,7 @@
 [project]
-name = "slidr-cli"
+name = "decktile"
 dynamic = ["version"]
-description = "Markdown to styled PPTX + PDF"
+description = "Markdown to designed slides: HTML, PDF and editable ODP"
 authors = [
     {name = "Reza Jelveh", email = "git@jelveh.me"},
 ]
@@ -11,7 +11,12 @@ readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 
 [project.scripts]
-slidr = "slidr.cli:app"
+decktile = "decktile.cli:app"
+slidr = "decktile.cli:app"  # old name, kept so existing Makefiles keep working
+
+[project.urls]
+Homepage = "https://github.com/decktile/decktile"
+Source = "https://github.com/decktile/decktile"
 
 [project.optional-dependencies]
 docs = [
