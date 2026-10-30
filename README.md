@@ -1,4 +1,9 @@
-# Decktile
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/decktile-logo-dark.svg">
+    <img src="assets/logo/decktile-logo.svg" alt="decktile" width="360">
+  </picture>
+</p>
 
 Markdown to styled HTML slides with PDF and ODP output.
 
