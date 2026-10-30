@@ -1,6 +1,7 @@
 """HTML renderer for decktile."""
 
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -200,7 +201,7 @@ def _render_elem(e: Elem) -> str:
         from decktile.plugins.lucide import render_icon
         name = e.attrs.get("name", e.content)
         role = e.attrs.get("role", "")
-        text = f"{_escape(name)}<br><span class=\"role\">{_escape(role)}</span>" if role else _escape(name)
+        text = f"{_escape(name)}<br><span class=\"role\">{_link_emails(_escape(role))}</span>" if role else _escape(name)
         links = []
         contact_icons = {"github": "git-fork", "twitter": "bird", "email": "mail", "website": "globe"}
         for key in ("github", "twitter", "email", "linkedin", "website"):
@@ -258,6 +259,14 @@ def _render_mermaid(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
         return f'<div class="mermaid"{sid}>\n{svg}\n</div>'
     return f'<pre class="mermaid-fallback"{sid}><code>{_escape(content)}</code></pre>'
+
+
+_EMAIL_RX = re.compile(r"(?<![\w.@/:])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)(?![\w@])")
+
+
+def _link_emails(escaped: str) -> str:
+    """Wrap bare email addresses in already-escaped text with mailto links."""
+    return _EMAIL_RX.sub(r'<a href="mailto:\1">\1</a>', escaped)
 
 
 def _render_pdg_html(content: str, svg: str = "", sid: str = "", live: str = "") -> str:

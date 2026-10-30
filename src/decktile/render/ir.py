@@ -13,7 +13,7 @@ from typing import Any
 from decktile.parser.ast import (
     Document, Slide, Heading, Paragraph, CodeBlock, Grid, Card,
     Table, Quote, ListNode, AttrNode, Text, Strong, Emphasis,
-    Strikethrough, CodeSpan, Image, SoftBreak, LucideIcon, Arrow, Notes, Row,
+    Strikethrough, CodeSpan, Image, SoftBreak, LucideIcon, Link, Arrow, Notes, Row,
 )
 from decktile.plugins.layouts import KNOWN_LAYOUTS
 from decktile.theme.parser import parse_theme
@@ -512,6 +512,8 @@ def _render_inline_html(nodes: list) -> str:
             s += f'<img src="{_escape(n.src)}" alt="{_escape(n.alt)}" decoding="async"{title}>'
         elif isinstance(n, SoftBreak):
             s += " "
+        elif isinstance(n, Link):
+            s += f'<a href="{_escape(n.href)}">{_render_inline_html(n.children)}</a>'
         elif isinstance(n, LucideIcon):
             s += _render_lucide_inline(n.name, n.attrs)
     return s
@@ -529,7 +531,7 @@ def _render_inline_text(nodes: list) -> str:
     for n in nodes:
         if isinstance(n, Text):
             s += n.content
-        elif isinstance(n, (Strong, Emphasis, Strikethrough)):
+        elif isinstance(n, (Strong, Emphasis, Strikethrough, Link)):
             s += _render_inline_text(n.children)
         elif isinstance(n, CodeSpan):
             s += n.content

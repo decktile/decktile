@@ -8,7 +8,7 @@ from markdown_it.token import Token
 from decktile.parser.ast import (
     Document, Meta, Slide,
     Heading, Paragraph, CodeBlock, Card, Grid, Table, Quote, ListNode, AttrNode,
-    Text, Strong, Emphasis, Strikethrough, CodeSpan, Image, SoftBreak, LucideIcon,
+    Text, Strong, Emphasis, Strikethrough, CodeSpan, Image, SoftBreak, LucideIcon, Link,
 )
 from decktile.plugins.fenced import extract_fenced, interleave_fences
 from decktile.plugins.directives import preprocess_directives, extract_attrs, parse_attr_token
@@ -87,7 +87,7 @@ def _parse_slide(content: str) -> Slide:
     # Extract fenced blocks
     content, fence_nodes = extract_fenced(content)
 
-    md = MarkdownIt("gfm-like", {"breaks": True, "html": True})
+    md = MarkdownIt("gfm-like", {"breaks": True, "html": True, "linkify": True})
     md.use(lucide_plugin)
     tokens = md.parse(content)
     nodes = _tokens_to_nodes(tokens)
@@ -267,6 +267,20 @@ def _walk_inline_children(tokens: list) -> list:
                 inner.extend(_token_inline(tokens[i]))
                 i += 1
             result.append(Strikethrough(children=inner))
+        elif t.type == "link_open":
+            href = dict(t.attrs or {}).get("href", "")
+            i += 1
+            depth, inner_tokens = 1, []
+            while i < len(tokens):
+                if tokens[i].type == "link_open":
+                    depth += 1
+                elif tokens[i].type == "link_close":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                inner_tokens.append(tokens[i])
+                i += 1
+            result.append(Link(href=href, children=_walk_inline_children(inner_tokens)))
         else:
             result.extend(_token_inline(t))
         i += 1

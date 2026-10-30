@@ -39,7 +39,7 @@ def _title_html(md: str) -> str:
     from decktile.parser.markdown import parse
     from decktile.render.html import _render_slide
     from decktile.render.ir import build_ir
-    return _render_slide(build_ir(parse(md))[0])
+    return _render_slide(build_ir(parse(md), base_css(), default_theme())[0])
 
 
 def test_contributor_renders_labelled_and_distinct_from_speaker():
@@ -186,3 +186,30 @@ def test_render_subtitle_inline_markdown():
     subtitle = html.split('<p class="subtitle"', 1)[1].split("</p>", 1)[0]
     assert "<code>nvidia.com/gpu</code>" in subtitle
     assert "`" not in subtitle
+
+
+def test_bare_emails_and_urls_become_links():
+    from decktile.parser.markdown import parse
+    from decktile.render.html import _render_elem
+    from decktile.render.ir import build_ir
+
+    md = "## S\n\nMail reza@dynamia.ai or https://decktile.github.io\n\n- in a list reza@dynamia.ai\n"
+    html = "".join(_render_elem(e) for e in build_ir(parse(md), base_css(), default_theme())[0].elements)
+    assert '<a href="mailto:reza@dynamia.ai">reza@dynamia.ai</a>' in html
+    assert '<a href="https://decktile.github.io">https://decktile.github.io</a>' in html
+    assert html.count("mailto:") == 2
+
+
+def test_markdown_link_keeps_its_text():
+    from decktile.parser.markdown import parse
+    from decktile.render.html import _render_elem
+    from decktile.render.ir import build_ir
+
+    html = "".join(_render_elem(e) for e in build_ir(parse("## S\n\nSee [the docs](https://x.io/d)\n"), base_css(), default_theme())[0].elements)
+    assert '<a href="https://x.io/d">the docs</a>' in html
+
+
+def test_email_in_speaker_role_is_a_link():
+    from decktile.render.html import _link_emails
+    assert _link_emails("Mail reza@dynamia.ai now") == 'Mail <a href="mailto:reza@dynamia.ai">reza@dynamia.ai</a> now'
+    assert _link_emails("https://x.io/a@b") == "https://x.io/a@b"

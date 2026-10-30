@@ -9,7 +9,7 @@ from markdown_it import MarkdownIt
 from decktile.parser.ast import Arrow, Card, CodeBlock, Grid, Node, Notes
 from decktile.plugins.lucide import lucide_plugin
 
-_CARD_MD = MarkdownIt("gfm-like", {"breaks": False, "html": True})
+_CARD_MD = MarkdownIt("gfm-like", {"breaks": False, "html": True, "linkify": True})
 _CARD_MD.use(lucide_plugin)
 
 _ICON_RE = re.compile(r'\{icon:(\S+)\s*([^}]*)\}')

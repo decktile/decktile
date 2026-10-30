@@ -186,6 +186,12 @@ class SoftBreak(Inline):
 
 
 @dataclass
+class Link(Inline):
+    href: str = ""
+    children: list[Inline] = field(default_factory=list)
+
+
+@dataclass
 class LucideIcon(Inline):
     name: str = ""
     attrs: dict[str, str] = field(default_factory=dict)
