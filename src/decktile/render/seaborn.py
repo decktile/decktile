@@ -104,10 +104,16 @@ def set_theme(name: str) -> None:
     # 2) CSS theme file (single source of truth for brand colors)
     css_style = _css_theme_rcparams(name)
     if css_style:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import seaborn as sns
+        try:
+            import matplotlib
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+        except ImportError:
+            # charts are optional (decktile[plot]); without them seaborn blocks
+            # fall back to code, so the theme has nothing to apply to
+            _palette, _style = name, None
+            return
         palette = css_style.pop("seaborn_palette", _DEFAULT_PALETTE)
         sns.set_theme(style="darkgrid", palette=palette)
         plt.rcParams.update(css_style)

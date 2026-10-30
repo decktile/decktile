@@ -47,3 +47,20 @@ def test_main_failing_file_does_not_stop_the_rest(tmp_path):
     assert result.exit_code == 1
     assert "bad.md:" in result.output and "missing.md: no such file" in result.output
     assert (tmp_path / "out" / "good.html").exists()
+
+
+def test_seaborn_theme_without_chart_libraries(monkeypatch):
+    """seaborn_theme in frontmatter must not crash a build when matplotlib isn't installed."""
+    import builtins
+
+    from decktile.render import seaborn as sb
+
+    real_import = builtins.__import__
+
+    def no_plot(name, *a, **k):
+        if name.split(".")[0] in ("matplotlib", "seaborn"):
+            raise ImportError(name)
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", no_plot)
+    sb.set_theme("default")  # must not raise
