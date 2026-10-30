@@ -560,8 +560,8 @@ seaborn charts, predictygraph diagrams, lucide icons, blockquotes, speaker notes
 and all directives.
 
 See also: `examples/mermaid_demo.md`, `examples/seaborn_demo.md`,
-`examples/pdg_demo.md`, `examples/lucide_demo.md`, `examples/timeline_demo.md`,
-`examples/drawings.md` (explainer charts drawn with matplotlib, from a real talk).
+`examples/pdg_demo.md`, `examples/lucide_demo.md`, `examples/timeline_demo.md`.
+`examples/seaborn_demo.md` ends with hand-drawn matplotlib explainer charts from a real talk.
 
 ## Pipeline
 
