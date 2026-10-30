@@ -110,3 +110,29 @@ running -> done "OK"
 error -> running "Retry"
 done -> idle "Reset"
 ```
+
+---
+
+## Animated
+
+@layout two-col
+
+In the HTML deck, diagrams can move.
+PDF and ODP get a clean still frame.
+
+- `flow=` dots travel along an edge
+- `border=pulse`, `march`, `glow`
+- Set per edge, per node, or in CSS
+
+@col
+
+```pdg
+graph dir=TB route=bend
+user "User" .green border=pulse
+gw "Gateway" .cyan border=march
+sched "Scheduler" .cyan
+gpu "GPU pool" .yellow shape=cylinder border=glow
+user -> gw flow=forward
+gw -> sched flow=forward flow-speed=0.8s
+sched <-> gpu flow=both "allocate"
+```

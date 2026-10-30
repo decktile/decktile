@@ -40,3 +40,18 @@ def test_theme_css_maps_default_tag_to_plain_nodes():
     css = theme_css(tag_colors={"default": ("#fafafa", "#ddd"), "red": ("#fee", "")})
     assert "node { fill: #fafafa; stroke: #ddd; }" in css
     assert "node.red { fill: #fee; }" in css
+
+
+def test_animated_pdg_moves_in_html_and_stays_still_in_print():
+    from decktile.parser.markdown import parse
+    from decktile.render.html import _render_elem, base_css, load_theme
+    from decktile.render.ir import build_ir
+
+    md = "## S\n\n```pdg\na -> b flow=forward\n```\n\n```pdg\nc -> d\n```\n"
+    elems = [e for e in build_ir(parse(md), base_css(), load_theme("default"))[0].elements
+             if e.kind == "code"]
+    moving, still = elems
+    assert "<animate" in moving.svg_live and "<animate" not in moving.svg
+    assert still.svg_live == ""  # no animation, no second copy
+    html = _render_elem(moving)
+    assert 'class="pdg-live"' in html and 'class="pdg-still"' in html

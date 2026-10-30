@@ -107,6 +107,7 @@ class Elem:
     inlines: list[Any] = field(default_factory=list)
     item_inlines: list[list] = field(default_factory=list)
     svg: str = ""
+    svg_live: str = ""                   # animated variant for HTML only (PDF/ODP use svg)
     pdf: bytes = b""
     id: str = ""                         # data-decktile-id, assigned in build_ir
     box: BoxGeometry | None = None       # filled by render/odf/geometry.py for ODP
@@ -383,9 +384,14 @@ def _convert_node(node, styles: dict) -> Elem:
             fam = styles.get("font_body_family", "")
             size = styles.get("font_body", 18)
             tags = styles.get("tag_colors", {})
-            svg = render_pdg_svg(node.content, font_family=fam, font_size=size,
-                                 tag_colors=tags,
-                                 blueprint=styles.get("pdg_blueprint", False)) or ""
+            opts = dict(font_family=fam, font_size=size, tag_colors=tags,
+                        blueprint=styles.get("pdg_blueprint", False))
+            svg = render_pdg_svg(node.content, **opts) or ""
+            live = render_pdg_svg(node.content, animated=True, **opts) or ""
+            # only keep the animated copy when the diagram actually moves
+            svg_live = live if svg and "<animate" in live else ""
+            return Elem(kind="code", content=node.content, text=node.content,
+                        language=node.language, font_size=fs, svg=svg, svg_live=svg_live)
         return Elem(kind="code", content=node.content, text=node.content,
                     language=node.language, font_size=fs, svg=svg, pdf=pdf)
     elif isinstance(node, ListNode):

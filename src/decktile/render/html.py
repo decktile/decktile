@@ -126,7 +126,7 @@ def _render_elem(e: Elem) -> str:
         if e.language == "seaborn":
             return _render_seaborn_html(e.content, e.svg, sid)
         if e.language == "pdg":
-            return _render_pdg_html(e.content, e.svg, sid)
+            return _render_pdg_html(e.content, e.svg, sid, e.svg_live)
         return _highlight_code(e.content, e.language, sid)
     elif e.kind == "list":
         s = f"<ul{sid}>\n"
@@ -260,7 +260,11 @@ def _render_mermaid(content: str, svg: str = "", sid: str = "") -> str:
     return f'<pre class="mermaid-fallback"{sid}><code>{_escape(content)}</code></pre>'
 
 
-def _render_pdg_html(content: str, svg: str = "", sid: str = "") -> str:
+def _render_pdg_html(content: str, svg: str = "", sid: str = "", live: str = "") -> str:
+    if svg and live:
+        # animated on screen, still frame in print/PDF (and for the ODP geometry pass)
+        return (f'<div class="pdg-plot pdg-animated"{sid}>\n'
+                f'<div class="pdg-live">{live}</div>\n<div class="pdg-still">{svg}</div>\n</div>')
     if svg:
         return f'<div class="pdg-plot"{sid}>\n{svg}\n</div>'
     return f'<pre class="pdg-fallback"{sid}><code>{_escape(content)}</code></pre>'

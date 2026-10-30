@@ -241,9 +241,22 @@ LOGO_CSS
   overflow: hidden;
   text-align: center;
 }
-.mermaid svg, .seaborn-plot svg, .pdg-plot svg {
+.mermaid svg, .seaborn-plot svg {
   max-width: 100%;
   height: auto;
+}
+/* predictygraph sets width/height to its natural size; scale up to the column
+   (aspect kept by viewBox) but never past the space the slide gives it */
+.pdg-plot svg {
+  width: 100%;
+  height: auto;
+  max-height: IMG_MAX_Hpx;
+}
+/* animated diagram on screen, still frame in print/PDF */
+.pdg-animated .pdg-still { display: none; }
+@media print {
+  .pdg-animated .pdg-live { display: none; }
+  .pdg-animated .pdg-still { display: block; }
 }
 
 /* ---- ::: card {blueprint}: engineering-drawing panel for diagrams ----

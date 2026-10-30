@@ -49,10 +49,12 @@ def theme_css(font_family: str = "", font_size: int = 0,
 
 def render_pdg_svg(content: str, font_family: str = "", font_size: int = 0,
                    tag_colors: dict[str, tuple[str, str]] | None = None,
-                   blueprint: bool = False) -> str | None:
+                   blueprint: bool = False, animated: bool = False) -> str | None:
     """Render a predictygraph diagram to SVG, or None if it fails to parse.
 
     blueprint: palette for ``::: card {blueprint}`` (light lines, translucent fills).
+    animated: keep predictygraph's SMIL animation (flow=, border=) for HTML.
+        The default is a still frame, which PDF and ODP need.
     """
     import predictygraph
 
@@ -62,7 +64,7 @@ def render_pdg_svg(content: str, font_family: str = "", font_size: int = 0,
     # Theme goes first so css inside the block overrides it.
     text = "css {\n" + css + "\n}\n" + content
     try:
-        svg = predictygraph.render(text, t=0)
+        svg = predictygraph.render(text, t=None if animated else 0)
     except Exception:
         return None
     return _strip_xml_decl(svg)
