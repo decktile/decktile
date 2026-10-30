@@ -373,6 +373,24 @@ slide's body font. Put a `css { … }` block inside the diagram to change anythi
 See predictygraph's [spec](https://github.com/predictygraph/predictygraph/blob/master/docs/SPEC.md)
 for the full syntax.
 
+### Animated diagrams
+
+In the HTML deck, diagrams can move. PDF and ODP get a clean still frame of the
+same diagram, so nothing extra is needed for print.
+
+````markdown
+```pdg
+graph dir=TB
+user "User" .green border=pulse
+gpu "GPU pool" .yellow shape=cylinder border=glow
+user -> gpu flow=forward "request"
+```
+````
+
+- `flow=forward`, `reverse`, `both` or `auto`: dots travel along an edge. `flow-speed=0.8s` sets the pace.
+- `border=pulse`, `march` or `glow`: the outline of a node or group breathes, crawls or glows. `border-speed=` sets the pace.
+- Set them per edge or node, with `default edge flow=forward`, or in CSS: `edge.hot { flow: forward; }`.
+
 Wrap a diagram in `::: card {blueprint}` for an engineering-drawing look:
 blue grid card, light lines and text, translucent node fills, with the
 node classes as brighter accents. Works the same under any theme.

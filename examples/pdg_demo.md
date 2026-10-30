@@ -78,10 +78,10 @@ group main "System Architecture" {
   }
   group backend "Backend Services" {
     api "API" .cyan
-    db "Database" .green shape=cylinder
-    api -> db
+    db "Database" .green shape=cylinder border=glow
+    api -> db flow=both
   }
-  web, mobile -> api
+  web, mobile -> api flow=forward
 }
 ```
 
