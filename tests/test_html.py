@@ -213,3 +213,8 @@ def test_email_in_speaker_role_is_a_link():
     from decktile.render.html import _link_emails
     assert _link_emails("Mail reza@dynamia.ai now") == 'Mail <a href="mailto:reza@dynamia.ai">reza@dynamia.ai</a> now'
     assert _link_emails("https://x.io/a@b") == "https://x.io/a@b"
+
+
+def test_mailto_links_keep_text_colour():
+    css = base_css()
+    assert 'a[href^="mailto:"]' in css and "color: inherit" in css

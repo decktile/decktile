@@ -121,6 +121,8 @@ img.video-print { display: none; }
 [data-theme="dark"] section img,
 section[data-theme="dark"] img { max-height: 16em; }
 a { text-decoration: none; }
+/* email links keep the surrounding text colour (they were plain text before) */
+section a[href^="mailto:"]:not(.speaker-links a) { color: inherit; }
 
 blockquote {
   border-left: 4px solid;
