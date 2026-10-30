@@ -259,6 +259,24 @@ LOGO_CSS
   .pdg-animated .pdg-still { display: block; }
 }
 
+/* @row: put the following blocks side by side, sharing the width equally */
+.row {
+  display: flex;
+  gap: 1.5em;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+.row > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* diagrams side by side keep one scale, so labels match across them */
+.row .pdg-plot svg {
+  width: auto;
+  max-width: 100%;
+}
+
 /* ---- ::: card {blueprint}: engineering-drawing panel for diagrams ----
    Theme-independent on purpose (same blue on light and dark slides); a
    ```pdg fence inside it renders with the matching blueprint palette

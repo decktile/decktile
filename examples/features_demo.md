@@ -28,21 +28,19 @@ Welcome to the HAMi demo. This deck showcases all decktile features: layouts, gr
 
 ## GPU Architecture
 
-Standard mode routes application calls through library-level
-interception for memory and compute. HAMi intercepts CUDA
-API calls transparently -- no container modification required.
+HAMi shares a GPU in two modes. Standard mode (HAMi-core)
+intercepts CUDA calls in software, no container changes needed.
+MIG mode hands out hardware partitions of the GPU.
 
-- Application calls standard CUDA API
-- HAMi intercepts memory allocation
-- Compute kernels are intercepted
-- GPU sees a single unified workload
+- Standard: memory and compute limits enforced per call
+- MIG: isolation comes from the GPU itself
+- Same pod spec, the node picks the mode
 
 @col
 
 ```pdg
 graph dir=TB
-group main "Standard Mode" {
-  default node min-width=170
+group std "Standard Mode" {
   app "Application"
   mem "Memory Interception" .cyan
   comp "Compute Interception" .cyan
@@ -55,13 +53,11 @@ group main "Standard Mode" {
 
 ```pdg
 graph dir=TB
-group main "Standard Mode" {
-  default node min-width=170
+group mig "MIG Mode" {
   app "Application"
-  mem "Memory Interception" .cyan
-  comp "Compute Interception" .cyan
+  slice "MIG instance" .yellow
   gpu "Physical GPU" .green
-  app -> mem -> comp -> gpu
+  app -> slice -> gpu
 }
 ```
 
