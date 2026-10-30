@@ -120,9 +120,6 @@ ax.text(50, -0.35, "CUDA-KERNEL BOUNDARY", ha="center", va="top", fontsize=7, co
 
 @subtitle High priority pauses low priority at kernel boundaries
 
-<!--
-HIGH PRIORITY tasks preempt LOW PRIORITY at CUDA kernel boundaries. No wasted compute. The kernel boundary is the key -- you cannot preempt mid-kernel.
--->
 High-priority tasks preempt low-priority ones at CUDA kernel boundaries: no wasted compute, clean context switch:
 
 :::card
@@ -186,16 +183,6 @@ ax.text(50, -0.35, "CUDA-KERNEL BOUNDARY", ha="center", va="top", fontsize=7, co
 
 @subtitle Asking for a GPU is not the same as using it
 
-<!--
-2 jobs, each held a WHOLE H200 (141 GB)
-1) Chronos forecast (infra load), ~200M params -> 1 GB / 141, compute 16-18%
-2) YOLO11 training, cabinet damage, 17k images -> 39 GB
-why only 39? batch = ACCURACY not memory; busy ~90%; data pipeline blocks first
-=> 39 GB is the RIGHT size -> ~100 GB spare is real
-[pause] many GPUs have NO MIG (L40/L40S/A6000) - slicing not even a choice
-K8s gives one option: nvidia.com/gpu:1 - whole card or nothing
-don't rush the '1 GB out of 141'
--->
 
 Two real jobs. Each one held **a whole H200, 141 GB**:
 
@@ -248,13 +235,6 @@ ax.set_xticks([])
 
 @subtitle Fix the SLA, scale replicas, fill the empty GPU
 
-<!--
-Native 20.7 @18% | slice 19.6 (noise) | +KEDA 10 replicas -> 71.1 @ same 160ms
-=> ~3.5 cards natively; HAMi does it on 1 -> 70% fewer cards, ~half power
-LAND: HAMi FILLS the empty GPU - it does NOT make one pod faster
-team: unfair baseline -> 3 tests: no-SLA 29.6 (P95 -> 6s, still 10%), batch->512 (7-10%), dtypes none
-=> one instance can't fill the card -> the 3.4x is real
--->
 
 ```seaborn
 import matplotlib.pyplot as plt
@@ -308,15 +288,6 @@ One pod uses only **18% of the card**. Pack **10 replicas** on it and the GPU hi
 
 @subtitle One slice guaranteed, on purpose - and what it costs
 
-<!--
-free space fits anything: small LLMs, agents, CV, embeddings
-the PRICE: cap notebook to 70% cores -> 1h00 -> 1h20 = +20 min
-why the reservation is solid:
-  - memory FENCED: sees own slice, can't OOM neighbours
-  - cores CAPPED with `force`: 70% genuinely reserved, not 'if idle'
-  - we PAY 20 min on purpose (small model cheap; big model costs more)
-LAND: 20 min turns 'maybe there is space' into 'this space is yours'
--->
 
 **Workload:** an AI Notebook training YOLO11 - ~17k images, batch 64 → **39 GB** used. Batch is sized for **accuracy**, not to fill the card - so the spare **~100 GB is genuinely free**, not just idle. We fence **~30%** and cap the notebook to **70% of the cores**.
 
@@ -356,14 +327,6 @@ ax.set_ylim(-20, 112)
 
 @subtitle One notebook fixed all day - inference flexes by the hour
 
-<!--
-green = the notebook, NEVER changes (capped, guaranteed, same machine all day)
-everything right of it FOLLOWS the load:
-  morning: everyone opens forecasts -> time-series x6
-  office hrs: -> x1, LLM inference x5 (<20B, e.g. Qwen2.5-14B)
-  night: inference quiet -> more notebooks + overnight training
-LAND: they peak at different hours -> take turns on one card -> never idles
--->
 
 ```seaborn
 import matplotlib.pyplot as plt
@@ -409,13 +372,6 @@ ax.set_ylim(-0.6, 3.2)
 
 @subtitle Does sharing make training jittery? We measured it
 
-<!--
-BACKUP - show only if asked about stability
-CV = coefficient of variation of epoch time (lower = steadier)
-alone: ~1% | shared + NO cap: 19% (jittery) | cap with `force`: 9% (steady)
-=> the cap roughly HALVES the jitter, on the same shared card
-honest: cap protects STABILITY, not throughput. hard isolation = MIG.
--->
 
 The card is now *truly* shared - the notebook trains while **bursty inference** flexes beside it. Does that shake the training? We measured epoch-time **CV** - standard deviation ÷ mean, lower is steadier.
 
@@ -457,9 +413,6 @@ ax.set_ylim(-4, 24.5)
 
 @subtitle Carve unused memory into per-pod slices
 
-<!--
-Real measured jobs, each holding a whole H200 (141 GB): the time-series inference job used 1 GB, the YOLO training job 39 GB. Whole-card allocation wastes ~100 GB. Memory slicing carves it into MiB-level partitions, one per pod, dynamic.
--->
 
 ::: card
 ```seaborn
@@ -513,9 +466,6 @@ ax.set_xticks([])
 
 @subtitle Percent of compute per pod, enforced on every call
 
-<!--
-Each pod is capped at a percent of the device's compute units. The cap is enforced on every kernel launch: a pod cannot burst above its slice even when the rest of the device is idle. Units not assigned to a pod stay free for other pods.
--->
 
 ::: card
 ```seaborn
@@ -567,9 +517,6 @@ ax.set_xticks([])
 
 @subtitle Workloads take turns at kernel boundaries
 
-<!--
-High-priority tasks preempt low-priority ones at CUDA kernel boundaries: no wasted compute, clean context switch. The kernel boundary is the key: you cannot preempt mid-kernel. Pure software: no vendor ships a time-quantum API.
--->
 
 ::: card
 ```seaborn
@@ -618,9 +565,6 @@ ax.set_xticks([])
 
 @subtitle Fixed slots, strongest isolation, least flexible
 
-<!--
-MIG, SR-IOV, vXPU, vDCU: partitions set at boot, enforced in hardware, memory and compute fenced per slot. Strongest isolation, least flexible: no live repartition. Software slicing can repartition live but lives in the runtime layer.
--->
 
 ::: card
 ```seaborn
