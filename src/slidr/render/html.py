@@ -135,14 +135,16 @@ def _render_elem(e: Elem) -> str:
         s += "</ul>"
         return s
     elif e.kind == "table":
+        # cells are inline HTML rendered by the parser (markdown-it), like
+        # card text -- escaping them again showed '&gt;' as '&amp;gt;'
         s = f"<table{sid}>\n<thead>\n<tr>"
         for h in e.headers:
-            s += f"<th>{_maybe_escape(h)}</th>"
+            s += f"<th>{h}</th>"
         s += "</tr>\n</thead>\n<tbody>\n"
         for row in e.rows:
             s += "<tr>"
             for cell in row:
-                s += f"<td>{_maybe_escape(cell)}</td>"
+                s += f"<td>{cell}</td>"
             s += "</tr>\n"
         s += "</tbody>\n</table>"
         return s
@@ -169,10 +171,13 @@ def _render_elem(e: Elem) -> str:
         if e.class_:
             cls += f" {e.class_}"
         s = f'<div class="{cls}"{sid}>\n'
+        if e.attrs.get("label"):
+            s += f'<span class="timeline-label">{_escape(e.attrs["label"])}</span>\n'
+        # header/body are inline HTML from fenced._expand_markdown (already
+        # escaped by markdown-it): escaping again turned '>80%' into '&amp;gt;80%'
         if e.header:
-            s += f"<h3>{_maybe_escape(e.header)}</h3>\n"
+            s += f"<h3>{e.header}</h3>\n"
         for line in e.body:
-            line = _maybe_escape(line)
             if line.startswith("<ul") or line.startswith("<ol"):
                 s += line + "\n"
             else:
@@ -280,8 +285,3 @@ def _escape(s: str) -> str:
 def _video_poster(src: str) -> str:
     """Poster/frame image for a video: same basename, .png extension."""
     return src.rsplit(".", 1)[0] + ".png"
-
-
-def _maybe_escape(s: str) -> str:
-    """Escape HTML unless the string already contains HTML tags."""
-    return s if "<" in s and ">" in s else _escape(s)

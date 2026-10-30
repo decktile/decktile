@@ -79,6 +79,15 @@ def test_metric_parses_as_card():
     assert "metric" in (cards[0].class_ or "")
 
 
+def test_card_label_attribute_parses_as_free_text_not_class():
+    doc = parse('---\ntheme: t\n---\n\n::: card {focus, label="Q2"}\n### Q2\nbody\n:::')
+    slide = doc.slides[0]
+    cards = [n for n in slide.children if isinstance(n, Card)]
+    assert cards[0].label == "Q2"
+    assert "focus" in (cards[0].class_ or "")
+    assert "label" not in (cards[0].class_ or "")
+
+
 def test_metric_auto_groups_into_grid():
     doc = parse("---\ntheme: t\n---\n\n::: card {metric}\n10x\nSpeed\n:::\n\n::: card {metric}\n50%\nUtilization\n:::")
     slide = doc.slides[0]
@@ -122,3 +131,45 @@ def test_autoplay_parsed():
 def test_autoplay_default_seven():
     doc = parse("---\ntheme: t\n---\n\n# Title\n\ntext")
     assert doc.meta.autoplay == 7
+
+
+def _cards(md: str) -> list:
+    nodes = parse("---\ntitle: t\n---\n\n" + md).slides[0].children
+    return [c for n in nodes for c in (n.children if isinstance(n, Grid) else [n]) if isinstance(c, Card)]
+
+
+def test_parse_card_text_after_code_block_kept():
+    card = _cards("::: card\n### C\n```python\nx = 1\n```\nAfter the code.\n:::\n")[0]
+    assert card.body == ["After the code."]
+    assert card.children[0].content == "x = 1"
+
+
+def test_parse_card_text_after_nested_fence_kept():
+    md = "::: card\n### Outer\n::: card\n### Inner\n:::\nAfter the inner card.\n:::\n"
+    outer = _cards(md)[0]
+    assert outer.body == ["After the inner card."]
+
+
+def test_parse_paragraph_touching_card_kept_separate():
+    """No blank line between a card and a paragraph: the fence marker used to
+    merge into the paragraph, dropping text after the card."""
+    nodes = parse("---\ntitle: t\n---\n\nBefore.\n::: card\n### A\n:::\nAfter.\n").slides[0].children
+    texts = [n.content[0].content for n in nodes if isinstance(n, Paragraph)]
+    assert texts == ["Before.", "After."]
+    assert sum(isinstance(n, Card) for n in nodes) == 1
+
+
+def test_parse_notes_strips_blockquote_marker():
+    from slidr.parser.ast import Notes
+    nodes = parse("---\ntitle: t\n---\n\n::: notes\n> quoted note\n:::\n").slides[0].children
+    notes = next(n for n in nodes if isinstance(n, Notes))
+    assert notes.content == "quoted note"
+
+
+def test_group_cards_without_blank_lines_before_paragraph():
+    """Cards written back to back, then a paragraph: one grid, then the
+    paragraph -- not the first card alone, the paragraph, then the rest."""
+    md = "".join(f"::: card {{tag={t}}}\n### {t}\nx\n:::\n" for t in ("cyan", "green", "red"))
+    nodes = parse("---\ntitle: t\n---\n\n" + md + "\nAfter.\n").slides[0].children
+    assert [type(n).__name__ for n in nodes] == ["Grid", "Paragraph"]
+    assert [c.tag for c in nodes[0].children] == ["cyan", "green", "red"]

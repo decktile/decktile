@@ -63,7 +63,12 @@ def extract_fenced(content: str) -> tuple[str, list[Node]]:
             elif typ == "notes":
                 nodes.append(_parse_notes(inner_text, rest))
 
-            result.append(f"\u25caFENCE_{count}")
+            # blank lines around the marker: adjacent fences (cards with no
+            # blank line between them) would otherwise merge into one
+            # markdown paragraph, and interleave_fences restores one fence
+            # per marker paragraph -- the rest got appended after every
+            # other block, splitting a card group
+            result.extend(["", f"\u25caFENCE_{count}", ""])
             count += 1
             i = j
             continue
@@ -92,6 +97,7 @@ def _parse_card(text: str, rest: str = "") -> Card:
                 i += 1
             children.append(CodeBlock(content="\n".join(inner), language=lang))
             i += 1  # skip closing ```
+            continue
         elif line.startswith(":::") and not line.startswith("::::"):
             depth = 1
             inner = []
@@ -108,6 +114,7 @@ def _parse_card(text: str, rest: str = "") -> Card:
             _, nested = extract_fenced("\n".join(inner))
             children.extend(nested)
             i = j
+            continue
         elif line.startswith("### "):
             header = _expand_markdown(line[4:])
         elif line.startswith("- "):
@@ -126,6 +133,7 @@ def _parse_card(text: str, rest: str = "") -> Card:
 
     class_ = ""
     tag = None
+    label = ""
     raw = rest.split("{", 1)[1].rstrip("}") if "{" in rest else ""
     for attr in raw.split(","):
         attr = attr.strip()
@@ -136,6 +144,8 @@ def _parse_card(text: str, rest: str = "") -> Card:
             k, v = k.strip(), v.strip().strip('"')
             if k == "tag":
                 tag = v
+            elif k == "label":
+                label = v
             else:
                 class_ = (class_ + f" {k}-{v}").strip()
         else:
@@ -145,7 +155,7 @@ def _parse_card(text: str, rest: str = "") -> Card:
     if "metric" in class_ and not header and body:
         header = body.pop(0)
 
-    return Card(header=header, body=body, children=children, tag=tag, class_=class_)
+    return Card(header=header, body=body, children=children, tag=tag, class_=class_, label=label)
 
 
 def _expand_markdown(text: str) -> str:
@@ -192,7 +202,10 @@ def _parse_notes(text: str, rest: str) -> Notes:
             k, v = attr.split("=", 1)
             if k.strip() == "tag":
                 tag = v.strip().strip('"')
-    return Notes(content=_expand_markdown(text.strip()), tag=tag or None)
+    # README documents `> quote` lines inside notes; the callout is rendered
+    # inline, so the blockquote marker otherwise showed as a literal '>'
+    text = "\n".join(re.sub(r"^\s*>\s?", "", line) for line in text.strip().splitlines())
+    return Notes(content=_expand_markdown(text), tag=tag or None)
 
 
 def interleave_fences(nodes: list[Node], fence_nodes: list[Node]) -> list[Node]:

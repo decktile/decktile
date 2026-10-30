@@ -14,7 +14,10 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from odfdo import Column, Frame, List as OdfList, ListItem, Paragraph, Row, Span, Table
+from odfdo import (
+    Column, EllipseShape, Frame, List as OdfList, ListItem, Paragraph, RectangleShape, Row, Span,
+    Table,
+)
 
 from slidr.parser.ast import (
     CodeSpan, Emphasis, Image as ASTImage, LucideIcon, SoftBreak, Strikethrough,
@@ -56,6 +59,42 @@ def _size(box: BoxGeometry) -> tuple[str, str]:
 def _apply_radius(frame: Frame, style: ResolvedStyle) -> None:
     if style.border_radius > 0:
         frame.set_attribute("draw:corner-radius", px_to_cm(style.border_radius))
+
+
+def _decoration_shapes(box: BoxGeometry, reg: StyleRegistry) -> list[Any]:
+    """Draw a grid/card's captured decorations (timeline spine/dot/stub,
+    milestone name label) -- no AST node of their own, only geometry+style.
+    Sizes are not clamped like _size(): the spine/stubs are sub-0.1cm
+    hairlines and would render ~2x too thick."""
+    shapes: list[Any] = []
+    for deco in box.decorations:
+        if deco.text:
+            shapes.append(_label_frame(deco, reg))
+            continue
+        size = (f"{max(deco.w, 0.01):.3f}cm", f"{max(deco.h, 0.01):.3f}cm")
+        gfx = reg.graphic_style(deco.style, fill=True, border=True)
+        if deco.style.border_radius * CM_PER_PX >= min(deco.w, deco.h) / 2 - 0.01:
+            shapes.append(EllipseShape(style=gfx, position=_pos(deco), size=size))
+            continue
+        shape = RectangleShape(style=gfx, position=_pos(deco), size=size, anchor_type="page")
+        _apply_radius(shape, deco.style)
+        shapes.append(shape)
+    return shapes
+
+
+def _label_frame(deco: BoxGeometry, reg: StyleRegistry) -> Frame:
+    """Milestone name: centred in a frame widened by 0.4cm per side so
+    LibreOffice's slightly wider font metrics never wrap the nowrap label."""
+    style = dataclasses.replace(deco.style, text_align="center")
+    pad = 0.4
+    frame = Frame.text_frame(
+        Paragraph(deco.text, style=reg.paragraph_style(style)),
+        style=reg.graphic_style(style, fill=False, border=False, vertical_align="middle"),
+        position=(f"{deco.x - pad:.3f}cm", f"{deco.y:.3f}cm"),
+        size=(f"{deco.w + 2 * pad:.3f}cm", f"{max(deco.h, 0.1):.3f}cm"),
+        anchor_type="page",
+    )
+    return frame
 
 
 # ---------------------------------------------------------------------------
@@ -421,17 +460,18 @@ def _render_card(
         style=gfx, position=_pos(box), size=_size(box), anchor_type="page",
     )
     _apply_radius(frame, style)
-    return [frame]
+    return [frame, *_decoration_shapes(box, reg)]
 
 
 def _render_grid(
     elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
     global_tags: dict[str, ResolvedStyle],
 ) -> list[Any]:
-    # Grid/row/col containers carry no visible paint of their own -- their
-    # children (already geometry-annotated with their own absolute boxes)
-    # render independently via render_elem's child recursion.
-    return []
+    # Grid/row/col containers carry no visible paint of their own beyond
+    # any captured ::before/::after decoration (e.g. a timeline layout's
+    # spine) -- their children (already geometry-annotated with their own
+    # absolute boxes) render independently via render_elem's recursion.
+    return _decoration_shapes(elem.box, reg)
 
 
 _render_row = _render_grid

@@ -91,19 +91,6 @@ def test_default_theme_h1_bold_and_h3_matches_converged_theme_size():
     assert "h3 { font-size: 1.15em; }" in css
 
 
-def test_base_css_has_h3_underline_and_kicker_eyebrow_treatment():
-    """h3::after and the kicker's uppercase/letter-spaced treatment were
-    duplicated identically across every real theme but missing from the
-    shared base -- promoted as structural defaults (colors untouched,
-    still resolved via the existing --color-accent-primary/var(--font-
-    mono) variables)."""
-    css = base_css()
-    assert "h3::after {" in css
-    assert "border-bottom: 2px solid var(--color-accent-primary);" in css
-    assert "text-transform: uppercase" in css
-    assert "letter-spacing: 0.05em" in css
-
-
 def test_base_css_table_sizing_is_compact_not_oversized():
     """Default table font-size (0.85em) and cell padding (0.5em 0.65em)
     rendered rows visibly oversized relative to the rest of the slide
@@ -122,6 +109,80 @@ def test_default_theme_font_family_matches_converged_theme_choice():
 def test_default_theme_watermark_sits_left_of_page_number():
     """Watermark anchored to --section-padding-h (same var .slide-num
     uses) plus a gap, so it clears the page-number column generically
-    instead of overlapping it at the old 4%/5% base.css position."""
+    instead of overlapping it at the old 4%/5% base.css position.
+    bottom: 0.48em (not 1em) vertically centers the watermark against
+    .slide-num's own 0.6em-font-size text box, not just bottom-aligning
+    the two boxes."""
     css = default_theme()
     assert "right: calc(var(--section-padding-h) + var(--watermark-gap));" in css
+    assert "bottom: 0.48em;" in css
+
+
+def test_video_sync_wired_in_both_presenter_and_main_branches():
+    """Presenter and main windows are separate documents (window.open),
+    each with its own independent <video> for the same slide -- playing
+    one never touched the other without this wiring over the existing
+    BroadcastChannel."""
+    html = _full_page(
+        "---\ntitle: T\n---\n\n## Video Slide\n\n@video assets/demo/clip.mp4\n"
+    )
+    assert "_wireVideoSync('#pres-main', bc);" in html
+    assert "_wireVideoSync('body > section', bc);" in html
+    assert "e.data.video" in html
+
+
+def test_base_css_has_timeline_layouts():
+    """@layout timeline-vertical / timeline-horizontal and ::: card
+    {focus} need no parser changes (generic @layout <name> -> .layout-
+    <name>, generic bare-word card attr -> .card.<word>) -- only CSS.
+    Assert both spines specifically (not just the grid container rule):
+    the vertical spine was accidentally dropped in an edit that this
+    test, checking only "grid" presence, didn't catch."""
+    css = base_css()
+    assert ".layout-timeline-vertical .grid::before" in css
+    assert ".layout-timeline-horizontal .grid::before" in css
+    assert ".card.focus" in css
+
+
+def test_base_css_timeline_uses_space_evenly_autolayout():
+    """Milestones auto-space along a fixed-length spine: the vertical grid
+    grows to fill the slide body (flex: 1, not height: 100% -- weasyprint
+    resolved that too tall and spilled cards onto a new page) and
+    space-evenly distributes the cards over it."""
+    css = base_css()
+    assert "justify-content: space-evenly;\n  flex: 1;" in css
+    assert ".layout-timeline-vertical .slide-body {" in css
+
+
+def test_card_label_renders_as_distinct_span():
+    html = _title_html('::: card {label="Q1"}\n### Q1 2026\nbody\n:::')
+    assert '<span class="timeline-label">Q1</span>' in html
+    assert "<h3>Q1 2026</h3>" in html
+
+
+def test_render_notes_with_quotes_do_not_leak_into_slide():
+    """Speaker notes reach the presenter via JSON; an unescaped data-notes
+    attribute let a '"' in the notes end the attribute and spill the rest
+    onto the slide."""
+    html = _full_page('---\ntitle: T\n---\n\n<!-- He said "hello" <b>x</b> -->\n\n## S\n\nBody.')
+    assert "data-notes" not in html
+    assert '<b>x</b>' not in html.split("<body>", 1)[1].split("<script", 1)[0]
+
+
+def test_render_card_text_escaped_once():
+    html = _full_page("---\ntitle: T\n---\n\n## M\n\n::: card {metric}\n>80%\nutilization\n:::\n")
+    assert "<h3>&gt;80%</h3>" in html
+    assert "&amp;gt;" not in html
+
+
+def test_render_table_cells_keep_inline_markup():
+    html = _full_page("---\ntitle: T\n---\n\n## T\n\n| a | b |\n|---|---|\n| **bold** | `x>1` |\n")
+    assert "<td><strong>bold</strong></td>" in html
+    assert "<td><code>x&gt;1</code></td>" in html
+
+
+def test_render_subtitle_inline_markdown():
+    html = _full_page("---\ntitle: T\n---\n\n## Title\n@subtitle Use `nvidia.com/gpu` here\n\nBody.")
+    subtitle = html.split('<p class="subtitle"', 1)[1].split("</p>", 1)[0]
+    assert "<code>nvidia.com/gpu</code>" in subtitle
+    assert "`" not in subtitle

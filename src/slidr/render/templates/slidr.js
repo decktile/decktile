@@ -8,6 +8,45 @@ var KEYS_BACK = ['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'];
 var autoplaySpeed = {{ autoplay }};
 var _autoAdvancing = false;
 
+// ===== VIDEO SYNC (shared) =====
+// Presenter and main windows are separate documents (window.open), each
+// with its own independent <video> element for the same slide -- playing
+// one never touched the other. Wire play/pause/seek to broadcast over
+// the same BroadcastChannel already used for slide-position sync, keyed
+// by the element's own data-slidr-id so the remote window finds its
+// matching (separate DOM) video.
+function _wireVideoSync(scopeSelector, bc) {
+  var figs = document.querySelectorAll(scopeSelector + " figure.video[data-slidr-id]");
+  figs.forEach(function(fig) {
+    var vid = fig.querySelector("video");
+    if (!vid) return;
+    var id = fig.getAttribute("data-slidr-id");
+    var applying = false;
+    vid.addEventListener("play", function() {
+      if (!applying) bc.postMessage({ video: { id: id, action: "play", time: vid.currentTime } });
+    });
+    vid.addEventListener("pause", function() {
+      if (!applying) bc.postMessage({ video: { id: id, action: "pause", time: vid.currentTime } });
+    });
+    vid.addEventListener("seeked", function() {
+      if (!applying) bc.postMessage({ video: { id: id, action: "seek", time: vid.currentTime } });
+    });
+    vid._slidrApply = function(action, time) {
+      applying = true;
+      if (typeof time === "number" && Math.abs(vid.currentTime - time) > 0.3) vid.currentTime = time;
+      if (action === "play") vid.play().catch(function() {});
+      else if (action === "pause") vid.pause();
+      applying = false;
+    };
+  });
+}
+
+function _applyRemoteVideo(scopeSelector, video) {
+  var fig = document.querySelector(scopeSelector + ' figure.video[data-slidr-id="' + video.id + '"]');
+  var vid = fig && fig.querySelector("video");
+  if (vid && vid._slidrApply) vid._slidrApply(video.action, video.time);
+}
+
 if (isPresenter) {
   // ===== PRESENTER MODE =====
   var ms = document.querySelectorAll("#pres-main section");
@@ -99,7 +138,9 @@ if (isPresenter) {
       if (speedValEl) speedValEl.textContent = autoplaySpeed + 's';
       if (autoplayRunning) startAutoplay();
     }
+    if (e.data.video) { _applyRemoteVideo('#pres-main', e.data.video); }
   };
+  _wireVideoSync('#pres-main', bc);
   show(0);
 
   document.getElementById('pres-main').addEventListener('click', function() { advance(1); });
@@ -205,7 +246,9 @@ if (isPresenter) {
       autoplaySpeed = e.data.value;
       if (autoplayRunning) startAutoplay();
     }
+    if (e.data.video) { _applyRemoteVideo('body > section', e.data.video); }
   };
+  _wireVideoSync('body > section', bc);
 
   function startAutoplay() {
     if (autoplaySpeed <= 0) return;

@@ -26,6 +26,7 @@ class Meta:
     logo: str = ""
     logo_dark: str = ""
     watermark: str = ""
+    background: str = ""
     pygments_style: str = "default"
     seaborn_theme: str = ""
     theme_variant: str = "light"
@@ -90,6 +91,8 @@ class Card(Node):
     children: list[Node] = field(default_factory=list)
     tag: Optional[str] = None
     class_: str = ""
+    label: str = ""   # ::: card {label="Q1"}: short name rendered on a
+                       # timeline layout's spine, next to the milestone dot
 
 
 @dataclass

@@ -68,6 +68,11 @@ class BoxGeometry:
     # first-seen style per descendant tag within this Elem's own subtree:
     # card h3/p, table th/td/tr:odd/tr:even, list li/li::marker.
     substyles: dict[str, ResolvedStyle] = field(default_factory=dict)
+    # ::before/::after generated content with no AST node of its own (e.g.
+    # a timeline layout's .grid::before spine, .card::before/::after dot
+    # and connector stub) -- geometry-only decorations the ODP renderer
+    # draws as plain shapes, keyed by nothing but render order.
+    decorations: list["BoxGeometry"] = field(default_factory=list)
 
 
 @dataclass
@@ -179,18 +184,21 @@ def resolve_styles(base_css: str, theme_css: str) -> dict:
 
 def assemble_css(base_css: str, theme_css: str, dims: tuple[int, int],
                  logo: str = "", watermark: str = "", pygments_style: str = "default",
-                 logo_dark: str = "") -> str:
+                 logo_dark: str = "", background: str = "") -> str:
     """Assemble the final CSS for HTML output: base + theme + logo + pygments."""
     css = base_css.replace("SLIDE_W", str(dims[0])).replace("SLIDE_H", str(dims[1]))
     css = css.replace("LOGO_CSS", "").replace("{logo_css}", "")
     css = css.replace("THEME_CSS", theme_css).replace("{theme_css}", "")
     css = css.replace("IMG_MAX_H", str(int(dims[1] * 0.70)))
-    if logo:
-        css = css.replace(":root {", f":root {{ --logo: url(\"{logo}\"); ")
-    if logo_dark:
-        css = css.replace(":root {", f":root {{ --logo-dark: url(\"{logo_dark}\"); ")
-    if watermark:
-        css = css.replace(":root {", f":root {{ --watermark: url(\"{watermark}\"); ")
+    # frontmatter images go in a :root rule AFTER the theme: injected into
+    # base.css's :root, a theme's own --watermark/--bg-image always won.
+    # "none" switches the theme's image off (e.g. another event's art).
+    images = {"--logo": logo, "--logo-dark": logo_dark,
+              "--watermark": watermark, "--bg-image": background}
+    decls = " ".join(f"{k}: {'none' if v == 'none' else f'url(\"{v}\")'};"
+                     for k, v in images.items() if v)
+    if decls:
+        css += f"\n:root {{ {decls} }}\n"
     if pygments_style:
         from slidr.render.html import _pygments_css
         css += _pygments_css(pygments_style)
@@ -372,7 +380,8 @@ def _convert_node(node, styles: dict) -> Elem:
             size = styles.get("font_body", 18)
             tags = styles.get("tag_colors", {})
             svg = render_pdg_svg(node.content, font_family=fam, font_size=size,
-                                 tag_colors=tags) or ""
+                                 tag_colors=tags,
+                                 blueprint=styles.get("pdg_blueprint", False)) or ""
         return Elem(kind="code", content=node.content, text=node.content,
                     language=node.language, font_size=fs, svg=svg, pdf=pdf)
     elif isinstance(node, ListNode):
@@ -395,10 +404,14 @@ def _convert_node(node, styles: dict) -> Elem:
         children = [_convert_node(c, styles) for c in node.children]
         return Elem(kind="grid", cols=node.cols, class_=node.class_ or "", children=children)
     elif isinstance(node, Card):
-        children = [_convert_node(c, styles) for c in node.children]
+        # a ```pdg fence inside ::: card {blueprint} draws in the card's palette
+        child_styles = ({**styles, "pdg_blueprint": True}
+                        if "blueprint" in (node.class_ or "").split() else styles)
+        children = [_convert_node(c, child_styles) for c in node.children]
         return Elem(kind="card", header=node.header, body=node.body,
                     tag=node.tag or "", class_=node.class_ or "",
                     children=children,
+                    attrs={"label": node.label} if node.label else {},
                     font_size=base.font_size, color=base.color)
     elif isinstance(node, Arrow):
         content = node.content.strip()
@@ -435,16 +448,15 @@ def _convert_node(node, styles: dict) -> Elem:
             return Elem(kind="speaker", content=_escape(node.value), text=text,
                         attrs=attrs,
                         font_size=styles.get("font_speaker", 18), color=base.color)
-        elif node.type == "kicker":
-            return Elem(kind="kicker", content=_escape(node.value), text=node.value,
-                        font_size=styles.get("font_kicker", 14), color=base.accent)
-        elif node.type == "subtitle":
-            return Elem(kind="subtitle", content=_escape(node.value), text=node.value,
-                        font_size=styles.get("font_subtitle", 32), color=base.muted)
-        elif node.type == "tiny":
-            fs = styles.get("font_small", 13)
-            return Elem(kind="tiny", content=_escape(node.value), text=node.value,
-                        font_size=fs, color=base.muted)
+        elif node.type in ("kicker", "subtitle", "tiny"):
+            font_key, default_fs, color = {
+                "kicker": ("font_kicker", 14, base.accent),
+                "subtitle": ("font_subtitle", 32, base.muted),
+                "tiny": ("font_small", 13, base.muted),
+            }[node.type]
+            content, text = _inline_markdown(node.value)
+            return Elem(kind=node.type, content=content, text=text,
+                        font_size=styles.get(font_key, default_fs), color=color)
         elif node.type == "side-image":
             return Elem(kind="side-image", src=node.value, content="")
         elif node.type == "video":
@@ -457,6 +469,18 @@ def _convert_node(node, styles: dict) -> Elem:
 
 def _escape(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _inline_markdown(value: str) -> tuple[str, str]:
+    """Directive text (``@subtitle`` etc.) as inline HTML (code, bold,
+    icons) plus plain text for renderers that can't use HTML (ODP). Was
+    escaped as plain text, so `code` showed literal backticks."""
+    import html
+    import re
+
+    from slidr.plugins.fenced import _expand_markdown
+    rendered = _expand_markdown(value)
+    return rendered, html.unescape(re.sub(r"<[^>]+>", "", rendered))
 
 
 def _render_inline_html(nodes: list) -> str:

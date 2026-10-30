@@ -8,7 +8,7 @@
   --radius: 0.18em;
   --img-radius: 0.45em;
   --gap: 1em;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-mono: "Noto Sans Mono", Consolas, "SFMono-Regular", Menlo, monospace;
   --section-padding-v: 2.8em;
   --section-padding-h: 3.6em;
   --card-border: 1px solid var(--color-border);
@@ -91,9 +91,11 @@ h3::after {
   content: "";
   width: 100%;
   height: 0;
-  border-bottom: 2px solid var(--color-accent-primary);
+  /* same 1px weight as the card border (--card-border); 2px accent read
+     as heavier than the light grey frame around it */
+  border-bottom: 1px solid var(--color-accent-primary);
   margin-top: 0.3em;
-  opacity: 0.4;
+  opacity: 0.3;
 }
 .card.side-image {
   align-self: center;
@@ -244,6 +246,25 @@ LOGO_CSS
   height: auto;
 }
 
+/* ---- ::: card {blueprint}: engineering-drawing panel for diagrams ----
+   Theme-independent on purpose (same blue on light and dark slides); a
+   ```pdg fence inside it renders with the matching blueprint palette
+   (render/dot.py). Grid = minor 0.6em + major 3em lines over the blue. */
+.card.blueprint {
+  background:
+    linear-gradient(rgba(143,211,255,0.16) 1px, transparent 1px) 0 0 / 3em 3em,
+    linear-gradient(90deg, rgba(143,211,255,0.16) 1px, transparent 1px) 0 0 / 3em 3em,
+    linear-gradient(rgba(143,211,255,0.07) 1px, transparent 1px) 0 0 / 0.6em 0.6em,
+    linear-gradient(90deg, rgba(143,211,255,0.07) 1px, transparent 1px) 0 0 / 0.6em 0.6em,
+    linear-gradient(160deg, #123f78 0%, #0b2f5c 100%);
+  border: 1px solid #8fd3ff;
+  color: #eaf4ff;
+  padding: 0.6em 0.8em;
+}
+.card.blueprint h3 { color: #8fd3ff; }
+.card.blueprint h3::after { border-bottom-color: #8fd3ff; }
+.card.blueprint p { color: #eaf4ff; }
+
 /* ---- predefined slide layouts ---- */
 .layout-cols {
   display: grid;
@@ -349,6 +370,203 @@ LOGO_CSS
 .layout-ecosystem .grid { margin: 0; gap: 0.4em; }
 .layout-ecosystem .card.metric h3 {
   font-size: 1.5em;
+}
+
+/* ---- timeline layouts ---- */
+/* ::: grid {cols=1} of ::: card blocks, flex (not CSS grid) so any item
+   count distributes naturally. The spine spans a fixed length (full
+   available height/width); justify-content: space-evenly auto-spaces
+   however many milestones there are along it -- no manually-tuned
+   gap/margin per item count. Items alternate sides of the spine -- the
+   connector stub's direction (left card <- stub -> right card,
+   vertical; above <- stub -> below, horizontal) flips every item, the
+   literal "line going up and down". {focus} on a card scales it up.
+   {label="Q1"} on a card prints a short name directly on the spine,
+   next to that card's own milestone dot. */
+.layout-timeline-vertical .grid,
+.layout-timeline-horizontal .grid {
+  display: flex;
+  position: relative;
+}
+/* grid fills the remaining body height via flex:1, not height:100% --
+   weasyprint resolves the percentage against more than the leftover
+   space below the heading, pushing the whole grid onto a new page
+   (broke --pdf/--odp: cards landed on an extra page). */
+.layout-timeline-vertical .slide-body {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0; /* the spine runs to the section padding, not 1.8em
+                        short of it (sat too high, empty band below) */
+}
+.layout-timeline-vertical .grid {
+  flex-direction: column;
+  justify-content: space-evenly;
+  flex: 1;
+  min-height: 0;
+  margin: 0.8em 0 0; /* clear the heading: the first card touched it */
+  padding: 0 2.5em;
+}
+.layout-timeline-vertical .grid::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0.12em;
+  background: var(--color-accent-primary);
+  opacity: 0.4;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .grid {
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: flex-start;
+  margin-top: 8em; /* reserves room for odd cards shifted above the spine */
+}
+.layout-timeline-horizontal .grid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0.12em;
+  background: var(--color-accent-primary);
+  opacity: 0.4;
+}
+.layout-timeline-vertical .card {
+  position: relative;
+  width: calc(50% - 2.5em); /* padding (2.5em) on both sides makes the
+                               card-to-spine gap exactly 2.5em either way */
+  padding: 0.6em 1em;
+}
+.layout-timeline-vertical .card:nth-child(odd)  { margin-right: auto; }
+.layout-timeline-vertical .card:nth-child(even) { margin-left: auto; }
+/* consecutive cards sit on opposite sides of the spine, so they may
+   overlap vertically: 4 cards stacked end to end overflowed the slide.
+   Card i and i+2 (same side) still clear each other while the card
+   between them is taller than 3em. */
+.layout-timeline-vertical .card + .card { margin-top: -1.5em; }
+.layout-timeline-horizontal .card {
+  position: relative;
+  flex: 0 1 11em; /* basis 11em, may shrink: few milestones leave free
+                     space for space-evenly; 5-6 shrink to fit the
+                     width instead of overflowing the slide */
+  min-width: 0;
+  height: 6em; /* fixed so the stub below reliably reaches the spine --
+                  keep horizontal-timeline card text brief, it won't
+                  clip (no overflow:hidden -- that would also clip the
+                  card's own connector dot/stub below) */
+  margin-top: 2em; /* stub gap below the spine */
+}
+.layout-timeline-horizontal .card:nth-child(odd) {
+  margin-top: -8em; /* 6em card + 2em stub, shifted above the spine */
+}
+/* connector dot on the spine */
+.layout-timeline-vertical .card::before,
+.layout-timeline-horizontal .card::before {
+  content: "";
+  position: absolute;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  border: 0.15em solid var(--color-background);
+  z-index: 1;
+}
+.layout-timeline-vertical .card:nth-child(odd)::before  { right: -2.8em; top: 1em; }
+.layout-timeline-vertical .card:nth-child(even)::before { left: -2.8em; top: 1em; }
+.layout-timeline-horizontal .card::before { left: 50%; transform: translateX(-50%); }
+.layout-timeline-horizontal .card:nth-child(even)::before { top: -2.3em; }
+.layout-timeline-horizontal .card:nth-child(odd)::before  { bottom: -2.3em; }
+/* connector stub -- the alternating line itself, not just the dot */
+.layout-timeline-vertical .card::after {
+  content: "";
+  position: absolute;
+  top: 1.3em;
+  height: 0.08em;
+  width: 2.5em;
+  background: var(--color-accent-primary);
+  opacity: 0.5;
+}
+.layout-timeline-vertical .card:nth-child(odd)::after  { right: -2.5em; }
+.layout-timeline-vertical .card:nth-child(even)::after { left: -2.5em; }
+.layout-timeline-horizontal .card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0.08em;
+  height: 2em;
+  background: var(--color-accent-primary);
+  opacity: 0.5;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .card:nth-child(even)::after { top: -2em; }
+.layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
+/* {label="..."}: short name printed directly on the spine, next to
+   this card's own dot -- distinct from the card's fuller ### header */
+.timeline-label {
+  position: absolute;
+  font-size: 0.6em;
+  font-weight: 700;
+  color: var(--color-accent-primary);
+  white-space: nowrap;
+  z-index: 2;
+}
+/* beside the dot, past the spine, vertically centred on it. Offsets are
+   in the label's own 0.6em font: 5.5em = 3.3 card-em = dot edge + gap;
+   top 1.8em centres it on the dot (top 1em, 0.9em tall). Was above the
+   dot, touching the spine. */
+.layout-timeline-vertical .card:nth-child(odd) .timeline-label {
+  left: 100%;
+  margin-left: 5.5em;
+  top: 1.8em;
+}
+.layout-timeline-vertical .card:nth-child(even) .timeline-label {
+  right: 100%;
+  margin-right: 5.5em;
+  top: 1.8em;
+}
+/* beside the dot: centre on it, then shift right. margin-left, not
+   translate(calc(-50% + Xem)) -- weasyprint crashes on calc() inside
+   transform (AttributeError in its cascade), breaking --pdf/--odp. */
+.layout-timeline-horizontal .card:nth-child(even) .timeline-label {
+  left: 50%;
+  top: -2.3em;
+  margin-left: 1.4em;
+  transform: translateX(-50%);
+}
+.layout-timeline-horizontal .card:nth-child(odd) .timeline-label {
+  left: 50%;
+  bottom: -2.3em;
+  margin-left: 1.4em;
+  transform: translateX(-50%);
+}
+/* {focus}: bigger, highlighted with the theme's own card colours (accent
+   border + accent background) -- not box-shadow, which weasyprint
+   ignores, so the highlight vanished in PDF and ODP. Size via
+   font-size/padding, not transform: scale(), which would drag the card's
+   own ::before/::after connector (positioned in em relative to the card)
+   off the spine with it. Vertical gets the font-size bump too;
+   horizontal's height/margin are all in em relative to its own
+   font-size, so bumping it there would throw off the exact
+   spine-alignment math -- padding only. */
+.layout-timeline-vertical .card.focus,
+.layout-timeline-horizontal .card.focus {
+  border: 2px solid var(--color-accent-primary);
+  background: var(--color-accent-bg);
+  z-index: 2;
+}
+.layout-timeline-horizontal .card.focus {
+  padding: 1.3em;
+}
+.layout-timeline-vertical .card.focus {
+  padding: 0.8em 1.2em;
+  font-size: 1.1em;
+}
+.layout-timeline-horizontal .slide-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* ---- slide transitions ---- */

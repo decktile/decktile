@@ -654,3 +654,45 @@ def test_page_number_widens_for_multi_digit_slide_counts(tmp_path):
     # distinguishes "widened for 2 digits" from the original single-digit
     # box (~0.21cm wide, well under half of its own ~0.43cm height).
     assert w >= 1.1 * h
+
+
+def test_timeline_layout_renders_spine_dots_and_labels(tmp_path):
+    """Timeline spine (.grid::before), per-card dot+stub (.card::before/
+    ::after) and {label=} names have no AST node of their own -- they were
+    silently dropped from ODP (bare cards, no line). Covers both axes with
+    labels: the horizontal label CSS once used calc() inside transform,
+    which crashes weasyprint and broke --odp/--pdf outright; the vertical
+    grid once used height:100%, which weasyprint resolved too tall and
+    spilled the cards onto an extra page."""
+    cards = (
+        '::: card {label="L1"}\n### Q1\nFirst.\n:::\n'
+        '::: card {focus, label="L2"}\n### Q2\nSecond.\n:::\n'
+    )
+    md = (
+        "---\ntitle: T\n---\n\n@layout timeline-vertical\n\n## V\n\n"
+        f"::: grid {{cols=1}}\n{cards}:::\n\n---\n\n"
+        "@layout timeline-horizontal\n\n## H\n\n"
+        f"::: grid {{cols=2}}\n{cards}:::\n"
+    )
+    odp = _build(md, tmp_path)
+    pages = odp.body.get_draw_pages()
+    assert len(pages) == 2
+
+    def cm(el, attr):
+        return float(el.get_attribute(attr).rstrip("cm"))
+
+    page_h = 720 * 2.54 / 96  # default 16:9 slide, 19.05cm
+    for page in pages:
+        kids = page.children
+        dots = [c for c in kids if c.tag == "draw:ellipse"]
+        assert len(dots) == 2  # one round dot per milestone, not squares
+        # label text appears nowhere else, so this proves label frames exist
+        texts = " ".join(c.get_formatted_text() for c in kids if c.tag == "draw:frame")
+        assert "L1" in texts and "L2" in texts
+        rects = [c for c in kids if c.tag == "draw:rect"]
+        spine_len = max(max(cm(r, "svg:width"), cm(r, "svg:height")) for r in rects)
+        assert spine_len > 5.0
+        # weasyprint page spill showed up as geometry from the wrong page:
+        # every timeline shape must land inside this slide
+        for c in dots + rects:
+            assert 0 <= cm(c, "svg:y") and cm(c, "svg:y") + cm(c, "svg:height") <= page_h

@@ -160,9 +160,9 @@ def _walk(
     if tag in GLOBAL_TAGS and tag not in global_tags:
         global_tags[tag] = _resolve_style(box, parent_bg)
 
-    pseudo_or_injected = tag in ("section::before", "section::after", "footer") or (
-        tag == "span" and _has_class(box, "slide-num")
-    )
+    pseudo_or_injected = tag in (
+        "section::before", "section::after", "footer", "div::before", "div::after",
+    ) or (tag == "span" and _has_class(box, "slide-num"))
     if has_rect and (pseudo_or_injected or (sid not in seen if sid else True)):
         style = _resolve_style(box, parent_bg)
         bg_rgb = style.bg_rgb01  # already composited with parent_bg in _resolve_style
@@ -223,6 +223,32 @@ def _walk(
                     section_box[current_sid].footer = pseudo
             elif section_box[current_sid].slide_num is None:
                 section_box[current_sid].slide_num = pseudo
+        elif current_sid in by_id and by_id[current_sid].kind in ("grid", "card") and (
+            tag in ("div::before", "div::after")
+            or (tag == "span" and _has_class(box, "timeline-label"))
+        ):
+            # Timeline spine (.grid::before) / dot+stub (.card::before/
+            # ::after) / milestone name (span.timeline-label): no AST node
+            # of their own. Attach to the enclosing grid/card's box so the
+            # ODP renderer can draw them alongside it. First match per
+            # label wins -- the span's own line/text child boxes inherit
+            # element_tag "span" and are walked right after.
+            host = by_id[current_sid]
+            is_label = tag == "span"
+            if host.box is not None and not (
+                is_label and any(d.text for d in host.box.decorations)
+            ):
+                ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
+                dx, dy = _translate_px(box)
+                el = getattr(box, "element", None)
+                host.box.decorations.append(BoxGeometry(
+                    x=(box.border_box_x() + dx - ox) * PX_TO_CM,
+                    y=(box.border_box_y() + dy - oy) * PX_TO_CM,
+                    w=box.border_width() * PX_TO_CM,
+                    h=box.border_height() * PX_TO_CM,
+                    style=_decoration_style(box, style, parent_bg),
+                    text=(el.text or "").strip() if is_label and el is not None else "",
+                ))
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             elem = by_id[sid]
@@ -249,6 +275,8 @@ def _walk(
                 substyles=substyles,
             )
             seen.add(sid)
+            if elem.kind in ("grid", "card"):
+                current_sid = sid
 
     for child in getattr(box, "children", None) or []:
         _walk(child, by_id, section_box, seen, section_origin, bg_rgb, global_tags, current_sid)
@@ -428,6 +456,43 @@ def _hex(rgb01: tuple[float, float, float]) -> str:
 
 def _dim_px(dim: Any) -> float:
     return float(dim.value) if getattr(dim, "unit", "px") == "px" else 0.0
+
+
+def _len_px(dim: Any, ref_px: float) -> float:
+    unit = getattr(dim, "unit", "px")
+    if unit == "px":
+        return float(dim.value)
+    if unit == "%":
+        return float(dim.value) / 100.0 * ref_px
+    return 0.0
+
+
+def _translate_px(box: Any) -> tuple[float, float]:
+    """CSS translate() offset in px. weasyprint box positions are pre-
+    transform (applied only at paint time), so a `left: 50%; transform:
+    translateX(-50%)` centred dot would land half its width off-centre
+    without this."""
+    dx = dy = 0.0
+    for name, args in box.style["transform"] or ():
+        if name == "translate":
+            dx += _len_px(args[0], box.border_width())
+            dy += _len_px(args[1], box.border_height())
+    return dx, dy
+
+
+def _decoration_style(
+    box: Any, style: ResolvedStyle, parent_bg: tuple[float, float, float],
+) -> ResolvedStyle:
+    """A decoration's own style with what _resolve_style drops: `%`
+    border-radius (`50%` -> circle) and element `opacity` (folded into the
+    fill, composited onto the parent bg -- ODF draw:fill-color is opaque)."""
+    radius_dims = box.style["border_top_left_radius"]
+    radius = _len_px(radius_dims[0], min(box.border_width(), box.border_height()))
+    opacity = float(box.style["opacity"])
+    bg = style.bg
+    if opacity < 1.0 and style.bg:
+        bg = _hex(_composite(parent_bg, style.bg_rgb01, opacity))
+    return dataclasses.replace(style, border_radius=radius, bg=bg)
 
 
 def _img_border_radius(box: Any) -> float:

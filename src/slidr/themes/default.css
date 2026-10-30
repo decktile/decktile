@@ -29,7 +29,7 @@
      ratio needs it */
   --watermark-w: 4em;
   --watermark-h: 1em;
-  --watermark-gap: 2em;
+  --watermark-gap: 1em;
 }
 
 /* per-slide variant override */
@@ -79,12 +79,17 @@ section {
   font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
 }
 
-/* Watermark sits left of the page-number column, anchored to the same
-   --section-padding-h the page number's own right offset uses, so the
-   two stay clear of each other regardless of watermark image size. */
+/* Watermark sits left of, and vertically centered against, the page-
+   number column: anchored to --section-padding-h (same var .slide-num's
+   right offset uses) so the two stay clear of each other regardless of
+   watermark image size. bottom: 0.48em centers the watermark against
+   .slide-num's own 0.6em-font-size text box -- not the naive full 1em
+   (watermark sits too high) or a plain box-bottom match at 0.6em
+   (watermark sits slightly too high still, since the two boxes aren't
+   the same height). */
 section::after {
   right: calc(var(--section-padding-h) + var(--watermark-gap));
-  bottom: 1em;
+  bottom: 0.48em;
   width: var(--watermark-w);
   height: var(--watermark-h);
   background-position: center;

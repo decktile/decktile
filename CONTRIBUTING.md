@@ -46,10 +46,10 @@ pdm run slidr slides.md
 ` ```seaborn ` fenced blocks execute Python in-process and render as inline SVG.
 Requires `pdm install -G plot`. See `src/slidr/render/seaborn.py` and `README.md`.
 
-## graphviz support (done)
+## Diagrams (done)
 
-` ```dot ` fenced blocks render via the `dot` CLI to SVG. Requires `graphviz`
-installed. See `src/slidr/render/dot.py` and `README.md`.
+` ```pdg ` fenced blocks render with [predictygraph](https://pypi.org/project/predictygraph/),
+a Python dependency (no system tools). See `src/slidr/render/pdg.py` and `README.md`.
 
 ## mermaid support (done)
 

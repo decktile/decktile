@@ -27,7 +27,8 @@ theme: dynamia           # theme name (default, dynamia, kubecon_japan)
 variant: dark            # global dark mode
 logo: assets/logo.svg    # top-right logo (replaces theme default)
 logo_dark: assets/logo-white.png  # dark mode variant of logo
-watermark: assets/brand-mark.svg  # bottom-right watermark (conference logo)
+watermark: assets/brand-mark.svg  # bottom-right watermark (conference logo); none = off
+background: none                  # slide background image (replaces theme default); none = off
 style: |                 # raw CSS override
   :root { --color-accent: #e91e63; }
 ---
@@ -66,7 +67,12 @@ pdm run slidr slides.md --pdf        # + PDF
 pdm run slidr -w slides.md           # watch and rebuild on changes
 pdm run slidr --odp -w slides.md     # watch + ODP
 pdm run slidr --dist slides.md       # HTML + all referenced assets as zip
+pdm run slidr a.md b.md --pdf       # several decks
+pdm run slidr '**/*.md' --pdf       # quoted globs are expanded (recursive with **)
 ```
+
+A missing or failing file is reported (`error: <file>: <reason>`) and skipped;
+the rest still build, and the exit code is 1 if any file failed.
 
 ## Assets
 
@@ -137,6 +143,8 @@ places that should be one. PRs that consolidate repeated logic are welcome.
 | `@layout compare` | Two cards side-by-side with an arrow connector, conclusion notes below |
 | `@layout metrics-N` | 2-4 metric cards, auto-detected from `::: card {metric}` blocks |
 | `@layout ecosystem` | Compact stacked layout for partner/device logos. Small labels, uniform image sizing |
+| `@layout timeline-vertical` | Cards alternate left/right of a central vertical spine, connected by stubs |
+| `@layout timeline-horizontal` | Cards alternate above/below a central horizontal spine |
 | Custom | `@layout <name>` adds CSS class `layout-<name>`, style via frontmatter `style:` block |
 
 ### Compare layout
@@ -194,6 +202,78 @@ Each `::: card {metric}` block: first line is the big number, following lines ar
 Styled with accent-colored large text (`2.8em`, bold) and dimmed label text.
 Grid auto-centers vertically in the slide body.
 
+### Timeline layouts
+
+Cards alternate sides of a central spine -- left/right for `timeline-vertical`,
+above/below for `timeline-horizontal`. The spine spans the full available
+height/width; `justify-content: space-evenly` auto-spaces however many
+milestones there are along it -- no per-count tuning needed for a
+*reasonable* number of items. `::: card {focus}` scales an item up and
+highlights it. `::: card {label="Q1"}` prints a short name directly on the
+spine next to that card's own dot, separate from the card's fuller `###`
+header. No explicit `cols=` needed beyond matching the layout's flow
+(`cols=1` for vertical, one row for horizontal).
+
+**No automatic collision avoidance beyond that.** `space-evenly` only
+distributes *leftover* space -- once total card height (vertical) or width
+(horizontal) exceeds the spine's fixed length, flexbox has no fallback
+to shrink text, and cards start genuinely overlapping. Keep it to
+**5-6 items per timeline slide**; past that, split into multiple slides.
+
+```markdown
+@layout timeline-vertical
+
+## Project Roadmap
+
+::: grid {cols=1}
+::: card
+### Q1 2026
+Kickoff and planning.
+:::
+::: card {focus}
+### Q2 2026
+Major public launch.
+:::
+::: card
+### Q3 2026
+Scale and iterate.
+:::
+::: card
+### Q4 2026
+Expand to new markets.
+:::
+:::
+```
+
+```markdown
+@layout timeline-horizontal
+
+## Release Timeline
+
+::: grid {cols=4}
+::: card
+### v1.0
+Initial release
+:::
+::: card {focus}
+### v2.0
+Big feature launch
+:::
+::: card
+### v2.1
+Bugfixes
+:::
+::: card
+### v3.0
+Next major
+:::
+:::
+```
+
+`timeline-horizontal` cards have a fixed height (keep text brief -- a
+title plus one short line) so the connector stub reliably reaches the
+spine regardless of content length.
+
 ### Section labels and side images
 
 Ecosystem slides use `####` (h4) for section labels above grids, and
@@ -234,6 +314,7 @@ The arrow block accepts text or images:
 ::: card{ tag="green" }         # colored left border + background
 ::: card{ tag="quote" }         # accent left border, italic, no fill
 ::: card {metric}                      # big number + label card (first line = value, rest = label)
+::: card {blueprint}                   # blue engineering-drawing panel; a ```dot inside uses the blueprint palette
 ::: arrow                       # connector for compare layout
 ::: notes{ tag="green" }        # full-width conclusion card
 > quote text                    # blockquote, renders as .quote div
@@ -286,6 +367,21 @@ Available node classes: `green`, `cyan`, `yellow`, `red`. The diagram uses the
 slide's body font. Put a `css { … }` block inside the diagram to change anything.
 See predictygraph's [spec](https://github.com/predictygraph/predictygraph/blob/master/docs/SPEC.md)
 for the full syntax.
+
+Wrap a diagram in `::: card {blueprint}` for an engineering-drawing look:
+blue grid card, light lines and text, translucent node fills, with the
+node classes as brighter accents. Works the same under any theme.
+
+````markdown
+::: card {blueprint}
+```pdg
+graph dir=LR
+pod "Pod" .red
+sched "hami-scheduler" .cyan
+pod -> sched
+```
+:::
+````
 
 ## Mermaid diagrams
 
@@ -434,7 +530,7 @@ seaborn charts, predictygraph diagrams, lucide icons, blockquotes, speaker notes
 and all directives.
 
 See also: `examples/mermaid_demo.md`, `examples/seaborn_demo.md`,
-`examples/pdg_demo.md`, `examples/lucide_demo.md`.
+`examples/pdg_demo.md`, `examples/lucide_demo.md`, `examples/timeline_demo.md`.
 
 ## Pipeline
 

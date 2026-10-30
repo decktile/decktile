@@ -10,6 +10,13 @@ def test_pdg_renders_svg():
     assert "Application" in svg
 
 
+def test_pdg_blueprint_palette():
+    svg = render_pdg_svg('a "App" .cyan', blueprint=True,
+                         tag_colors={"cyan": ("#e0f7fa", "#00bcd4")})
+    assert "#67d8ff" in svg.lower()
+    assert "#e0f7fa" not in svg.lower()
+
+
 def test_pdg_applies_theme_font_and_tag_colors():
     svg = render_pdg_svg('a "App" .green\nb "DB"\na -> b',
                          font_family="Liberation Mono", font_size=12,
