@@ -143,6 +143,7 @@ sched <-> gpu flow=both "allocate"
 
 ```pdg
 graph layout=row theme=hami gap=40 steps=auto
+group panels layout=row align=stretch gap=40 .bare {
 group cp "Control plane" sub="decides where the Pod runs" layout=column gap=30 {
   pod "Pod" sub="nvidia.com/gpumem: 3000"
   webhook "MutatingWebhook" sub="sets schedulerName" .blue
@@ -153,6 +154,7 @@ group node "GPU node" sub="sets up the container, enforces limits" layout=column
   plugin "HAMi device plugin" sub="mounts libvgpu.so" .green
   core "HAMi-Core" sub="checks memory and kernel calls" .green
 }
+}
 gpu "GPU"
 pod -> webhook
 webhook -> sched
@@ -160,6 +162,7 @@ sched -> kubelet "bind"
 kubelet -> plugin "Allocate()"
 plugin -> core
 core -> gpu
+css { group.bare { fill: none; stroke: none; padding: 0; } }
 ```
 
 ---
@@ -215,15 +218,6 @@ css {
 
 ## HAMi: NVIDIA kernel modules
 
-@layout two-col
-
-`nvidia-smi` needs the whole path; `lsmod` only checks the kernel layer.
-
-- `nvidia_uvm` is needed by compute workloads
-- `nvidia_modeset` and `nvidia_drm` drive the display
-
-@col
-
 ```pdg
 graph layout=column align=stretch gap=8 theme=hami
 group user "User space" layout=row gap=24 .space {
@@ -239,11 +233,14 @@ group hw "Hardware" layout=row .space {
 }
 nvml -> nvidia
 libcuda -> uvm "ioctl"
-uvm -> nvidia "depends"
+uvm -> nvidia "depends on"
 nvidia -> gpu
+bracket nvml, gpu "nvidia-smi needs\nthe whole path"
+bracket nvidia, uvm "lsmod checks\nonly this layer"
 css {
-  group.space { fill: #eff6ff; stroke: none; title-fill: none; }
-  group.kspace { fill: #f0fdf4; stroke: none; title-fill: none; }
+  group.space, group.kspace { label-position: left; title-fill: none; stroke: none; }
+  group.space { fill: #eff6ff; color: var(--blue); }
+  group.kspace { fill: #f0fdf4; color: var(--green); }
   node.blue, node.green { accent-bar: none; }
   node.blue { color: var(--blue); }
   node.green { color: var(--green); }
