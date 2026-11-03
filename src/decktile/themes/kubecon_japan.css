@@ -10,8 +10,8 @@
   --color-border: #c0c4d6;
   --color-card-bg: #f5f6fa;
   --bg-image: url("assets/brand/kubecon_japan/background.png");
-  --bg-overlay: rgba(255,255,255,0.96);
-  --watermark: url("assets/brand/kubecon_japan/cncf_logo.svg");
+  --bg-overlay: rgba(255,255,255,0.85);
+  --watermark: url("assets/brand/kubecon_japan/cncf_logo_dark.svg");
   --logo-dark: url("assets/brand/dynamia-logo-white.png");
   --tag-green-bg: #e8f5e9;
   --tag-cyan-bg: #e3f0ff;
@@ -36,6 +36,7 @@ body {
 }
 
 [data-theme="dark"] {
+  --watermark: url("assets/brand/kubecon_japan/cncf_logo.svg");
   --color-background: #06062D;
   --color-background-stripe: #0d0d3d;
   --color-foreground: #e0e0f0;
