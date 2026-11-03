@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Skip without token
         if: env.SITE_DISPATCH_TOKEN == ''
-        run: echo "::notice::SITE_DISPATCH_TOKEN not set, site rebuilds weekly instead"
+        run: echo "::notice::SITE_DISPATCH_TOKEN not set, site rebuilds daily instead"
       - name: Trigger site rebuild
         if: env.SITE_DISPATCH_TOKEN != ''
         run: |
