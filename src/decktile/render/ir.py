@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Slide intermediate representation.
 
 Parses a Document AST into resolved, style-annotated slide structures

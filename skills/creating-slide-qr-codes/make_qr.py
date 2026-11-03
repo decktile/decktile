@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Make a QR code PNG with an optional logo in the middle.
 
 Usage: pdm run python make_qr.py URL OUT.png [--icon LOGO.png] [--color '#003841']

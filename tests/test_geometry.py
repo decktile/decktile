@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Guards the private weasyprint layout API render/odf/geometry.py depends on.
 
 If a weasyprint upgrade removes/renames any of these, this test fails

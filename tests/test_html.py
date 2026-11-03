@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Tests for the HTML renderer's element rendering."""
 from decktile.parser.markdown import parse
 from decktile.render.html import _render_elem, base_css, default_theme, render

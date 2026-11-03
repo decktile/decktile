@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """predictygraph renderer for decktile ``pdg`` fenced blocks.
 
 The slide theme's body font and tag colours are passed to predictygraph as a

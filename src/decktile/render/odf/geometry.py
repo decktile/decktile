@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """weasyprint layout box-tree adapter: resolves per-Elem geometry + style for ODP.
 
 Isolated here because it reads weasyprint's private layout API

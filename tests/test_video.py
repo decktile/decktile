@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Tests for the @video directive: parse, IR, HTML render, ODP skip."""
 
 from decktile.render.html import _render_elem

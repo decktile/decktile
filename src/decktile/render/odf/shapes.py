@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Elem.kind -> ODF Frame/shape(s), built from the geometry-resolved IR.
 
 Positions/sizes come from ``Elem.box`` (already cm, section-relative, from

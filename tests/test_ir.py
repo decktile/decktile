@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
 
 
 def test_assemble_css_frontmatter_images_override_theme(tmp_path):

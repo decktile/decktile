@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Lucide icon font: name -> glyph codepoint, parsed from the vendored
 lucide.css codepoint map (src/decktile/assets/lucide/VENDORED.md).
 """

@@ -616,7 +616,7 @@ Deployable as a single binary via PyInstaller or Nuitka when needed.
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+Apache-2.0, see [LICENSE](LICENSE). Forks must keep [NOTICE](NOTICE).
 
 ## Related projects
 

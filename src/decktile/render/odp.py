@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """ODP renderer: thin orchestrator over geometry + styles + shapes.
 
 build_ir -> annotate_geometry -> one DrawPage per slide, with its

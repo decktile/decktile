@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Layout processing: applies predefined layouts to slide content."""
 
 from decktile.parser.ast import Paragraph, AttrNode, Image

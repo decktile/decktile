@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Card auto-grouping: consecutive Card nodes → Grid."""
 
 from decktile.parser.ast import Card, Grid, Node

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Parse base.css + theme CSS with tinycss2 into PPTX styling rules."""
 
 import tinycss2

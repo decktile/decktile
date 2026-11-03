@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Fenced block extraction: ::: card, ::: grid → AST nodes.
 
 Card/grid ``{...}`` attributes: bare words → CSS classes, ``k=v`` → ``k-v`` classes.

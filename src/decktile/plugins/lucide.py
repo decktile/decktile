@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """markdown-it inline rule for lucide icons: {icon:star stroke=#64d039}"""
 
 import re

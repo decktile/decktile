@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from decktile.parser.markdown import parse
 from decktile.parser.ast import Heading, Paragraph, Table, Quote, Card, Grid

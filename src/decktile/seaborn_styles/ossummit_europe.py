@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Seaborn/matplotlib style for the Open Source Summit Europe theme.
 
 Brand palette: coral #E05845, green #0DA89D, teal #0A5560,

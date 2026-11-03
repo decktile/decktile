@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Tests for ```pdg blocks rendered with predictygraph."""
 
 from decktile.render.pdg import render_pdg_svg, theme_css

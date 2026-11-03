@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Generate the decktile logo: mark, wordmark lockup, and PNG exports.
 
 The mark is a stack of slide cards seen at a slight angle; the top card shows

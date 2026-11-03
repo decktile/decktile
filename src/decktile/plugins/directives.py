@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Directive parsing: @kicker, @speaker, @subtitle, etc. → AttrNode."""
 
 import re

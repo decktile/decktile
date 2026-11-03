@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """ODF Style registries built from resolved (weasyprint-derived) styles.
 
 Every registry dedups by a hashable key derived from ResolvedStyle so two

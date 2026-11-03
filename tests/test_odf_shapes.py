@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Unit tests for render/odf/shapes.py helpers."""
 
 from decktile.render.odf.shapes import _normalize_svg_viewbox, _svg_dims

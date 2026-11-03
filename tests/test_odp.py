@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Observable ODF contract for the ODP renderer: real render() -> real odfdo
 Document round-trip, asserting what a consumer (LibreOffice, a reviewer
 opening the file) would see -- not internal call patterns."""
