@@ -825,7 +825,7 @@ requires-dist = [
     { name = "mermaidx", specifier = ">=0.8.1" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.1.0" },
     { name = "odfdo", specifier = ">=3.27.2" },
-    { name = "predictygraph", specifier = ">=0.2.4" },
+    { name = "predictygraph", specifier = ">=0.2.5" },
     { name = "pygments-styles", specifier = ">=0.3.0" },
     { name = "python-frontmatter", specifier = ">=1.3.0" },
     { name = "python-lucide", specifier = ">=0.5.0" },
@@ -1916,16 +1916,16 @@ wheels = [
 
 [[package]]
 name = "predictygraph"
-version = "0.2.4"
+version = "0.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pillow" },
     { name = "tinycss2" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/1a/7dd6dee77d01eebcc78babd4781a517d9a72943c00375fc5d6acd0d2143f/predictygraph-0.2.4.tar.gz", hash = "sha256:2ab16e22ffdc9337de615a8241749d67a6c2dc27b4e3fd25f071024bf12b2cfd", size = 136354, upload-time = "2026-11-03T03:52:53.354Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/56/98450000c61116467309094558ac76104d9a2bed8c77eecb329ed8bb9bd4/predictygraph-0.2.5.tar.gz", hash = "sha256:03c045f2a048dba050b8b2239a944a44a02609b10c24fd8c11c3dc74f33c6d76", size = 137389, upload-time = "2026-11-03T04:51:16.754Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/a6/de9e2576cf074a3ebe8424dbecdf9893782dc5b8b1e832c03ef76e066642/predictygraph-0.2.4-py3-none-any.whl", hash = "sha256:e169f39fb4326042d122c4965e1ebb092a4f2120b68b6114b997aaae2cad3284", size = 149075, upload-time = "2026-11-03T03:52:51.958Z" },
+    { url = "https://files.pythonhosted.org/packages/70/27/d43468afa1ff62d1f1b2b5c084235d0b65c0946e2ef464bf470ce28b0497/predictygraph-0.2.5-py3-none-any.whl", hash = "sha256:253ad37ce38ab4fe8e0a853605ce08b712ad4f16f6b7a4ae3939aa3a998a7763", size = 149767, upload-time = "2026-11-03T04:51:15.664Z" },
 ]
 
 [[package]]
