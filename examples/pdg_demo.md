@@ -221,8 +221,8 @@ css {
 ```pdg
 graph layout=column align=stretch gap=8 theme=hami
 group user "User space" layout=row gap=24 .space {
-  nvml "libnvidia-ml.so" sub="NVML" .blue
-  libcuda "libcuda.so" sub="CUDA driver API" .blue
+  nvml "libnvidia-ml.so" sub="NVML" align-x=nvidia .blue
+  libcuda "libcuda.so" sub="CUDA driver API" align-x=uvm .blue
 }
 group kernel "Kernel space" layout=row gap=60 .kspace {
   nvidia "nvidia" sub="core GPU driver" .green
