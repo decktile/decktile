@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs", "plot"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:1ed95ddd602c0ba4eb294f91970e5687b7c4eed056594d66c87c150feb240d8c"
+content_hash = "sha256:63392cf42c398571042f74d340c52218a6f7e7d74d60d04c63cef7a1f46c6b84"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -1928,7 +1928,7 @@ files = [
 
 [[package]]
 name = "predictygraph"
-version = "0.2.3"
+version = "0.2.4"
 requires_python = ">=3.11"
 summary = "Predictable graphs: a readable, CSS-styled diagram DSL with per-group layouts, rendered to SVG/APNG"
 groups = ["default"]
@@ -1938,8 +1938,8 @@ dependencies = [
     "typer>=0.26.8",
 ]
 files = [
-    {file = "predictygraph-0.2.3-py3-none-any.whl", hash = "sha256:b3e786a57d68cf544a7d633a979ffcbce404342b82efa49773569cb29a375418"},
-    {file = "predictygraph-0.2.3.tar.gz", hash = "sha256:daa62f6cceacd2b715982a67f80d7fca50c9e3e6ab23863068c5ac96e60ea1c2"},
+    {file = "predictygraph-0.2.4-py3-none-any.whl", hash = "sha256:e169f39fb4326042d122c4965e1ebb092a4f2120b68b6114b997aaae2cad3284"},
+    {file = "predictygraph-0.2.4.tar.gz", hash = "sha256:2ab16e22ffdc9337de615a8241749d67a6c2dc27b4e3fd25f071024bf12b2cfd"},
 ]
 
 [[package]]
