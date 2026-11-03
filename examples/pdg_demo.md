@@ -155,13 +155,13 @@ group node "GPU node" sub="sets up the container, enforces limits" layout=column
   core "HAMi-Core" sub="checks memory and kernel calls" .green
 }
 }
-gpu "GPU"
-pod -> webhook
-webhook -> sched
-sched -> kubelet "bind"
-kubelet -> plugin "Allocate()"
-plugin -> core
-core -> gpu
+gpu "GPU" border=glow
+pod -> webhook flow=forward
+webhook -> sched flow=forward
+sched -> kubelet "bind" flow=forward
+kubelet -> plugin "Allocate()" flow=forward
+plugin -> core flow=forward
+core -> gpu flow=forward
 css { group.bare { fill: none; stroke: none; padding: 0; } }
 ```
 
