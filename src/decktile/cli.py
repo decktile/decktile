@@ -23,7 +23,7 @@ app = typer.Typer(help="Markdown to styled HTML + ODP + PDF", no_args_is_help=Tr
 
 @app.callback(invoke_without_command=True)
 def main(
-    files: list[Path] | None = typer.Argument(None, help="Markdown files to build; globs like '*.md' or 'talks/**/*.md' are expanded"),
+    files: list[Path] | None = typer.Argument(None, help="Markdown files to build; globs like '*.deck.md' or 'talks/**/*.deck.md' are expanded"),
     output_dir: Path | None = typer.Option(None, "-o", "--output-dir", help="Output directory (default: <input>/dist/)"),
     pdf: bool = typer.Option(False, "--pdf", help="Generate PDF"),
     odp: bool = typer.Option(False, "--odp", help="Generate ODP (programmatic)"),
@@ -108,7 +108,7 @@ def _build(
     out_dir = output_dir or file.parent / "dist"
     out_dir.mkdir(parents=True, exist_ok=True)
     _symlink_assets(file.parent, out_dir)
-    stem = file.stem
+    stem = file.name.removesuffix(".deck.md") if file.name.endswith(".deck.md") else file.stem
 
     theme_css = load_theme(doc.meta.theme) if doc.meta.theme not in (None, "", "default") else default_theme()
     if css_path and css_path.is_file():

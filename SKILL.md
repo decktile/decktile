@@ -514,5 +514,5 @@ in frontmatter: `theme: my-theme`.
 
 ## Reference
 
-See `examples/features_demo.md` for a complete 10-slide deck exercising all features.
+See `examples/features_demo.deck.md` for a complete 10-slide deck exercising all features.
 See `src/decktile/themes/default.css` for the default theme structure.

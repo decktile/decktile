@@ -65,16 +65,16 @@ pdm install -G plot  # + seaborn/matplotlib for inline charts
 ## Usage
 
 ```bash
-pdm run decktile slides.md              # HTML + presenter view
-pdm run decktile slides.md --odp        # + ODP (programmatic)
-pdm run decktile slides.md --image-odp  # + ODP (screenshots from PDF)
-pdm run decktile slides.md --pdf        # + PDF (images compressed)
-pdm run decktile slides.md --pdf --no-optimize-images  # + PDF, full-resolution images
-pdm run decktile -w slides.md           # watch and rebuild on changes
-pdm run decktile --odp -w slides.md     # watch + ODP
-pdm run decktile --dist slides.md       # HTML + all referenced assets as zip
-pdm run decktile a.md b.md --pdf       # several decks
-pdm run decktile '**/*.md' --pdf       # quoted globs are expanded (recursive with **)
+pdm run decktile slides.deck.md              # HTML + presenter view
+pdm run decktile slides.deck.md --odp        # + ODP (programmatic)
+pdm run decktile slides.deck.md --image-odp  # + ODP (screenshots from PDF)
+pdm run decktile slides.deck.md --pdf        # + PDF (images compressed)
+pdm run decktile slides.deck.md --pdf --no-optimize-images  # + PDF, full-resolution images
+pdm run decktile -w slides.deck.md           # watch and rebuild on changes
+pdm run decktile --odp -w slides.deck.md     # watch + ODP
+pdm run decktile --dist slides.deck.md       # HTML + all referenced assets as zip
+pdm run decktile a.deck.md b.deck.md --pdf       # several decks
+pdm run decktile '**/*.deck.md' --pdf       # quoted globs are expanded (recursive with **)
 ```
 
 A missing or failing file is reported (`error: <file>: <reason>`) and skipped;
@@ -87,7 +87,7 @@ symlinks all directories from the source folder into `dist/`. Files and
 `.md` files are skipped, only directories are linked.
 
 ```bash
-pdm run decktile slides.md    # symlinks slides/assets/ → slides/dist/assets/
+pdm run decktile slides.deck.md    # symlinks slides/assets/ → slides/dist/assets/
 ```
 
 `--odp` is the production-ready ODP path: a native ODF renderer (styles.py,
@@ -471,7 +471,7 @@ ok = cmap(2.5 / 12)      # green
 neutral = cmap(0.5 / 12) # light blue
 ```
 
-See `examples/seaborn_demo.md` for the memory oversubscription chart
+See `examples/seaborn_demo.deck.md` for the memory oversubscription chart
 (horizontal stacked bars, limit markers, annotations).
 
 ## Layout caveats
@@ -553,20 +553,20 @@ They appear in the presenter view.
 
 ## Demo
 
-`examples/features_demo.md` is a 17-slide deck exercising every feature:
+`examples/features_demo.deck.md` is a 17-slide deck exercising every feature:
 title slides, `@layout two-col`, `@layout image-right`, `@layout compare`,
 grids with tagged cards, tables, fenced code blocks, mermaid diagrams,
 seaborn charts, predictygraph diagrams, lucide icons, blockquotes, speaker notes,
 and all directives.
 
-See also: `examples/mermaid_demo.md`, `examples/seaborn_demo.md`,
-`examples/pdg_demo.md`, `examples/lucide_demo.md`, `examples/timeline_demo.md`.
-`examples/seaborn_demo.md` ends with hand-drawn matplotlib explainer charts from a real talk.
+See also: `examples/mermaid_demo.deck.md`, `examples/seaborn_demo.deck.md`,
+`examples/pdg_demo.deck.md`, `examples/lucide_demo.deck.md`, `examples/timeline_demo.deck.md`.
+`examples/seaborn_demo.deck.md` ends with hand-drawn matplotlib explainer charts from a real talk.
 
 ## Pipeline
 
 ```
-slides.md
+slides.deck.md
   → markdown-it-py (parse)
   → Document AST (headings, paragraphs, grids, cards, tables)
   → build_ir() (resolve theme styles via tinycss2)

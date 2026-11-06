@@ -6,10 +6,10 @@ Decktile is a Python CLI that turns markdown into styled HTML + PDF + ODP. Uses 
 
 ```bash
 pdm install                # install deps
-pdm run decktile slides.md    # build HTML
-pdm run decktile slides.md --odp     # + ODP
-pdm run decktile slides.md --pdf     # + PDF
-pdm run decktile --dist slides.md    # HTML + assets as zip
+pdm run decktile slides.deck.md    # build HTML
+pdm run decktile slides.deck.md --odp     # + ODP
+pdm run decktile slides.deck.md --pdf     # + PDF
+pdm run decktile --dist slides.deck.md    # HTML + assets as zip
 pdm run pytest             # run tests
 ```
 
@@ -108,7 +108,7 @@ render/odf/
 ## Parser pipeline
 
 ```
-slides.md
+slides.deck.md
   → split_frontmatter (YAML between --- markers)
   → split_slides (\n---\n)
   → per slide: parse_slide

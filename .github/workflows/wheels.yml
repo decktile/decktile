@@ -61,7 +61,7 @@ jobs:
           uv pip install dist/*.whl
           rm -rf src
           uv run --no-project decktile --help
-          uv run --no-project decktile -o out --pdf examples/features_demo.md
+          uv run --no-project decktile -o out --pdf examples/features_demo.deck.md
           ls out/*.html out/*.pdf
 
   publish:
