@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Tests for the HTML renderer's element rendering."""
+
 from decktile.parser.markdown import parse
 from decktile.render.html import _render_elem, base_css, default_theme, render
 from decktile.render.ir import Elem
@@ -15,8 +16,7 @@ def test_speaker_linkedin_uses_brand_svg_not_placeholder():
     icon resolves to a "not found" placeholder box. The speaker renderer must
     use the inlined Simple Icons mark instead.
     """
-    elem = Elem(kind="speaker", attrs={"name": "The Anh",
-                                       "linkedin": "linkedin.com/in/ntheanh201"})
+    elem = Elem(kind="speaker", attrs={"name": "The Anh", "linkedin": "linkedin.com/in/ntheanh201"})
     html = _render_elem(elem)
 
     # LinkedIn line-icon path signature is present.
@@ -30,8 +30,7 @@ def test_speaker_linkedin_uses_brand_svg_not_placeholder():
 
 def test_speaker_github_still_uses_lucide_icon():
     """Non-brand contact links keep using their Lucide proxy icon."""
-    elem = Elem(kind="speaker", attrs={"name": "The Anh",
-                                       "github": "github.com/ntheanh201"})
+    elem = Elem(kind="speaker", attrs={"name": "The Anh", "github": "github.com/ntheanh201"})
     html = _render_elem(elem)
 
     assert "lucide" in html  # git-fork proxy still rendered
@@ -43,14 +42,12 @@ def _title_html(md: str) -> str:
     from decktile.parser.markdown import parse
     from decktile.render.html import _render_slide
     from decktile.render.ir import build_ir
+
     return _render_slide(build_ir(parse(md), base_css(), default_theme())[0])
 
 
 def test_contributor_renders_labelled_and_distinct_from_speaker():
-    html = _title_html(
-        "@speaker name=Reza role=Architect\n"
-        "@contributor name=Thanh role=\"LFX Mentee\" github=github.com/loiht2\n"
-    )
+    html = _title_html('@speaker name=Reza role=Architect\n@contributor name=Thanh role="LFX Mentee" github=github.com/loiht2\n')
     assert 'class="speaker"' in html  # plain speaker div exists
     assert "Reza" in html and "Architect" in html
     assert 'class="speaker contributor"' in html  # distinct contributor variant
@@ -59,7 +56,7 @@ def test_contributor_renders_labelled_and_distinct_from_speaker():
 
 
 def test_contributor_label_override():
-    html = _title_html("@contributor name=Thanh label=\"Research by\"\n")
+    html = _title_html('@contributor name=Thanh label="Research by"\n')
     assert '<span class="contributor-label">Research by</span>' in html
 
 
@@ -127,9 +124,7 @@ def test_video_sync_wired_in_both_presenter_and_main_branches():
     each with its own independent <video> for the same slide -- playing
     one never touched the other without this wiring over the existing
     BroadcastChannel."""
-    html = _full_page(
-        "---\ntitle: T\n---\n\n## Video Slide\n\n@video assets/demo/clip.mp4\n"
-    )
+    html = _full_page("---\ntitle: T\n---\n\n## Video Slide\n\n@video assets/demo/clip.mp4\n")
     assert "_wireVideoSync('#pres-main', bc);" in html
     assert "_wireVideoSync('body > section', bc);" in html
     assert "e.data.video" in html
@@ -170,7 +165,7 @@ def test_render_notes_with_quotes_do_not_leak_into_slide():
     onto the slide."""
     html = _full_page('---\ntitle: T\n---\n\n<!-- He said "hello" <b>x</b> -->\n\n## S\n\nBody.')
     assert "data-notes" not in html
-    assert '<b>x</b>' not in html.split("<body>", 1)[1].split("<script", 1)[0]
+    assert "<b>x</b>" not in html.split("<body>", 1)[1].split("<script", 1)[0]
 
 
 def test_render_card_text_escaped_once():
@@ -209,12 +204,15 @@ def test_markdown_link_keeps_its_text():
     from decktile.render.html import _render_elem
     from decktile.render.ir import build_ir
 
-    html = "".join(_render_elem(e) for e in build_ir(parse("## S\n\nSee [the docs](https://x.io/d)\n"), base_css(), default_theme())[0].elements)
+    html = "".join(
+        _render_elem(e) for e in build_ir(parse("## S\n\nSee [the docs](https://x.io/d)\n"), base_css(), default_theme())[0].elements
+    )
     assert '<a href="https://x.io/d">the docs</a>' in html
 
 
 def test_email_in_speaker_role_is_a_link():
     from decktile.render.html import _link_emails
+
     assert _link_emails("Mail reza@dynamia.ai now") == 'Mail <a href="mailto:reza@dynamia.ai">reza@dynamia.ai</a> now'
     assert _link_emails("https://x.io/a@b") == "https://x.io/a@b"
 

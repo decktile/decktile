@@ -4,7 +4,6 @@
 
 """Tests for seaborn style loading -- CSS theme parsing and palette fallback."""
 
-import pytest
 from decktile.render.seaborn import _css_theme_rcparams, set_theme
 
 
@@ -72,44 +71,52 @@ class TestSetTheme:
     def test_kcd_vietnam_applies_style(self):
         set_theme("kcd_vietnam")
         from decktile.render import seaborn
+
         assert seaborn._style is not None
         assert seaborn._palette is None
 
     def test_kubecon_japan_applies_style(self):
         set_theme("kubecon_japan")
         from decktile.render import seaborn
+
         assert seaborn._style is not None
         assert seaborn._palette is None
 
     def test_default_theme_applies_style(self):
         set_theme("default")
         from decktile.render import seaborn
+
         assert seaborn._style is not None
         assert seaborn._palette is None
 
     def test_muted_is_palette_fallback(self):
         set_theme("muted")
         from decktile.render import seaborn
+
         assert seaborn._palette == "muted"
         assert seaborn._style is None
 
     def test_deep_is_palette_fallback(self):
         set_theme("deep")
         from decktile.render import seaborn
+
         assert seaborn._palette == "deep"
 
     def test_unknown_falls_back_to_palette(self):
         set_theme("nonexistent_style_xyz")
         from decktile.render import seaborn
+
         assert seaborn._palette == "nonexistent_style_xyz"
 
     def test_empty_string_defaults_to_paired(self):
         set_theme("")
         from decktile.render import seaborn
+
         assert seaborn._palette == "Paired"
 
     def test_backward_compat_alias(self):
         from decktile.render.seaborn import set_palette, set_theme
+
         assert set_palette is set_theme
 
 
@@ -120,6 +127,7 @@ class TestStyleModulePalette:
 
     def test_ossummit_europe_bars_use_brand_coral(self):
         from decktile.render.seaborn import render_seaborn_svg
+
         set_theme("ossummit_europe")
         svg = render_seaborn_svg(self.BAR)
         assert svg is not None
@@ -127,6 +135,7 @@ class TestStyleModulePalette:
 
     def test_palette_survives_applying_theme_twice(self):
         from decktile.render.seaborn import render_seaborn_svg
+
         set_theme("ossummit_europe")
         set_theme("ossummit_europe")
         svg = render_seaborn_svg(self.BAR)

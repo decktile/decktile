@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class LayoutType(Enum):
@@ -47,20 +46,19 @@ class Meta:
     def physical_dims(self) -> tuple[float, float]:
         """Slide dimensions in mm for ODP/print."""
         raw = str(self.size)
-        return {"16:9": (280.0, 157.5), "4:3": (280.0, 210.0),
-                "16:10": (280.0, 175.0)}.get(raw, (280.0, 157.5))
+        return {"16:9": (280.0, 157.5), "4:3": (280.0, 210.0), "16:10": (280.0, 175.0)}.get(raw, (280.0, 157.5))
 
 
 @dataclass
 class Document:
     meta: Meta
-    slides: list["Slide"]
+    slides: list[Slide]
 
 
 @dataclass
 class Slide:
     layout: str = "content"
-    children: list["Node"] = field(default_factory=list)
+    children: list[Node] = field(default_factory=list)
     notes: str = ""
     variant: str = ""
     transition: str = ""
@@ -73,12 +71,12 @@ class Node:
 @dataclass
 class Heading(Node):
     level: int = 1
-    content: list["Inline"] = field(default_factory=list)
+    content: list[Inline] = field(default_factory=list)
 
 
 @dataclass
 class Paragraph(Node):
-    content: list["Inline"] = field(default_factory=list)
+    content: list[Inline] = field(default_factory=list)
 
 
 @dataclass
@@ -93,28 +91,31 @@ class Card(Node):
     header: str = ""
     body: list[str] = field(default_factory=list)
     children: list[Node] = field(default_factory=list)
-    tag: Optional[str] = None
+    tag: str | None = None
     class_: str = ""
-    label: str = ""   # ::: card {label="Q1"}: short name rendered on a
-                       # timeline layout's spine, next to the milestone dot
+    label: str = ""  # ::: card {label="Q1"}: short name rendered on a
+    # timeline layout's spine, next to the milestone dot
 
 
 @dataclass
 class Arrow(Node):
     """Connector between two cards (arrow icon, label, etc.)."""
+
     content: str = ""
 
 
 @dataclass
 class Notes(Node):
     """Full-width conclusion card below a comparison layout."""
+
     content: str = ""
-    tag: Optional[str] = None
+    tag: str | None = None
 
 
 @dataclass
 class Row(Node):
     """Horizontal row of elements placed side by side."""
+
     children: list[Node] = field(default_factory=list)
 
 
@@ -126,7 +127,7 @@ class Table(Node):
 
 @dataclass
 class Quote(Node):
-    content: list["Inline"] = field(default_factory=list)
+    content: list[Inline] = field(default_factory=list)
 
 
 @dataclass

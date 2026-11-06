@@ -5,14 +5,15 @@
 """decktile CLI entry point."""
 
 import glob
+import re
 import time
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from decktile.parser.markdown import parse
-from decktile.render.html import render as render_html, default_theme, load_theme, base_css
+from decktile.render.html import base_css, default_theme, load_theme
+from decktile.render.html import render as render_html
 from decktile.render.ir import assemble_css
 from decktile.render.odp import render as render_odp
 from decktile.render.pdf import render as render_pdf
@@ -22,16 +23,20 @@ app = typer.Typer(help="Markdown to styled HTML + ODP + PDF", no_args_is_help=Tr
 
 @app.callback(invoke_without_command=True)
 def main(
-    files: Optional[list[Path]] = typer.Argument(None, help="Markdown files to build; globs like '*.md' or 'talks/**/*.md' are expanded"),
-    output_dir: Optional[Path] = typer.Option(None, "-o", "--output-dir", help="Output directory (default: <input>/dist/)"),
+    files: list[Path] | None = typer.Argument(None, help="Markdown files to build; globs like '*.md' or 'talks/**/*.md' are expanded"),
+    output_dir: Path | None = typer.Option(None, "-o", "--output-dir", help="Output directory (default: <input>/dist/)"),
     pdf: bool = typer.Option(False, "--pdf", help="Generate PDF"),
     odp: bool = typer.Option(False, "--odp", help="Generate ODP (programmatic)"),
     image_odp: bool = typer.Option(False, "--image-odp", help="Generate ODP (PDF screenshots)"),
     dist: bool = typer.Option(False, "--dist", help="Package HTML + referenced assets into a zip"),
-    optimize_images: bool = typer.Option(True, "--optimize-images/--no-optimize-images", help="Compress images in PDF output (jpeg_quality=85, dpi=150). On by default; --no-optimize-images keeps full-resolution images"),
+    optimize_images: bool = typer.Option(
+        True,
+        "--optimize-images/--no-optimize-images",
+        help="Compress images in PDF output (jpeg_quality=85, dpi=150). On by default; --no-optimize-images keeps full-resolution images",
+    ),
     watch: bool = typer.Option(False, "-w", "--watch", help="Watch file and rebuild on changes"),
     debug: bool = typer.Option(False, "--debug", help="Dump AST + write debug CSS"),
-    css: Optional[Path] = typer.Option(None, "--css", help="Custom CSS theme file (overrides default)"),
+    css: Path | None = typer.Option(None, "--css", help="Custom CSS theme file (overrides default)"),
 ):
     if not files:
         raise typer.Exit()
@@ -41,8 +46,7 @@ def main(
 
     paths, missing = _expand(files)
     for f in missing:
-        _error(f, "no files match" if any(c in str(f) for c in "*?[")
-               else "not a file" if f.exists() else "no such file")
+        _error(f, "no files match" if any(c in str(f) for c in "*?[") else "not a file" if f.exists() else "no such file")
 
     if watch:
         _watch(paths, output_dir, pdf, odp, image_odp, debug, css)
@@ -71,10 +75,8 @@ def _expand(args: list[Path]) -> tuple[list[Path], list[Path]]:
     seen: set[Path] = set()
     missing: list[Path] = []
     for a in args:
-        matches = ([Path(m) for m in glob.glob(str(a), recursive=True)]
-                   if any(c in str(a) for c in "*?[") else [a])
-        found = sorted((m for m in matches if m.is_file()),
-                       key=lambda m: (m.resolve() != m.absolute(), str(m)))
+        matches = [Path(m) for m in glob.glob(str(a), recursive=True)] if any(c in str(a) for c in "*?[") else [a]
+        found = sorted((m for m in matches if m.is_file()), key=lambda m: (m.resolve() != m.absolute(), str(m)))
         if not found:
             missing.append(a)
         for m in found:
@@ -88,9 +90,17 @@ def _error(path: Path, msg: object) -> None:
     typer.echo(f"error: {path}: {msg}", err=True)
 
 
-def _build(file: Path, output_dir: Optional[Path], pdf: bool,
-           odp: bool, image_odp: bool, dist: bool, optimize_images: bool,
-           debug: bool, css_path: Optional[Path]) -> None:
+def _build(
+    file: Path,
+    output_dir: Path | None,
+    pdf: bool,
+    odp: bool,
+    image_odp: bool,
+    dist: bool,
+    optimize_images: bool,
+    debug: bool,
+    css_path: Path | None,
+) -> None:
     content = file.read_text(encoding="utf-8")
     doc = parse(content)
     dims = doc.meta.dimensions()
@@ -100,18 +110,22 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
     _symlink_assets(file.parent, out_dir)
     stem = file.stem
 
-    if doc.meta.theme and doc.meta.theme != "default":
-        theme_css = load_theme(doc.meta.theme)
-    else:
-        theme_css = default_theme()
+    theme_css = load_theme(doc.meta.theme) if doc.meta.theme not in (None, "", "default") else default_theme()
     if css_path and css_path.is_file():
         theme_css += "\n" + css_path.read_text(encoding="utf-8")
     theme_css += "\n" + (doc.meta.style or "")
 
     # Assemble CSS: base.css (with dims) + theme + logo + pygments
-    css = assemble_css(base_css(), theme_css, dims, doc.meta.logo,
-                       doc.meta.watermark, doc.meta.pygments_style or "default",
-                       doc.meta.logo_dark, doc.meta.background)
+    css = assemble_css(
+        base_css(),
+        theme_css,
+        dims,
+        doc.meta.logo,
+        doc.meta.watermark,
+        doc.meta.pygments_style or "default",
+        doc.meta.logo_dark,
+        doc.meta.background,
+    )
 
     html = render_html(doc, theme_css, css, dims, doc.meta.logo)
     html_path = out_dir / f"{stem}.html"
@@ -131,8 +145,7 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
 
     if odp:
         odp_path = out_dir / f"{stem}.odp"
-        render_odp(doc, odp_path, base_css(), theme_css,
-                   source_dir=file.parent)
+        render_odp(doc, odp_path, base_css(), theme_css, source_dir=file.parent)
         typer.echo(f"Wrote {odp_path} ({odp_path.stat().st_size} bytes)")
 
     if image_odp:
@@ -152,13 +165,12 @@ def _build(file: Path, output_dir: Optional[Path], pdf: bool,
     typer.echo(f"Parsed {len(doc.slides)} slides")
     if debug:
         for i, slide in enumerate(doc.slides):
-            typer.echo(f"  Slide {i+1}: {slide.layout} ({len(slide.children)} children)")
+            typer.echo(f"  Slide {i + 1}: {slide.layout} ({len(slide.children)} children)")
             for n in slide.children:
                 typer.echo(f"    {type(n).__name__}: {_node_summary(n)}")
 
 
-def _watch(files: list[Path], output_dir: Optional[Path], pdf: bool,
-           odp: bool, image_odp: bool, debug: bool, css_path: Optional[Path]) -> None:
+def _watch(files: list[Path], output_dir: Path | None, pdf: bool, odp: bool, image_odp: bool, debug: bool, css_path: Path | None) -> None:
     if not files:
         raise typer.Exit(1)
     mtimes: dict[Path, float] = {}
@@ -185,7 +197,9 @@ def _watch(files: list[Path], output_dir: Optional[Path], pdf: bool,
 
 
 def _pdf_to_odp(pdf_path: Path, output_path: Path, dims: tuple[int, int]) -> None:
-    import os, subprocess, tempfile
+    import subprocess
+    import tempfile
+
     from odfdo import Document, DrawPage, Frame
 
     sw, sh = dims
@@ -193,19 +207,13 @@ def _pdf_to_odp(pdf_path: Path, output_path: Path, dims: tuple[int, int]) -> Non
     odp.body.clear()
 
     with tempfile.TemporaryDirectory() as tmp:
-        subprocess.run(
-            ["pdftoppm", "-png", "-r", "150", str(pdf_path), f"{tmp}/page"],
-            capture_output=True, text=True, timeout=60,
-        )
+        subprocess.run(["pdftoppm", "-png", "-r", "150", str(pdf_path), f"{tmp}/page"], capture_output=True, text=True, timeout=60)
         for png_file in sorted(Path(tmp).glob("page-*.png")):
             i = int(png_file.stem.split("-")[1]) - 1
             page = DrawPage(f"slide{i + 1}", name=f"Slide {i + 1}")
             uri = odp.add_file(str(png_file))
             frame = Frame.image_frame(
-                image=uri, text="",
-                size=(f"{sw * 2.54 / 96:.2f}cm", f"{sh * 2.54 / 96:.2f}cm"),
-                position=("0cm", "0cm"),
-                anchor_type="page",
+                image=uri, text="", size=(f"{sw * 2.54 / 96:.2f}cm", f"{sh * 2.54 / 96:.2f}cm"), position=("0cm", "0cm"), anchor_type="page"
             )
             page.append(frame)
             odp.body.append(page)
@@ -214,7 +222,7 @@ def _pdf_to_odp(pdf_path: Path, output_path: Path, dims: tuple[int, int]) -> Non
 
 
 def _node_summary(node) -> str:
-    from decktile.parser.ast import Heading, Table, Grid, AttrNode
+    from decktile.parser.ast import AttrNode, Grid, Heading, Table
 
     if isinstance(node, Heading):
         return f"L{node.level}: {node.content[0].content if node.content else ''}"
@@ -239,9 +247,8 @@ def _symlink_assets(source_dir: Path, dist_dir: Path) -> None:
             dest.symlink_to(item.resolve())
 
 
-def _make_dist(source_dir: Path, out_dir: Path, html_path: Path,
-               html: str, theme_css: str, stem: str) -> None:
-    import re, zipfile
+def _make_dist(source_dir: Path, out_dir: Path, html_path: Path, html: str, theme_css: str, stem: str) -> None:
+    import zipfile
 
     zip_path = out_dir / f"{stem}.zip"
     seen = set()

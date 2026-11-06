@@ -4,20 +4,18 @@
 
 """HTML renderer for decktile."""
 
-import os
 import re
-import subprocess
-import tempfile
+from html import escape
 from pathlib import Path
+
 from jinja2 import Environment, FileSystemLoader
 from pygments import highlight
-from pygments.lexers import get_lexer_by_name, TextLexer
 from pygments.formatters import HtmlFormatter
+from pygments.lexers import TextLexer, get_lexer_by_name
 from pygments.util import ClassNotFound
 
 from decktile.parser.ast import Document
-from decktile.render.ir import build_ir, SlideIR, Elem
-from decktile.plugins.layouts import KNOWN_LAYOUTS
+from decktile.render.ir import Elem, SlideIR, build_ir
 
 _pygments_style = "default"
 
@@ -31,7 +29,7 @@ _BRAND_ICON_SVGS = {
         '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>'
         '<rect width="4" height="12" x="2" y="9"/>'
         '<circle cx="4" cy="4" r="2"/></svg>'
-    ),
+    )
 }
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -66,8 +64,7 @@ def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, i
     return render_from_ir(ir_slides, doc, assembled_css, dims)
 
 
-def render_from_ir(ir_slides: list[SlideIR], doc: Document, assembled_css: str,
-                   dims: tuple[int, int]) -> str:
+def render_from_ir(ir_slides: list[SlideIR], doc: Document, assembled_css: str, dims: tuple[int, int]) -> str:
     """Render already-built IR slides to the full HTML page.
 
     Split out from render() so the ODP geometry pass can render the exact
@@ -76,17 +73,26 @@ def render_from_ir(ir_slides: list[SlideIR], doc: Document, assembled_css: str,
     slides = []
     for i, slide in enumerate(ir_slides):
         children = _render_slide(slide)
-        slides.append({
-            "id": slide.id, "num": i + 1, "layout": slide.layout, "children": children,
-            "notes": slide.notes, "footer": doc.meta.footer or "", "paginate": doc.meta.paginate or False,
-            "variant": slide.variant or doc.meta.theme_variant,
-            "transition": slide.transition or doc.meta.transition or "",
-        })
+        slides.append(
+            {
+                "id": slide.id,
+                "num": i + 1,
+                "layout": slide.layout,
+                "children": children,
+                "notes": slide.notes,
+                "footer": doc.meta.footer or "",
+                "paginate": doc.meta.paginate or False,
+                "variant": slide.variant or doc.meta.theme_variant,
+                "transition": slide.transition or doc.meta.transition or "",
+            }
+        )
 
     return _env.get_template("shell.html").render(
         title=doc.meta.title or "Presentation",
-        slide_w=dims[0], slide_h=dims[1],
-        css=assembled_css, slides=slides,
+        slide_w=dims[0],
+        slide_h=dims[1],
+        css=assembled_css,
+        slides=slides,
         variant=doc.meta.theme_variant or "light",
         autoplay=doc.meta.autoplay,
     )
@@ -105,12 +111,12 @@ def _render_slide(slide: SlideIR) -> str:
     side_html = ""
     for e in list(elems):
         if e.kind == "side-image":
-            side_html = f'<div class="side-image" data-decktile-id="{e.id}"><img src="{_escape(e.src)}" alt=""></div>'
+            side_html = f'<div class="side-image" data-decktile-id="{e.id}"><img src="{escape(e.src)}" alt=""></div>'
             elems.remove(e)
 
     body_html = "\n".join(filter(None, (_render_elem(e) for e in elems)))
     if body_html.strip():
-        heading_html += '\n<div class="slide-body">\n' + body_html + '\n</div>'
+        heading_html += '\n<div class="slide-body">\n' + body_html + "\n</div>"
     if side_html:
         heading_html += side_html
     return heading_html or body_html
@@ -177,7 +183,7 @@ def _render_elem(e: Elem) -> str:
             cls += f" {e.class_}"
         s = f'<div class="{cls}"{sid}>\n'
         if e.attrs.get("label"):
-            s += f'<span class="timeline-label">{_escape(e.attrs["label"])}</span>\n'
+            s += f'<span class="timeline-label">{escape(e.attrs["label"])}</span>\n'
         # header/body are inline HTML from fenced._expand_markdown (already
         # escaped by markdown-it): escaping again turned '>80%' into '&amp;gt;80%'
         if e.header:
@@ -203,9 +209,10 @@ def _render_elem(e: Elem) -> str:
         return f'<div class="{cls}"{sid}>{e.content}</div>'
     elif e.kind == "speaker":
         from decktile.plugins.lucide import render_icon
+
         name = e.attrs.get("name", e.content)
         role = e.attrs.get("role", "")
-        text = f"{_escape(name)}<br><span class=\"role\">{_link_emails(_escape(role))}</span>" if role else _escape(name)
+        text = f'{escape(name)}<br><span class="role">{_link_emails(escape(role))}</span>' if role else escape(name)
         links = []
         contact_icons = {"github": "git-fork", "twitter": "bird", "email": "mail", "website": "globe"}
         for key in ("github", "twitter", "email", "linkedin", "website"):
@@ -215,22 +222,24 @@ def _render_elem(e: Elem) -> str:
                 href = val if "://" in val else f"https://{val}" if key != "email" else f"mailto:{val}"
                 label = val.replace("https://", "").replace("mailto:", "")
                 svg = _BRAND_ICON_SVGS.get(key) or render_icon(icon, {"cls": "speaker-icon"})
-                links.append(f'<a href="{_escape(href)}" target="_blank">{svg} {_escape(label)}</a>')
+                links.append(f'<a href="{escape(href)}" target="_blank">{svg} {escape(label)}</a>')
         if links:
             text += '<br><span class="speaker-links">' + "".join(links) + "</span>"
         label = e.attrs.get("contributor")
         if label:
-            return f'<div class="speaker contributor"{sid}><span class="contributor-label">{_escape(label)}</span><br>{text}</div>'
+            return f'<div class="speaker contributor"{sid}><span class="contributor-label">{escape(label)}</span><br>{text}</div>'
         return f'<div class="speaker"{sid}>{text}</div>'
     elif e.kind in ("kicker", "subtitle", "tiny"):
         return f'<p class="{e.kind}"{sid}>{e.content}</p>'
     elif e.kind == "video":
         poster = _video_poster(e.src)
-        return (f'<figure class="video"{sid}>'
-                f'<video controls preload="metadata" src="{_escape(e.src)}" '
-                f'poster="{_escape(poster)}"></video>'
-                f'<img class="video-print" src="{_escape(poster)}" alt="">'
-                f'</figure>')
+        return (
+            f'<figure class="video"{sid}>'
+            f'<video controls preload="metadata" src="{escape(e.src)}" '
+            f'poster="{escape(poster)}"></video>'
+            f'<img class="video-print" src="{escape(poster)}" alt="">'
+            f"</figure>"
+        )
     elif e.kind == "row-marker":
         return ""
     return ""
@@ -244,25 +253,25 @@ def _highlight_code(content: str, language: str, sid: str = "") -> str:
     formatter = HtmlFormatter(nowrap=True, style=_pygments_style)
     highlighted = highlight(content, lexer, formatter)
     cls = f' class="highlight language-{language}"' if language else ' class="highlight"'
-    return f'<pre{cls}{sid}><code>{highlighted}</code></pre>'
+    return f"<pre{cls}{sid}><code>{highlighted}</code></pre>"
 
 
 def _pygments_css(style: str = "default") -> str:
     formatter = HtmlFormatter(style=style)
-    css = formatter.get_style_defs('.slide .highlight')
+    css = formatter.get_style_defs(".slide .highlight")
     return f"\n/* ---- pygments ---- */\n{css}\n"
 
 
 def _render_seaborn_html(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
         return f'<div class="seaborn-plot"{sid}>\n{svg}\n</div>'
-    return f'<pre class="seaborn-fallback"{sid}><code>{_escape(content)}</code></pre>'
+    return f'<pre class="seaborn-fallback"{sid}><code>{escape(content)}</code></pre>'
 
 
 def _render_mermaid(content: str, svg: str = "", sid: str = "") -> str:
     if svg:
         return f'<div class="mermaid"{sid}>\n{svg}\n</div>'
-    return f'<pre class="mermaid-fallback"{sid}><code>{_escape(content)}</code></pre>'
+    return f'<pre class="mermaid-fallback"{sid}><code>{escape(content)}</code></pre>'
 
 
 _EMAIL_RX = re.compile(r"(?<![\w.@/:])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)(?![\w@])")
@@ -276,27 +285,10 @@ def _link_emails(escaped: str) -> str:
 def _render_pdg_html(content: str, svg: str = "", sid: str = "", live: str = "") -> str:
     if svg and live:
         # animated on screen, still frame in print/PDF (and for the ODP geometry pass)
-        return (f'<div class="pdg-plot pdg-animated"{sid}>\n'
-                f'<div class="pdg-live">{live}</div>\n<div class="pdg-still">{svg}</div>\n</div>')
+        return f'<div class="pdg-plot pdg-animated"{sid}>\n<div class="pdg-live">{live}</div>\n<div class="pdg-still">{svg}</div>\n</div>'
     if svg:
         return f'<div class="pdg-plot"{sid}>\n{svg}\n</div>'
-    return f'<pre class="pdg-fallback"{sid}><code>{_escape(content)}</code></pre>'
-
-
-def _normalize_viewbox(svg: str) -> str:
-    import re
-    m = re.search(r'viewBox="([\d.-]+)\s+([\d.-]+)\s+([\d.]+)\s+([\d.]+)"', svg)
-    if not m:
-        return svg
-    x, y, w, h = float(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4))
-    if x >= 0 and y >= 0:
-        return svg
-    new_w, new_h = w + abs(x), h + abs(y)
-    return svg.replace(m.group(0), f'viewBox="0 0 {new_w:g} {new_h:g}"', 1)
-
-
-def _escape(s: str) -> str:
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return f'<pre class="pdg-fallback"{sid}><code>{escape(content)}</code></pre>'
 
 
 def _video_poster(src: str) -> str:

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -27,13 +28,7 @@ from decktile.render.odf.shapes import render_elem
 from decktile.render.odf.styles import StyleRegistry, downscale_image
 
 
-def render(
-    doc: ASTDocument,
-    output_path: Path,
-    base_css: str = "",
-    theme_css: str = "",
-    source_dir: Path | None = None,
-) -> None:
+def render(doc: ASTDocument, output_path: Path, base_css: str = "", theme_css: str = "", source_dir: Path | None = None) -> None:
     """Render Document AST to an ODP file.
 
     Page size is always derived from the deck's own px dimensions
@@ -50,8 +45,14 @@ def render(
     dims = doc.meta.dimensions()
     page_width, page_height = dims[0] * PX_TO_CM, dims[1] * PX_TO_CM
     css = assemble_css(
-        base_css, theme_css, dims, doc.meta.logo, doc.meta.watermark,
-        doc.meta.pygments_style or "default", doc.meta.logo_dark, doc.meta.background,
+        base_css,
+        theme_css,
+        dims,
+        doc.meta.logo,
+        doc.meta.watermark,
+        doc.meta.pygments_style or "default",
+        doc.meta.logo_dark,
+        doc.meta.background,
     )
 
     ir_slides = build_ir(doc, base_css, theme_css)
@@ -77,32 +78,13 @@ def render(
         shapes: list[Any] = []
 
         if sb is not None:
-            master_name, is_new_master = reg.master_for(
-                sb.style, page_width, page_height, add_file, footer=sb.footer,
-            )
+            master_name, is_new_master = reg.master_for(sb.style, page_width, page_height, add_file, footer=sb.footer)
             page.master_page = master_name
             overlay = _overlay_shape(sb.style, reg, page_width, page_height)
             if overlay is not None:
                 shapes.append(overlay)
-            # Logo/watermark/footer-text/page-number are the same for every
-            # slide sharing this master (same CSS rule, same fixed %-based
-            # position) -- append them to the master page itself, exactly
-            # once, instead of as a shape drawn on top of every single
-            # slide. The footer *bar* fill is already baked into the
-            # master's own background image (master_for); this adds the
-            # bar's text, the page-number field, and the logo/watermark
-            # images.
-            #
-            # Exception: a page whose background still needs a per-slide
-            # overlay rect (a true multi-stop/angled gradient, e.g.
-            # .layout-title, that can't be baked into the master --
-            # reg.overlay_needed) -- master content always paints *beneath*
-            # every per-slide shape in ODF, with no way to interleave by
-            # z-index, so chrome placed on the master would be painted
-            # over (dimmed/washed out) by that overlay on every single
-            # slide using it. Keep chrome per-slide there instead, ordered
-            # after the overlay so it paints on top of it, same as before
-            # this master-chrome change.
+            # shared chrome goes on the master once, except when a per-slide overlay would paint over it
+            # (master content always paints beneath slide shapes)
             chrome_on_master = is_new_master and overlay is None
             chrome_per_slide = overlay is not None
             if chrome_on_master or chrome_per_slide:
@@ -116,7 +98,6 @@ def render(
                 else:
                     shapes.extend(chrome)
 
-
         # Fallback: a theme with no section::before CSS at all (sb.logo
         # is None, not just resolved-to-nothing) -- doc.meta.logo/
         # logo_dark directly, picked per slide.variant since it isn't
@@ -129,12 +110,7 @@ def render(
         for e in slide.elements:
             shapes.extend(render_elem(e, reg, add_file, source_dir, global_tags))
 
-        # A bitmap-filled master page changes how LibreOffice resolves
-        # z-order for un-indexed shapes (confirmed empirically: an
-        # un-indexed overlay rect painted ABOVE a z-index=0 text frame --
-        # the same shapes with no master page stacked correctly in
-        # document order). Set an explicit, unique z-index per shape so
-        # paint order can never depend on that default.
+        # a bitmap master makes LibreOffice stack un-indexed shapes unpredictably: give each a z-index
         for z, shape in enumerate(shapes):
             shape.set_attribute("draw:z-index", str(z))
             page.append(shape)
@@ -154,26 +130,17 @@ def _resolve_asset(src: str, source_dir: Path | None) -> str | None:
     return path if os.path.isfile(path) else None
 
 
-def _chrome_shapes(
-    sb: Any, reg: StyleRegistry, add_file: Any, max_digits: int, *, scope: str,
-) -> list[Any]:
+def _chrome_shapes(sb: Any, reg: StyleRegistry, add_file: Any, max_digits: int, *, scope: str) -> list[Any]:
     """footer-text, page-number field, logo, watermark -- the four shapes
     shared across every slide using one background style, built once and
     placed either on the master (``scope="styles"``) or, for an overlay-
     needing background, per-slide (``scope="content"``) by the caller."""
     shapes: list[Any] = []
-    footer_shape = sb.footer and _text_pseudo_frame(
-        sb.footer, reg, skip_fill=reg.footer_bar_baked(sb.style), scope=scope,
-    )
+    footer_shape = sb.footer and _text_pseudo_frame(sb.footer, reg, skip_fill=reg.footer_bar_baked(sb.style), scope=scope)
     if footer_shape is not None:
         shapes.append(footer_shape)
     if sb.slide_num is not None:
-        # Measured from the first slide using this master, which may well
-        # be single-digit -- widen for the deck's actual max digit count
-        # (right-aligned, so the extra width grows leftward and the
-        # number stays flush with the original right edge), or a later
-        # double-digit page wraps vertically inside the too-narrow box
-        # instead of shrinking.
+        # widen for the deck's widest page number (right-aligned), or two digits wrap
         digit_w = sb.slide_num.h * 0.6
         needed_w = max_digits * digit_w
         num_pseudo = sb.slide_num
@@ -187,14 +154,7 @@ def _chrome_shapes(
         page_num_shape = _text_pseudo_frame(num_pseudo, reg, page_field=True, scope=scope)
         if page_num_shape is not None:
             shapes.append(page_num_shape)
-    # Logo (section::before) / watermark (section::after): position,
-    # size, and file come directly from weasyprint's own resolved box for
-    # that pseudo-element -- exactly the HTML's CSS cascade, including
-    # any `--logo: var(--logo-dark)` swap on dark/title sections, with no
-    # separate Python-side light/dark selection. sb.logo being present
-    # but resolving to no image (`background-image: none`) is the
-    # cascade explicitly deciding no logo on this variant -- not a
-    # missing-CSS case, so no fallback there.
+    # logo/watermark boxes come from weasyprint's cascade; a resolved `none` means no logo on this variant
     if sb.logo is not None:
         logo_shape = _pseudo_image_frame(sb.logo, add_file)
         if logo_shape is not None:
@@ -229,16 +189,12 @@ def _pseudo_image_frame(pseudo: Any, add_file: Any) -> Frame | None:
     x = pseudo.x + (box_w - w) / 2
     y = pseudo.y + (box_h - h) / 2
     return Frame.image_frame(
-        image=uri,
-        position=(f"{x:.3f}cm", f"{y:.3f}cm"),
-        size=(f"{max(w, 0.01):.3f}cm", f"{max(h, 0.01):.3f}cm"),
-        anchor_type="page",
+        image=uri, position=(f"{x:.3f}cm", f"{y:.3f}cm"), size=(f"{max(w, 0.01):.3f}cm", f"{max(h, 0.01):.3f}cm"), anchor_type="page"
     )
 
 
 def _text_pseudo_frame(
-    pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = False, page_field: bool = False,
-    scope: str = "styles",
+    pseudo: Any, reg: StyleRegistry, *, skip_fill: bool = False, page_field: bool = False, scope: str = "styles"
 ) -> Frame | None:
     """<footer>/.slide-num: a real DOM element injected by the HTML
     template (shell.html), not an AST node -- geometry.py captures it by
@@ -268,10 +224,7 @@ def _text_pseudo_frame(
     if not pseudo.text:
         return None
     para_style = reg.paragraph_style(pseudo.style, scope=scope)
-    gfx = reg.graphic_style(
-        pseudo.style, fill=not skip_fill and pseudo.style.bg_alpha > 0,
-        vertical_align="middle", border=False,
-    )
+    gfx = reg.graphic_style(pseudo.style, fill=not skip_fill and pseudo.style.bg_alpha > 0, vertical_align="middle", border=False)
     if page_field:
         p = Paragraph(style=para_style)
         field = Element.from_tag("text:page-number")
@@ -281,16 +234,15 @@ def _text_pseudo_frame(
     else:
         p = Paragraph(pseudo.text, style=para_style)
     return Frame.text_frame(
-        p, style=gfx,
+        p,
+        style=gfx,
         position=(f"{pseudo.x:.3f}cm", f"{pseudo.y:.3f}cm"),
         size=(f"{max(pseudo.w, 0.01):.3f}cm", f"{max(pseudo.h, 0.01):.3f}cm"),
         anchor_type="page",
     )
 
 
-def _overlay_shape(
-    style: ResolvedStyle, reg: StyleRegistry, page_w: float, page_h: float,
-) -> Any | None:
+def _overlay_shape(style: ResolvedStyle, reg: StyleRegistry, page_w: float, page_h: float) -> Any | None:
     """Full-slide gradient/tint rect over a bitmap master background.
 
     Needed only for a true multi-stop/angled gradient over a photo
@@ -308,10 +260,7 @@ def _overlay_shape(
     if not reg.overlay_needed(style):
         return None
     name, _opacity = reg.overlay_style(style)
-    return RectangleShape(
-        style=name, position=("0cm", "0cm"),
-        size=(f"{page_w:.3f}cm", f"{page_h:.3f}cm"), anchor_type="page",
-    )
+    return RectangleShape(style=name, position=("0cm", "0cm"), size=(f"{page_w:.3f}cm", f"{page_h:.3f}cm"), anchor_type="page")
 
 
 def _image_aspect(path: str) -> float | None:
@@ -322,8 +271,6 @@ def _image_aspect(path: str) -> float | None:
     1305x298 SVG logo rendered squeezed into a 3.0/1.3=2.31 aspect box
     instead of its real 4.38 aspect)."""
     if path.lower().endswith(".svg"):
-        import re
-
         svg = Path(path).read_text(encoding="utf-8", errors="ignore")
         m = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
         if m:
@@ -352,7 +299,8 @@ def _logo_frame(logo_path: str, add_file: Any, page_w: float, page_h: float) -> 
     uri = add_file(logo_path)
     right_margin, top_margin = 1.0, 1.0
     return Frame.image_frame(
-        image=uri, size=(f"{target_w:.2f}cm", f"{target_h:.2f}cm"),
+        image=uri,
+        size=(f"{target_w:.2f}cm", f"{target_h:.2f}cm"),
         position=(f"{page_w - target_w - right_margin:.2f}cm", f"{top_margin:.2f}cm"),
         anchor_type="page",
     )
@@ -377,7 +325,8 @@ def _notes_shape(text: str, reg: StyleRegistry) -> PresentationNotes:
         paragraphs,
         position=("2.1cm", "14.107cm"),
         size=("16.799cm", "13.364cm"),
-        anchor_type="page", presentation_class="notes",
+        anchor_type="page",
+        presentation_class="notes",
         presentation_style=reg.notes_style(),
     )
     notes.append(frame)

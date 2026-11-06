@@ -38,16 +38,19 @@ def test_main_quoted_glob_builds_each_deck_once(tmp_path, monkeypatch):
     assert runner.invoke(app, ["**/*.md"]).exit_code == 0  # creates dist/ symlinks
     result = runner.invoke(app, ["**/*.md"])
     assert result.exit_code == 0, result.output
-    assert sorted(l.split()[1] for l in result.output.splitlines() if l.startswith("Wrote")) == [
-        "dist/a.html", "dist/b.html", "sub/dist/c.html"]
+    assert sorted(ln.split()[1] for ln in result.output.splitlines() if ln.startswith("Wrote")) == [
+        "dist/a.html",
+        "dist/b.html",
+        "sub/dist/c.html",
+    ]
 
 
 def test_main_failing_file_does_not_stop_the_rest(tmp_path):
     (tmp_path / "bad.md").write_text("---\ntitle: [bad\n---\n\n## X\n")
     (tmp_path / "good.md").write_text(DECK)
-    result = CliRunner().invoke(app, ["-o", str(tmp_path / "out"),
-                                      str(tmp_path / "bad.md"), str(tmp_path / "missing.md"),
-                                      str(tmp_path / "good.md")])
+    result = CliRunner().invoke(
+        app, ["-o", str(tmp_path / "out"), str(tmp_path / "bad.md"), str(tmp_path / "missing.md"), str(tmp_path / "good.md")]
+    )
     assert result.exit_code == 1
     assert "bad.md:" in result.output and "missing.md: no such file" in result.output
     assert (tmp_path / "out" / "good.html").exists()

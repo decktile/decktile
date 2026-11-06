@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
+from decktile.parser.ast import Card, Grid, Heading, Paragraph, Quote, Table
 from decktile.parser.markdown import parse
-from decktile.parser.ast import Heading, Paragraph, Table, Quote, Card, Grid
 
 
 def test_parse_simple():
@@ -60,6 +59,7 @@ def test_hidden_slide():
     doc = parse("---\ntheme: t\n---\n\n# First\n\n---\n\n@hidden\n\n# Hidden\n\n---\n\n# Third")
     assert len(doc.slides) == 2
     from decktile.parser.ast import Heading
+
     headings = []
     for s in doc.slides:
         for n in s.children:
@@ -102,7 +102,9 @@ def test_metric_auto_groups_into_grid():
 
 
 def test_metrics_layout_detected():
-    doc = parse("---\ntheme: t\n---\n\n## Key Metrics\n\n::: card {metric}\n10x\nSpeed\n:::\n\n::: card {metric}\n50%\nUtilization\n:::\n\n::: card {metric}\n10x\nDensity\n:::")
+    doc = parse(
+        "---\ntheme: t\n---\n\n## Key Metrics\n\n::: card {metric}\n10x\nSpeed\n:::\n\n::: card {metric}\n50%\nUtilization\n:::\n\n::: card {metric}\n10x\nDensity\n:::"
+    )
     slide = doc.slides[0]
     assert slide.layout == "metrics-3"
 
@@ -165,6 +167,7 @@ def test_parse_paragraph_touching_card_kept_separate():
 
 def test_parse_notes_strips_blockquote_marker():
     from decktile.parser.ast import Notes
+
     nodes = parse("---\ntitle: t\n---\n\n::: notes\n> quoted note\n:::\n").slides[0].children
     notes = next(n for n in nodes if isinstance(n, Notes))
     assert notes.content == "quoted note"
@@ -182,6 +185,7 @@ def test_group_cards_without_blank_lines_before_paragraph():
 def test_directive_inside_code_fence_is_left_as_code():
     from decktile.parser.ast import AttrNode
     from decktile.parser.markdown import parse
+
     md = "## S\n\n```markdown\n@video clip.mp4\n@layout two-col\n```\n"
     slide = parse(md).slides[0]
     assert not any(isinstance(n, AttrNode) for n in slide.children)

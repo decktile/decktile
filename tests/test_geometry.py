@@ -12,7 +12,7 @@ import importlib.metadata
 
 from weasyprint import HTML
 
-from decktile.render.ir import BoxGeometry, ResolvedStyle, SlideIR, Elem
+from decktile.render.ir import Elem, SlideIR
 from decktile.render.odf.geometry import annotate_geometry
 
 EXPECTED_WEASYPRINT = "69."  # pinned major.minor; pyproject.toml requires >=69.0
@@ -51,17 +51,29 @@ def test_box_tree_exposes_required_private_api():
     assert hasattr(div_box, "border_width") and hasattr(div_box, "border_height")
     assert div_box.element.get("data-decktile-id") == "x"
     style = div_box.style
-    for key in ("background_color", "background_image", "color", "border_left_color",
-                "border_left_width", "border_top_left_radius", "font_family",
-                "font_size", "font_weight", "text_align_all"):
+    for key in (
+        "background_color",
+        "background_image",
+        "color",
+        "border_left_color",
+        "border_left_width",
+        "border_top_left_radius",
+        "font_family",
+        "font_size",
+        "font_weight",
+        "text_align_all",
+    ):
         style[key]  # raises KeyError if the property name changed
 
 
 def test_annotate_geometry_fills_elem_box():
-    ir_slides = [SlideIR(id="s0", layout="content", elements=[
-        Elem(kind="heading", id="e1", level=1, content="Hello"),
-        Elem(kind="text", id="e2", content="Body text."),
-    ])]
+    ir_slides = [
+        SlideIR(
+            id="s0",
+            layout="content",
+            elements=[Elem(kind="heading", id="e1", level=1, content="Hello"), Elem(kind="text", id="e2", content="Body text.")],
+        )
+    ]
 
     class _Meta:
         footer = ""
@@ -118,9 +130,7 @@ def test_background_image_ignores_unrelated_ancestor_bg():
     section)."""
     from decktile.render.ir import Elem, SlideIR
 
-    ir_slides = [SlideIR(id="s0", layout="content", elements=[
-        Elem(kind="heading", id="e1", level=1, content="Hello"),
-    ])]
+    ir_slides = [SlideIR(id="s0", layout="content", elements=[Elem(kind="heading", id="e1", level=1, content="Hello")])]
 
     class _Meta:
         footer = ""
@@ -150,14 +160,8 @@ def test_table_zebra_stripe_scoped_to_tbody():
     """CSS nth-child scopes to the row's parent: a <thead> row is never a
     zebra-stripe candidate, and the first striped <tbody> row is the
     *second* tbody row (nth-child(even)), not the second <tr> overall."""
-    ir_slides, fake_doc = _ir_from(
-        "---\ntitle: T\n---\n\n"
-        "| A | B |\n|---|---|\n| r1 | x |\n| r2 | y |\n| r3 | z |\n"
-    )
-    css = (
-        "section { width: 960px; height: 540px; }"
-        "tr:nth-child(even) { background: #e8e8f0; }"
-    )
+    ir_slides, fake_doc = _ir_from("---\ntitle: T\n---\n\n| A | B |\n|---|---|\n| r1 | x |\n| r2 | y |\n| r3 | z |\n")
+    css = "section { width: 960px; height: 540px; }tr:nth-child(even) { background: #e8e8f0; }"
     annotate_geometry(ir_slides, fake_doc, css, (960, 540))
     table_elem = next(e for e in ir_slides[0].elements if e.kind == "table")
     sub = table_elem.box.substyles
@@ -182,9 +186,9 @@ def test_pseudo_elements_captured_despite_sharing_section_sid():
     css = (
         ':root { --logo: url("logo.svg"); --watermark: url("logo.svg"); }\n'
         'section::before { content: ""; position: absolute; left: 0; top: 0; '
-        'width: 10%; height: 10%; background: var(--logo); }\n'
+        "width: 10%; height: 10%; background: var(--logo); }\n"
         'section::after { content: ""; position: absolute; right: 0; bottom: 0; '
-        'width: 10%; height: 10%; background: var(--watermark); }\n'
+        "width: 10%; height: 10%; background: var(--watermark); }\n"
     )
     section_box, _ = annotate_geometry(ir_slides, doc, css, (1280, 720), pathlib.Path("."))
     sb = section_box[ir_slides[0].id]
@@ -202,8 +206,8 @@ def test_resolve_icon_accent_colors_follows_var_indirection():
     from decktile.render.odf.geometry import _resolve_icon_accent_colors
 
     css = (
-        ':root { --color-accent: #0288d1; --color-accent-primary: var(--color-accent); '
-        '--color-accent-secondary: var(--color-accent); --color-accent-contrast: var(--color-accent); }\n'
+        ":root { --color-accent: #0288d1; --color-accent-primary: var(--color-accent); "
+        "--color-accent-secondary: var(--color-accent); --color-accent-contrast: var(--color-accent); }\n"
     )
     colors = _resolve_icon_accent_colors(css)
     assert colors["accent-primary"] == "#0288d1"
@@ -217,9 +221,6 @@ def test_resolve_icon_accent_colors_direct_hex_overrides_var_indirection():
     resolution added for the default-theme case."""
     from decktile.render.odf.geometry import _resolve_icon_accent_colors
 
-    css = (
-        ':root { --color-accent-primary: var(--color-accent); }\n'
-        ':root { --color-accent-primary: #F4A197; }\n'
-    )
+    css = ":root { --color-accent-primary: var(--color-accent); }\n:root { --color-accent-primary: #F4A197; }\n"
     colors = _resolve_icon_accent_colors(css)
     assert colors["accent-primary"] == "#F4A197"

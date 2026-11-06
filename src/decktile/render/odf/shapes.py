@@ -13,29 +13,26 @@ table:table, per-run text:span), not HTML stripped to plain text.
 from __future__ import annotations
 
 import dataclasses
+import html
 import os
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from odfdo import (
-    Column, EllipseShape, Frame, List as OdfList, ListItem, Paragraph, RectangleShape, Row, Span,
-    Table,
-)
+from odfdo import Column, EllipseShape, Frame, ListItem, Paragraph, RectangleShape, Row, Span, Table
+from odfdo import List as OdfList
 
-from decktile.parser.ast import (
-    CodeSpan, Emphasis, Image as ASTImage, LucideIcon, SoftBreak, Strikethrough,
-    Strong, Text,
-)
-from decktile.render.ir import BoxGeometry, Elem, ResolvedStyle
+from decktile.parser.ast import CodeSpan, Emphasis, LucideIcon, SoftBreak, Strikethrough, Strong, Text
+from decktile.parser.ast import Image as ASTImage
+from decktile.render.ir import BoxGeometry, Elem, ResolvedStyle, normalize_viewbox
 from decktile.render.odf.styles import CM_PER_PX, StyleRegistry, px_to_cm, round_image_corners
 
 AddFile = Callable[[str], str]
 
 
 def render_elem(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     """Build every ODF shape for one Elem (and its children). []: not geometry-annotated."""
     if elem.box is None:
@@ -45,11 +42,6 @@ def render_elem(
     for child in elem.children:
         shapes.extend(render_elem(child, reg, add_file, source_dir, global_tags))
     return shapes
-
-
-# ---------------------------------------------------------------------------
-# geometry helpers
-# ---------------------------------------------------------------------------
 
 
 def _pos(box: BoxGeometry) -> tuple[str, str]:
@@ -101,11 +93,6 @@ def _label_frame(deco: BoxGeometry, reg: StyleRegistry) -> Frame:
     return frame
 
 
-# ---------------------------------------------------------------------------
-# rich text (inline runs)
-# ---------------------------------------------------------------------------
-
-
 def _flatten_text(children: list) -> str:
     out = []
     for c in children:
@@ -119,8 +106,7 @@ def _flatten_text(children: list) -> str:
 
 
 def _build_rich_paragraph(
-    inlines: list, reg: StyleRegistry, base: ResolvedStyle,
-    global_tags: dict[str, ResolvedStyle], para_style: str,
+    inlines: list, reg: StyleRegistry, base: ResolvedStyle, global_tags: dict[str, ResolvedStyle], para_style: str
 ) -> Paragraph:
     p = Paragraph(style=para_style)
     for node in inlines:
@@ -159,14 +145,14 @@ def _plain_paragraph(text: str, para_style: str) -> Paragraph:
     return Paragraph(text, style=para_style)
 
 
-# ---------------------------------------------------------------------------
-# renderers
-# ---------------------------------------------------------------------------
-
-
 def _render_text_like(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle], *, border: bool = True,
+    elem: Elem,
+    reg: StyleRegistry,
+    add_file: AddFile,
+    source_dir: Path | None,
+    global_tags: dict[str, ResolvedStyle],
+    *,
+    border: bool = True,
 ) -> list[Any]:
     box = elem.box
     non_break = [n for n in elem.inlines if not isinstance(n, SoftBreak)]
@@ -178,12 +164,11 @@ def _render_text_like(
     para_style = reg.paragraph_style(style)
     content = (
         _build_rich_paragraph(elem.inlines, reg, style, global_tags, para_style)
-        if elem.inlines else _plain_paragraph(_strip_html(elem.text or ""), para_style)
+        if elem.inlines
+        else _plain_paragraph(_strip_html(elem.text or ""), para_style)
     )
     gfx = reg.graphic_style(style, fill=False, vertical_align="top", border=border)
-    frame = Frame.text_frame(
-        content, style=gfx, position=_pos(box), size=_size(box), anchor_type="page",
-    )
+    frame = Frame.text_frame(content, style=gfx, position=_pos(box), size=_size(box), anchor_type="page")
     return [frame]
 
 
@@ -195,18 +180,14 @@ def _left_accent_bar(box: BoxGeometry, style: ResolvedStyle) -> Any | None:
         return None
     from odfdo import LineShape
 
-    bar = LineShape(
-        p1=(_pos(box)[0], _pos(box)[1]),
-        p2=(_pos(box)[0], f"{box.y + box.h:.3f}cm"),
-    )
+    bar = LineShape(p1=(_pos(box)[0], _pos(box)[1]), p2=(_pos(box)[0], f"{box.y + box.h:.3f}cm"))
     bar.set_attribute("svg:stroke-color", style.border_color)
     bar.set_attribute("svg:stroke-width", px_to_cm(style.border_width))
     return bar
 
 
 def _render_quote(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     """Text frame plus a left accent bar (CSS ``border-left``, no ODF equivalent)."""
     shapes = _render_text_like(elem, reg, add_file, source_dir, global_tags, border=False)
@@ -228,9 +209,6 @@ def _strip_html(text: str) -> str:
     then turns into leading `text:line-break` elements pushing a card
     header down off the top of its box (confirmed: 5 icon newlines ->
     5 line breaks before the heading text)."""
-    import html
-    import re
-
     stripped = html.unescape(re.sub(r"<[^>]+>", "", text))
     return re.sub(r"\s+", " ", stripped).strip()
 
@@ -242,16 +220,13 @@ def _html_list_items(text: str) -> list[str] | None:
     `_strip_html` on that concatenates every item with no separator
     (confirmed: "YOLO...Runs on NPUs..." ran together as one line).
     Returns each item's stripped text, or None if `text` isn't a list."""
-    import re
-
     if not text.lstrip().startswith(("<ul", "<ol")):
         return None
     return [_strip_html(m) for m in re.findall(r"<li>(.*?)</li>", text, re.DOTALL)]
 
 
 def _render_notes(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     style = box.style
@@ -264,9 +239,7 @@ def _render_notes(
     return [bar, frame] if bar is not None else [frame]
 
 
-def _highlighted_code_paragraph(
-    code: str, language: str, style: ResolvedStyle, reg: StyleRegistry, para_style: str,
-) -> Paragraph:
+def _highlighted_code_paragraph(code: str, language: str, style: ResolvedStyle, reg: StyleRegistry, para_style: str) -> Paragraph:
     """Per-token colored Spans via the same pygments lexer/style the HTML
     renderer uses (html.py's _highlight_code) -- previously code blocks were
     one flat mono Paragraph with no token coloring at all."""
@@ -308,8 +281,7 @@ def _highlighted_code_paragraph(
 
 
 def _render_code(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     if elem.svg or elem.pdf:
@@ -324,8 +296,7 @@ def _render_code(
 
 
 def _render_list(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     style = box.style
@@ -336,10 +307,7 @@ def _render_list(
     odf_list = OdfList(style=list_name)
     inline_rows = elem.item_inlines or [[] for _ in elem.items]
     for row in inline_rows:
-        p = (
-            _build_rich_paragraph(row, reg, li_style, global_tags, para_style)
-            if row else Paragraph(style=para_style)
-        )
+        p = _build_rich_paragraph(row, reg, li_style, global_tags, para_style) if row else Paragraph(style=para_style)
         odf_list.append_item(ListItem(p))
     gfx = reg.graphic_style(style, fill=False)
     frame = Frame.text_frame(odf_list, style=gfx, position=_pos(box), size=_size(box), anchor_type="page")
@@ -347,8 +315,7 @@ def _render_list(
 
 
 def _render_table(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     style = box.style
@@ -389,9 +356,7 @@ def _render_table(
     for i, row in enumerate(elem.rows):
         row_fg_style = td_even if (i + 1) % 2 == 0 else td_odd
         cell_name = reg.table_cell_style(row_fg_style.bg, row_fg_style.border_color, row_fg_style.border_width)
-        body_run = reg.run_style(
-            row_fg_style.fg, row_fg_style.font_family, row_fg_style.font_size_px, False, False,
-        )
+        body_run = reg.run_style(row_fg_style.fg, row_fg_style.font_family, row_fg_style.font_size_px, False, False)
         for j, cell_text in enumerate(row):
             text = _strip_html(cell_text)
             t.set_value((j, i + 1), text)
@@ -402,18 +367,14 @@ def _render_table(
                 p.clear()
                 p.append(Span(text, style=body_run))
 
-    frame = Frame(
-        name=f"table_frame_{elem.id}",
-        position=_pos(box), size=_size(box), anchor_type="page",
-    )
+    frame = Frame(name=f"table_frame_{elem.id}", position=_pos(box), size=_size(box), anchor_type="page")
     frame.set_attribute("draw:fill", "none")
     frame.append(t)
     return [frame]
 
 
 def _render_card(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     style = box.style
@@ -431,16 +392,13 @@ def _render_card(
             # inline with the label text, matching the HTML's icon+space
             # +label layout directly instead of an approximated gutter
             # frame.
-            icon_span = _icon_glyph_span(
-                m.group(0), reg, global_tags, header_style.fg, header_style.font_size_px,
-            )
+            icon_span = _icon_glyph_span(m.group(0), reg, global_tags, header_style.fg, header_style.font_size_px)
             if icon_span is not None:
                 hp.append(icon_span)
                 hp.append(" ")
-            header_html = header_html[header_html.index(m.group(0)) + len(m.group(0)):]
+            header_html = header_html[header_html.index(m.group(0)) + len(m.group(0)) :]
         head_name = reg.run_style(
-            header_style.fg, header_style.font_family, header_style.font_size_px,
-            header_style.font_weight == "bold", False,
+            header_style.fg, header_style.font_family, header_style.font_size_px, header_style.font_weight == "bold", False
         )
         hp.append(Span(_strip_html(header_html), style=head_name))
         content.append(hp)
@@ -459,17 +417,13 @@ def _render_card(
             content.append(_plain_paragraph(_strip_html(line), para_style))
 
     gfx = reg.graphic_style(style, fill=True, vertical_align="top")
-    frame = Frame.text_frame(
-        content or [Paragraph(style=para_style)],
-        style=gfx, position=_pos(box), size=_size(box), anchor_type="page",
-    )
+    frame = Frame.text_frame(content or [Paragraph(style=para_style)], style=gfx, position=_pos(box), size=_size(box), anchor_type="page")
     _apply_radius(frame, style)
     return [frame, *_decoration_shapes(box, reg)]
 
 
 def _render_grid(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     # Grid/row/col containers carry no visible paint of their own beyond
     # any captured ::before/::after decoration (e.g. a timeline layout's
@@ -482,8 +436,7 @@ _render_row = _render_grid
 
 
 def _render_speaker(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     style = box.style
@@ -509,22 +462,7 @@ def _resolve_img_path(src: str, source_dir: Path | None) -> str | None:
     return path if os.path.isfile(path) else None
 
 
-def _normalize_svg_viewbox(svg: str) -> str:
-    """Normalize a negative viewBox origin to 0,0, expanding dimensions."""
-    import re
-
-    m = re.search(r'viewBox="([\d.-]+)\s+([\d.-]+)\s+([\d.]+)\s+([\d.]+)"', svg)
-    if not m:
-        return svg
-    x, y, w, h = float(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4))
-    if x >= 0 and y >= 0:
-        return svg
-    new_w, new_h = w + abs(x), h + abs(y)
-    return svg.replace(m.group(0), f'viewBox="0 0 {new_w:g} {new_h:g}"', 1)
-
-
 def _svg_dims(svg: str, max_w_cm: float) -> tuple[float, float]:
-    import re
 
     vb = re.search(r'viewBox="[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)"', svg)
     if not vb:
@@ -548,8 +486,7 @@ def _icon_accent_color(classes: str, global_tags: dict[str, ResolvedStyle], fall
 
 
 def _icon_glyph_span(
-    svg: str, reg: StyleRegistry, global_tags: dict[str, ResolvedStyle],
-    fallback_fg: str, font_size_px: float,
+    svg: str, reg: StyleRegistry, global_tags: dict[str, ResolvedStyle], fallback_fg: str, font_size_px: float
 ) -> Any | None:
     """A lucide icon rendered as a colored font glyph (``lucide.ttf``,
     embedded in the package) instead of an SVG image frame -- a real
@@ -577,8 +514,7 @@ def _icon_glyph_span(
 
 
 def _render_arrow(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     """``::: arrow`` fenced block: a single centered lucide icon (default a
     plain arrow glyph), not text -- a centered glyph Span, falling back
@@ -609,31 +545,23 @@ def _render_image_data(elem: Elem, box: BoxGeometry, add_file: AddFile) -> list[
             f.write(elem.pdf)
             tmp_path = f.name
     elif elem.svg:
-        svg = _normalize_svg_viewbox(elem.svg)
+        svg = normalize_viewbox(elem.svg)
         size_cm = _svg_dims(svg, box.w)
         with tempfile.NamedTemporaryFile(suffix=".svg", mode="w", delete=False) as f:
             f.write(svg)
             tmp_path = f.name
     if tmp_path is None:
-        return [Frame.text_frame(
-            Paragraph(f"[{elem.language or 'diagram'}]"),
-            position=_pos(box), size=_size(box), anchor_type="page",
-        )]
+        return [Frame.text_frame(Paragraph(f"[{elem.language or 'diagram'}]"), position=_pos(box), size=_size(box), anchor_type="page")]
     uri = add_file(tmp_path)
     os.unlink(tmp_path)
     x, y = box.x + (box.w - size_cm[0]) / 2, box.y + (box.h - size_cm[1]) / 2
     frame = Frame.image_frame(
-        image=uri,
-        size=(f"{size_cm[0]:.3f}cm", f"{size_cm[1]:.3f}cm"),
-        position=(f"{x:.3f}cm", f"{y:.3f}cm"),
-        anchor_type="page",
+        image=uri, size=(f"{size_cm[0]:.3f}cm", f"{size_cm[1]:.3f}cm"), position=(f"{x:.3f}cm", f"{y:.3f}cm"), anchor_type="page"
     )
     return [frame]
 
 
-def _render_inline_images(
-    images: list, box: BoxGeometry, add_file: AddFile, source_dir: Path | None,
-) -> list[Any]:
+def _render_inline_images(images: list, box: BoxGeometry, add_file: AddFile, source_dir: Path | None) -> list[Any]:
     """A paragraph whose entire content is one or more images, laid out
     centered side by side within the paragraph's own box."""
     resolved = [(img, _resolve_img_path(img.src, source_dir)) for img in images]
@@ -655,7 +583,8 @@ def _render_inline_images(
         radius_cm = box.style.border_radius * CM_PER_PX
         uri = add_file(round_image_corners(path, radius_cm, w_cm))
         frame = Frame.image_frame(
-            image=uri, text=img.title or "",
+            image=uri,
+            text=img.title or "",
             size=(f"{w_cm:.3f}cm", f"{h_cm:.3f}cm"),
             position=(f"{x + (slot_w - w_cm) / 2:.3f}cm", f"{box.y + (box.h - h_cm) / 2:.3f}cm"),
             anchor_type="page",
@@ -679,8 +608,7 @@ def _image_natural_size(path: str) -> tuple[float, float]:
 
 
 def _render_image(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     box = elem.box
     img = next((n for n in elem.inlines if isinstance(n, ASTImage)), None)
@@ -695,8 +623,7 @@ def _render_image(
 
 
 def _render_skip(
-    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None,
-    global_tags: dict[str, ResolvedStyle],
+    elem: Elem, reg: StyleRegistry, add_file: AddFile, source_dir: Path | None, global_tags: dict[str, ResolvedStyle]
 ) -> list[Any]:
     """Elements with no ODF embedding (HTML5 <video>): render nothing, not a near-empty frame."""
     return []

@@ -5,7 +5,8 @@
 """Directive parsing: @kicker, @speaker, @subtitle, etc. → AttrNode."""
 
 import re
-from decktile.parser.ast import AttrNode, Paragraph, Text, Node
+
+from decktile.parser.ast import AttrNode, Node, Paragraph, Text
 
 
 def preprocess_directives(content: str) -> str:
@@ -23,7 +24,7 @@ def preprocess_directives(content: str) -> str:
         if m:
             if fence is None:
                 fence = m.group(1)
-            elif stripped.startswith(fence) and not stripped[len(fence):].strip():
+            elif stripped.startswith(fence) and not stripped[len(fence) :].strip():
                 fence = None
             result.append(line)
             continue
@@ -67,7 +68,7 @@ def _parse_attrs(value: str) -> dict[str, str]:
     attrs = {}
     for ma in re.finditer(r'(\w+)="([^"]*)"', value):
         attrs[ma.group(1)] = ma.group(2)
-    for ma in re.finditer(r'(\w+)=(\S+)', value):
+    for ma in re.finditer(r"(\w+)=(\S+)", value):
         if ma.group(1) not in attrs:
             attrs[ma.group(1)] = ma.group(2)
     return attrs

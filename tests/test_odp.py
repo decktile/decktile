@@ -7,7 +7,6 @@ Document round-trip, asserting what a consumer (LibreOffice, a reviewer
 opening the file) would see -- not internal call patterns."""
 
 import io
-import re
 import zipfile
 from pathlib import Path
 
@@ -50,22 +49,17 @@ def test_page_size_matches_content_dimensions(tmp_path):
 def test_light_section_background_is_white(tmp_path):
     odp = _build("---\ntitle: T\n---\n\n# Hello\n", tmp_path)
     page = odp.body.get_draw_pages()[0]
-    master = odp.styles.get_master_page(0) if page.master_page == "" else \
-        next(m for m in odp.styles.master_pages if m.name == page.master_page)
+    master = (
+        odp.styles.get_master_page(0) if page.master_page == "" else next(m for m in odp.styles.master_pages if m.name == page.master_page)
+    )
     dp = odp.get_style("drawing-page", master.draw_style_name)
     props = dp.get_properties()
     assert props.get("draw:fill-color", "").lower() == "#ffffff"
 
 
 def test_dark_variant_section_uses_dark_colors(tmp_path):
-    theme = (
-        default_theme()
-        + "\nsection[data-theme=\"dark\"] { --color-background: #1a1a2e; "
-        "--color-foreground: #e0e0e0; }\n"
-    )
-    odp = _build(
-        "---\ntitle: T\n---\n\n@variant dark\n\n# Dark Slide\n", tmp_path, theme_css=theme,
-    )
+    theme = default_theme() + '\nsection[data-theme="dark"] { --color-background: #1a1a2e; --color-foreground: #e0e0e0; }\n'
+    odp = _build("---\ntitle: T\n---\n\n@variant dark\n\n# Dark Slide\n", tmp_path, theme_css=theme)
     page = odp.body.get_draw_pages()[0]
     master = next(m for m in odp.styles.master_pages if m.name == page.master_page)
     dp = odp.get_style("drawing-page", master.draw_style_name)
@@ -73,10 +67,7 @@ def test_dark_variant_section_uses_dark_colors(tmp_path):
 
 
 def test_card_frame_has_fill_and_border(tmp_path):
-    md = (
-        "---\ntitle: T\n---\n\n## Cards\n\n"
-        "::: card {tag=green}\n### Head\nBody text\n:::\n"
-    )
+    md = "---\ntitle: T\n---\n\n## Cards\n\n::: card {tag=green}\n### Head\nBody text\n:::\n"
     odp = _build(md, tmp_path)
     frames = _frames(odp)
     card_frame = next(f for f in frames if "Body text" in f.get_formatted_text())
@@ -118,10 +109,7 @@ def test_list_bullet_has_colored_level_style(tmp_path):
 
 
 def test_table_header_and_body_cells_have_distinct_styles(tmp_path):
-    md = (
-        "---\ntitle: T\n---\n\n## Table\n\n"
-        "| A | B |\n|---|---|\n| r1 | x |\n| r2 | y |\n"
-    )
+    md = "---\ntitle: T\n---\n\n## Table\n\n| A | B |\n|---|---|\n| r1 | x |\n| r2 | y |\n"
     odp = _build(md, tmp_path)
     frames = _frames(odp)
     table_frame = next(f for f in frames if f.get_element("table:table") is not None)
@@ -132,10 +120,7 @@ def test_table_header_and_body_cells_have_distinct_styles(tmp_path):
 
 
 def test_frames_stay_within_page_bounds(tmp_path):
-    md = (
-        "---\ntitle: T\nsize: 1280x720\n---\n\n## Content\n\n"
-        "Some body text.\n\n- item one\n- item two\n"
-    )
+    md = "---\ntitle: T\nsize: 1280x720\n---\n\n## Content\n\nSome body text.\n\n- item one\n- item two\n"
     odp = _build(md, tmp_path)
     pl = odp.get_style("page-layout", "DecktilePageLayout")
     props = pl.get_properties()
@@ -163,9 +148,7 @@ def test_speaker_notes_present(tmp_path):
 
 
 def test_speaker_notes_multiple_comments_become_separate_paragraphs(tmp_path):
-    md = (
-        "---\ntitle: T\n---\n\n<!-- first point -->\n\n# Hello\n\n<!-- second point -->\n"
-    )
+    md = "---\ntitle: T\n---\n\n<!-- first point -->\n\n# Hello\n\n<!-- second point -->\n"
     odp = _build(md, tmp_path)
     page = odp.body.get_draw_pages()[0]
     notes = page.get_element("presentation:notes")
@@ -178,10 +161,7 @@ def test_speaker_notes_multiline_bullets_stay_on_separate_lines(tmp_path):
     """A single comment with several lines (e.g. bullet points) must not
     collapse onto one run-on line -- each source line needs its own
     text:p (ODF ignores an embedded \\n inside one text:p)."""
-    md = (
-        "---\ntitle: T\n---\n\n"
-        "<!--\n- first bullet\n- second bullet\n-->\n\n# Hello\n"
-    )
+    md = "---\ntitle: T\n---\n\n<!--\n- first bullet\n- second bullet\n-->\n\n# Hello\n"
     odp = _build(md, tmp_path)
     page = odp.body.get_draw_pages()[0]
     notes = page.get_element("presentation:notes")
@@ -208,7 +188,7 @@ def test_background_image_embeds_as_bitmap_master_fill(tmp_path):
 
     img_path = tmp_path / "bg.png"
     Image.new("RGB", (4, 4), (10, 20, 30)).save(img_path)
-    theme = default_theme() + f'\nsection {{ background-image: url("bg.png"); }}\n'
+    theme = default_theme() + '\nsection { background-image: url("bg.png"); }\n'
     odp = _build("---\ntitle: T\n---\n\n# Hello\n", tmp_path, theme_css=theme)
 
     page = odp.body.get_draw_pages()[0]
@@ -228,13 +208,10 @@ def test_multi_stop_gradient_keeps_middle_color(tmp_path):
     """draw:gradient's base 2-stop model would drop a middle CSS stop's hue
     -- loext:gradient-stop children must carry every stop."""
     theme = (
-        default_theme()
-        + "\nsection[data-theme=\"dark\"] { background-image: "
+        default_theme() + '\nsection[data-theme="dark"] { background-image: '
         "linear-gradient(135deg, #1a0000 0%, #7a0504 60%, #280202 100%); }\n"
     )
-    odp = _build(
-        "---\ntitle: T\n---\n\n@variant dark\n\n# Hello\n", tmp_path, theme_css=theme,
-    )
+    odp = _build("---\ntitle: T\n---\n\n@variant dark\n\n# Hello\n", tmp_path, theme_css=theme)
     styles_xml = odp.styles.get_element("office:styles").serialize()
     assert 'loext:color-value="#7a0504"' in styles_xml
 
@@ -265,10 +242,7 @@ def test_dark_slide_uses_logo_dark(tmp_path):
 
     Image.new("RGB", (100, 50), "black").save(logo)
     Image.new("RGB", (100, 50), "white").save(logo_dark)
-    md = (
-        "---\ntitle: T\nlogo: logo.png\nlogo_dark: logo-dark.png\n---\n\n"
-        "@variant dark\n\n# Dark\n\n---\n\n# Light\n"
-    )
+    md = "---\ntitle: T\nlogo: logo.png\nlogo_dark: logo-dark.png\n---\n\n@variant dark\n\n# Dark\n\n---\n\n# Light\n"
     odp = _build(md, tmp_path)
     dark_logo_uri = next(f.get_image().url for f in _frames(odp, 0) if f.get_image())
     light_logo_uri = next(f.get_image().url for f in _frames(odp, 1) if f.get_image())
@@ -301,11 +275,7 @@ def test_speaker_links_render_as_text(tmp_path):
     elem.attrs in html.py's own rendering but were never read by the ODP
     path at all -- elem.text only carries name+role, so the ODP speaker
     frame silently dropped all contact info."""
-    md = (
-        "---\ntitle: T\n---\n\n# Hello\n\n"
-        "@speaker name=\"Jane Doe\" role=\"Engineer\" "
-        "github=\"jdoe\" linkedin=\"https://linkedin.com/in/jdoe\"\n"
-    )
+    md = '---\ntitle: T\n---\n\n# Hello\n\n@speaker name="Jane Doe" role="Engineer" github="jdoe" linkedin="https://linkedin.com/in/jdoe"\n'
     odp = _build(md, tmp_path)
     frames = _frames(odp)
     speaker_frame = next(f for f in frames if "Jane Doe" in f.get_formatted_text())
@@ -350,7 +320,7 @@ def test_uniform_tint_bakes_into_master_no_overlay_shape(tmp_path):
     img_path = tmp_path / "bg.png"
     Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
     theme = default_theme() + (
-        '\nsection { background: linear-gradient(rgba(255,255,255,0.9), '
+        "\nsection { background: linear-gradient(rgba(255,255,255,0.9), "
         'rgba(255,255,255,0.9)), url("bg.png") left top / cover no-repeat; }\n'
     )
     md = "---\ntitle: T\n---\n\n# Hello\n"
@@ -369,7 +339,7 @@ def test_distinct_tints_over_same_image_get_distinct_masters(tmp_path):
     img_path = tmp_path / "bg.png"
     Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
     theme = default_theme() + (
-        '\nsection { background: linear-gradient(rgba(255,255,255,0.9), '
+        "\nsection { background: linear-gradient(rgba(255,255,255,0.9), "
         'rgba(255,255,255,0.9)), url("bg.png") left top / cover no-repeat; }\n'
         '\nsection[data-theme="dark"] { background: linear-gradient(rgba(0,0,0,0.8), '
         'rgba(0,0,0,0.8)), url("bg.png") left top / cover no-repeat; }\n'
@@ -444,11 +414,7 @@ def test_arrow_icon_renders_as_colored_font_glyph(tmp_path):
     theme = default_theme() + "\n:root { --color-accent-primary: #ff3300; }\n"
     odp = _build(md, tmp_path, theme_css=theme)
     frames = _frames(odp)
-    span = next(
-        (s for f in frames for s in f.get_elements("descendant::text:span")
-         if s.text and ord(s.text[0]) >= 0xE000),
-        None,
-    )
+    span = next((s for f in frames for s in f.get_elements("descendant::text:span") if s.text and ord(s.text[0]) >= 0xE000), None)
     assert span is not None
     style = odp.get_style("text", span.get_attribute("text:style-name"))
     props = style.get_properties(area="text")
@@ -483,10 +449,7 @@ def test_footer_bar_gets_its_own_box_not_its_text_line_box(tmp_path):
     real resolved box, silently losing a themed full-width footer bar
     entirely (reported as a transparent, narrow frame on every slide)."""
     md = "---\ntitle: T\nfooter: Conference 2026\n---\n\n# Hello\n"
-    theme = default_theme() + (
-        '\nfooter { left: 0; right: 0; bottom: 0; background: #123456; '
-        'padding: 1em 2em; }\n'
-    )
+    theme = default_theme() + ("\nfooter { left: 0; right: 0; bottom: 0; background: #123456; padding: 1em 2em; }\n")
     odp = _build(md, tmp_path, theme_css=theme)
     frames = _frames(odp)
     footer_frame = next(f for f in frames if "Conference 2026" in f.get_formatted_text())
@@ -548,7 +511,7 @@ def test_content_image_gets_rounded_corners(tmp_path):
     Image.new("RGB", (400, 300), (10, 120, 200)).save(img_path)
     md = "---\ntitle: T\n---\n\n## Pic\n\n![alt](photo.png)\n"
     theme = default_theme() + "\n:root { --img-radius: 2em; }\n"
-    odp = _build(md, tmp_path, theme_css=theme)
+    _build(md, tmp_path, theme_css=theme)
     z = zipfile.ZipFile(tmp_path / "out.odp")
     pngs = [n for n in z.namelist() if n.startswith("Pictures/") and n.endswith(".png")]
     assert pngs
@@ -568,17 +531,14 @@ def test_chrome_shapes_land_on_master_for_uniform_tint(tmp_path):
     img_path = tmp_path / "bg.png"
     Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
     theme = default_theme() + (
-        '\nsection { background: linear-gradient(rgba(255,255,255,0.9), '
+        "\nsection { background: linear-gradient(rgba(255,255,255,0.9), "
         'rgba(255,255,255,0.9)), url("bg.png") left top / cover no-repeat; }\n'
         '\nsection::before { content: ""; position: absolute; width: 10%; '
-        'height: 10%; background: var(--logo); }\n'
+        "height: 10%; background: var(--logo); }\n"
     )
     logo = tmp_path / "logo.png"
     Image.new("RGB", (40, 40), (10, 200, 10)).save(logo)
-    md = (
-        "---\ntitle: T\nlogo: logo.png\nfooter: Conf 2026\npaginate: true\n---\n\n"
-        "# One\n\n---\n\n# Two\n\n---\n\n# Three\n"
-    )
+    md = "---\ntitle: T\nlogo: logo.png\nfooter: Conf 2026\npaginate: true\n---\n\n# One\n\n---\n\n# Two\n\n---\n\n# Three\n"
     odp = _build(md, tmp_path, theme_css=theme)
     pages = odp.body.get_draw_pages()
     assert len({p.get_attribute("draw:master-page-name") for p in pages}) == 1
@@ -592,9 +552,7 @@ def test_chrome_shapes_land_on_master_for_uniform_tint(tmp_path):
     style_name = footer_frame.get_element("descendant::text:p").get_attribute("text:style-name")
     styles_xml = odp.get_part("styles")
     content_xml = odp.get_part("content")
-    assert styles_xml.get_element(
-        f'//office:automatic-styles/style:style[@style:name="{style_name}"]',
-    ) is not None
+    assert styles_xml.get_element(f'//office:automatic-styles/style:style[@style:name="{style_name}"]') is not None
     assert content_xml.get_element(f'//style:style[@style:name="{style_name}"]') is None
 
 
@@ -610,10 +568,10 @@ def test_chrome_falls_back_to_per_slide_for_overlay_background(tmp_path):
     img_path = tmp_path / "bg.png"
     Image.new("RGB", (8, 8), (80, 80, 150)).save(img_path)
     theme = default_theme() + (
-        '\nsection { background: linear-gradient(90deg, rgba(0,0,0,0.8) 0%, '
+        "\nsection { background: linear-gradient(90deg, rgba(0,0,0,0.8) 0%, "
         'rgba(0,0,0,0.2) 100%), url("bg.png") left top / cover no-repeat; }\n'
         '\nsection::before { content: ""; position: absolute; width: 10%; '
-        'height: 10%; background: var(--logo); }\n'
+        "height: 10%; background: var(--logo); }\n"
     )
     logo = tmp_path / "logo.png"
     Image.new("RGB", (40, 40), (10, 200, 10)).save(logo)
@@ -626,15 +584,10 @@ def test_chrome_falls_back_to_per_slide_for_overlay_background(tmp_path):
     styles_xml = odp.get_part("styles")
     content_xml = odp.get_part("content")
     assert content_xml.get_element(f'//style:style[@style:name="{style_name}"]') is not None
-    assert styles_xml.get_element(
-        f'//office:automatic-styles/style:style[@style:name="{style_name}"]',
-    ) is None
+    assert styles_xml.get_element(f'//office:automatic-styles/style:style[@style:name="{style_name}"]') is None
     children = list(page.children)
     overlay_idx = next(i for i, c in enumerate(children) if c.tag == "draw:rect")
-    footer_idx = next(
-        i for i, c in enumerate(children)
-        if c.tag == "draw:frame" and "Conf 2026" in c.get_formatted_text()
-    )
+    footer_idx = next(i for i, c in enumerate(children) if c.tag == "draw:frame" and "Conf 2026" in c.get_formatted_text())
     assert overlay_idx < footer_idx
 
 
@@ -648,9 +601,7 @@ def test_page_number_widens_for_multi_digit_slide_counts(tmp_path):
     odp = _build(md, tmp_path)
     master_name = odp.body.get_draw_pages()[0].get_attribute("draw:master-page-name")
     master = odp.get_style("master-page", master_name)
-    page_num_frame = next(
-        f for f in master.get_frames() if f.get_element("descendant::text:page-number") is not None
-    )
+    page_num_frame = next(f for f in master.get_frames() if f.get_element("descendant::text:page-number") is not None)
     w = float(page_num_frame.width.rstrip("cm"))
     h = float(page_num_frame.height.rstrip("cm"))
     # w/h are each independently rounded to 3 decimal cm places on save,
@@ -668,10 +619,7 @@ def test_timeline_layout_renders_spine_dots_and_labels(tmp_path):
     which crashes weasyprint and broke --odp/--pdf outright; the vertical
     grid once used height:100%, which weasyprint resolved too tall and
     spilled the cards onto an extra page."""
-    cards = (
-        '::: card {label="L1"}\n### Q1\nFirst.\n:::\n'
-        '::: card {focus, label="L2"}\n### Q2\nSecond.\n:::\n'
-    )
+    cards = '::: card {label="L1"}\n### Q1\nFirst.\n:::\n::: card {focus, label="L2"}\n### Q2\nSecond.\n:::\n'
     md = (
         "---\ntitle: T\n---\n\n@layout timeline-vertical\n\n## V\n\n"
         f"::: grid {{cols=1}}\n{cards}:::\n\n---\n\n"
@@ -699,4 +647,4 @@ def test_timeline_layout_renders_spine_dots_and_labels(tmp_path):
         # weasyprint page spill showed up as geometry from the wrong page:
         # every timeline shape must land inside this slide
         for c in dots + rects:
-            assert 0 <= cm(c, "svg:y") and cm(c, "svg:y") + cm(c, "svg:height") <= page_h
+            assert cm(c, "svg:y") >= 0 and cm(c, "svg:y") + cm(c, "svg:height") <= page_h

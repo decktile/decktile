@@ -5,10 +5,10 @@
 """markdown-it inline rule for lucide icons: {icon:star stroke=#64d039}"""
 
 import re
+
 from markdown_it.rules_inline import StateInline
 
-
-_ICON_RE = re.compile(r'\{icon:(\S+)\s*([^}]*)\}')
+_ICON_RE = re.compile(r"\{icon:(\S+)\s*([^}]*)\}")
 
 
 def render_icon(name: str, attrs: dict[str, str] | None = None) -> str:
@@ -17,6 +17,7 @@ def render_icon(name: str, attrs: dict[str, str] | None = None) -> str:
         return ""
     try:
         from lucide import lucide_icon
+
         kwargs = dict(attrs or {})
         if "size" in kwargs:
             v = kwargs.pop("size")
@@ -26,7 +27,7 @@ def render_icon(name: str, attrs: dict[str, str] | None = None) -> str:
             kwargs["height"] = "1em"
         svg = lucide_icon(name, **kwargs)
         if not has_explicit_size:
-            svg = svg.replace('<svg', '<svg style="height:1em;width:auto;vertical-align:middle"', 1)
+            svg = svg.replace("<svg", '<svg style="height:1em;width:auto;vertical-align:middle"', 1)
         return svg
     except Exception:
         return ""
@@ -36,14 +37,14 @@ def _parse_opts(opts: str) -> dict[str, str]:
     attrs = {}
     for a in re.finditer(r'(\w+)="([^"]*)"', opts):
         attrs[a.group(1)] = a.group(2)
-    for a in re.finditer(r'(\w+)=(\S+)', opts):
+    for a in re.finditer(r"(\w+)=(\S+)", opts):
         if a.group(1) not in attrs:
             attrs[a.group(1)] = a.group(2)
     return attrs
 
 
 def lucide_icon_inline(state: StateInline, silent: bool = False) -> bool:
-    m = _ICON_RE.match(state.src[state.pos:])
+    m = _ICON_RE.match(state.src[state.pos :])
     if not m:
         return False
 

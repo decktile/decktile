@@ -31,11 +31,7 @@ GLOBAL_TAGS = {"code"}  # inline constructs with no per-instance id: resolve onc
 
 
 def annotate_geometry(
-    ir_slides: list[SlideIR],
-    doc: Any,
-    assembled_css: str,
-    dims: tuple[int, int],
-    source_dir: Path | None = None,
+    ir_slides: list[SlideIR], doc: Any, assembled_css: str, dims: tuple[int, int], source_dir: Path | None = None
 ) -> tuple[dict[str, BoxGeometry], dict[str, ResolvedStyle]]:
     """Render ir_slides via weasyprint and fill every Elem.box in place.
 
@@ -76,8 +72,8 @@ def annotate_geometry(
     return section_box, global_tags
 
 
-_VAR_DECL_RE = re.compile(r'(--[\w-]+)\s*:\s*([^;]+);')
-_VAR_REF_RE = re.compile(r'var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)')
+_VAR_DECL_RE = re.compile(r"(--[\w-]+)\s*:\s*([^;]+);")
+_VAR_REF_RE = re.compile(r"var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)")
 
 
 def _resolve_icon_accent_colors(css: str) -> dict[str, str]:
@@ -95,7 +91,7 @@ def _resolve_icon_accent_colors(css: str) -> dict[str, str]:
     string "var(--color-accent)" through to odfdo's color parser, which
     crashed (KeyError) trying to look it up as a CSS3 color name."""
     all_vars: dict[str, str] = {}
-    for block in re.finditer(r':root\s*\{([^}]*)\}', css):
+    for block in re.finditer(r":root\s*\{([^}]*)\}", css):
         for m in _VAR_DECL_RE.finditer(block.group(1)):
             all_vars[m.group(1)] = m.group(2).strip()
 
@@ -164,28 +160,20 @@ def _walk(
     if tag in GLOBAL_TAGS and tag not in global_tags:
         global_tags[tag] = _resolve_style(box, parent_bg)
 
-    pseudo_or_injected = tag in (
-        "section::before", "section::after", "footer", "div::before", "div::after",
-    ) or (tag == "span" and _has_class(box, "slide-num"))
+    pseudo_or_injected = tag in ("section::before", "section::after", "footer", "div::before", "div::after") or (
+        tag == "span" and _has_class(box, "slide-num")
+    )
     if has_rect and (pseudo_or_injected or (sid not in seen if sid else True)):
         style = _resolve_style(box, parent_bg)
         bg_rgb = style.bg_rgb01  # already composited with parent_bg in _resolve_style
 
         if tag == "section" and sid:
             section_origin = (box.border_box_x(), box.border_box_y())
-            section_box[sid] = BoxGeometry(
-                x=0.0, y=0.0,
-                w=box.border_width() * PX_TO_CM, h=box.border_height() * PX_TO_CM,
-                style=style,
-            )
+            section_box[sid] = BoxGeometry(x=0.0, y=0.0, w=box.border_width() * PX_TO_CM, h=box.border_height() * PX_TO_CM, style=style)
             seen.add(sid)
             current_sid = sid
         elif tag in ("section::before", "section::after") and sid in section_box:
-            # logo (::before) / watermark (::after): position+file resolved
-            # the same way as any other box -- weasyprint's own cascade
-            # already applied any `--logo: var(--logo-dark)` swap, so this
-            # is always the exact file/position the HTML used, no separate
-            # Python-side light/dark selection needed.
+            # logo (::before) / watermark (::after): weasyprint's cascade already picked the file
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             pseudo = BoxGeometry(
                 x=(box.border_box_x() - ox) * PX_TO_CM,
@@ -198,20 +186,9 @@ def _walk(
                 section_box[sid].logo = pseudo
             else:
                 section_box[sid].watermark = pseudo
-        elif tag in ("footer", "span") and current_sid in section_box and (
-            tag == "footer" or _has_class(box, "slide-num")
-        ):
-            # <footer>/.slide-num: template-injected, not AST elements --
-            # no data-decktile-id to match by, attach to the enclosing
-            # section instead (current_sid, threaded down the recursion).
-            # First match wins: weasyprint's own LineBox/TextBox children
-            # of the element also carry element_tag == "footer" (inherited
-            # from their block ancestor) and get walked into right after --
-            # taking the last match instead landed on the text's own tight
-            # line-box geometry (zero padding, transparent) rather than the
-            # footer block's own resolved box (verified empirically: every
-            # slide's footer reported the same narrow, unstyled geometry
-            # regardless of its real light/dark/title background).
+        elif tag in ("footer", "span") and current_sid in section_box and (tag == "footer" or _has_class(box, "slide-num")):
+            # <footer>/.slide-num have no data-decktile-id: attach to the enclosing section.
+            # First match wins; later matches are the text's own tight line boxes.
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             el = getattr(box, "element", None)
             pseudo = BoxGeometry(
@@ -227,45 +204,33 @@ def _walk(
                     section_box[current_sid].footer = pseudo
             elif section_box[current_sid].slide_num is None:
                 section_box[current_sid].slide_num = pseudo
-        elif current_sid in by_id and by_id[current_sid].kind in ("grid", "card") and (
-            tag in ("div::before", "div::after")
-            or (tag == "span" and _has_class(box, "timeline-label"))
+        elif (
+            current_sid in by_id
+            and by_id[current_sid].kind in ("grid", "card")
+            and (tag in ("div::before", "div::after") or (tag == "span" and _has_class(box, "timeline-label")))
         ):
-            # Timeline spine (.grid::before) / dot+stub (.card::before/
-            # ::after) / milestone name (span.timeline-label): no AST node
-            # of their own. Attach to the enclosing grid/card's box so the
-            # ODP renderer can draw them alongside it. First match per
-            # label wins -- the span's own line/text child boxes inherit
-            # element_tag "span" and are walked right after.
+            # timeline spine/dot/label have no AST node: attach to the enclosing grid/card; first match wins
             host = by_id[current_sid]
             is_label = tag == "span"
-            if host.box is not None and not (
-                is_label and any(d.text for d in host.box.decorations)
-            ):
+            if host.box is not None and not (is_label and any(d.text for d in host.box.decorations)):
                 ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
                 dx, dy = _translate_px(box)
                 el = getattr(box, "element", None)
-                host.box.decorations.append(BoxGeometry(
-                    x=(box.border_box_x() + dx - ox) * PX_TO_CM,
-                    y=(box.border_box_y() + dy - oy) * PX_TO_CM,
-                    w=box.border_width() * PX_TO_CM,
-                    h=box.border_height() * PX_TO_CM,
-                    style=_decoration_style(box, style, parent_bg),
-                    text=(el.text or "").strip() if is_label and el is not None else "",
-                ))
+                host.box.decorations.append(
+                    BoxGeometry(
+                        x=(box.border_box_x() + dx - ox) * PX_TO_CM,
+                        y=(box.border_box_y() + dy - oy) * PX_TO_CM,
+                        w=box.border_width() * PX_TO_CM,
+                        h=box.border_height() * PX_TO_CM,
+                        style=_decoration_style(box, style, parent_bg),
+                        text=(el.text or "").strip() if is_label and el is not None else "",
+                    )
+                )
         elif sid and sid in by_id:
             ox, oy = section_origin or (box.border_box_x(), box.border_box_y())
             elem = by_id[sid]
-            substyles = (
-                _collect_substyles(box, bg_rgb) if elem.kind in ("card", "table", "list")
-                else {}
-            )
-            # `border-radius` is set on `img` itself (base.css's rounded
-            # image treatment), not on the paragraph/figure wrapping it --
-            # a plain Elem's own resolved style never carries it, so a
-            # content image rendered square regardless of the theme's
-            # `--img-radius`. Copy it from the first nested `img` box, if
-            # this elem is image content.
+            substyles = _collect_substyles(box, bg_rgb) if elem.kind in ("card", "table", "list") else {}
+            # border-radius lives on the nested img, not the wrapper: copy it over
             if elem.kind in ("text", "side-image"):
                 img_radius = _img_border_radius(box)
                 if img_radius:
@@ -289,9 +254,7 @@ def _walk(
 _SUBTAGS = {"h3", "p", "th", "td", "tr", "li"}
 
 
-def _collect_substyles(
-    box: Any, bg_rgb: tuple[float, float, float],
-) -> dict[str, ResolvedStyle]:
+def _collect_substyles(box: Any, bg_rgb: tuple[float, float, float]) -> dict[str, ResolvedStyle]:
     """First-seen style per descendant tag inside one Elem's subtree.
 
     ``tr`` needs both parity classes (CSS zebra striping is
@@ -336,17 +299,10 @@ def _resolve_style(box: Any, parent_bg: tuple[float, float, float]) -> ResolvedS
     bg_color = s["background_color"]
     bg_rgb01 = _rgb01(bg_color)
     bg_alpha = float(bg_color.alpha or 0.0)
-    bg_gradient, bg_angle, bg_image_url, bg_image_rgb01, bg_image_alpha = (
-        _resolve_background_image(s["background_image"])
-    )
+    bg_gradient, bg_angle, bg_image_url, bg_image_rgb01, bg_image_alpha = _resolve_background_image(s["background_image"])
 
     if bg_gradient or bg_image_url:
-        # A box with its own background-image isn't "transparent" in the
-        # visual sense even when background-color alpha is 0 -- its own
-        # image/gradient already determines what descendants see through.
-        # Composite onto white (the assumed photo brightness), never onto
-        # an unrelated ancestor's flat color (e.g. the <body> screen-mode
-        # letterboxing color, which never renders behind a slide section).
+        # a box with its own background-image composites onto white, never onto an unrelated ancestor's colour
         composited = _composite((1.0, 1.0, 1.0), bg_image_rgb01, bg_image_alpha)
     else:
         composited = _composite(parent_bg, bg_rgb01, bg_alpha)
@@ -385,12 +341,7 @@ def _resolve_style(box: Any, parent_bg: tuple[float, float, float]) -> ResolvedS
     return style
 
 
-def _resolve_background_image(
-    layers: tuple,
-) -> tuple[
-    list[tuple[float, str, float]] | None, float, str,
-    tuple[float, float, float], float,
-]:
+def _resolve_background_image(layers: tuple) -> tuple[list[tuple[float, str, float]] | None, float, str, tuple[float, float, float], float]:
     """Returns (gradient stops, angle, image url, representative rgb01, alpha).
 
     The representative color/alpha is the stop-average, used only to
@@ -411,13 +362,8 @@ def _resolve_background_image(
             alphas = []
             n = len(val.colors)
             for idx, (color, pos) in enumerate(zip(val.colors, val.stop_positions)):
-                if pos is not None and getattr(pos, "unit", "") == "%":
-                    offset = pos.value / 100.0
-                else:
-                    # no stop position declared (e.g. every theme's
-                    # `linear-gradient(var(--bg-overlay), var(--bg-overlay))`)
-                    # -- evenly space rather than collapsing every stop to 0.
-                    offset = idx / (n - 1) if n > 1 else 0.0
+                # stops without a position are spaced evenly, not collapsed to 0
+                offset = pos.value / 100.0 if getattr(pos, "unit", "") == "%" else idx / (n - 1) if n > 1 else 0.0
                 alpha = 1.0 if color.alpha is None else float(color.alpha)
                 rgb01 = _rgb01(color)
                 stops.append((offset, _hex(rgb01), alpha))
@@ -427,7 +373,7 @@ def _resolve_background_image(
             rep_rgb01 = tuple(sum(c[i] for c in rgb01_stops) / len(rgb01_stops) for i in range(3))
             rep_alpha = sum(alphas) / len(alphas)
         elif kind == "url" and val.startswith("file://"):
-            url = val[len("file://"):]
+            url = val[len("file://") :]
     return gradient, angle, url, rep_rgb01, rep_alpha
 
 
@@ -443,9 +389,7 @@ def _clamp01(v: float) -> float:
 
 
 def _composite(
-    parent_rgb01: tuple[float, float, float],
-    child_rgb01: tuple[float, float, float],
-    alpha: float,
+    parent_rgb01: tuple[float, float, float], child_rgb01: tuple[float, float, float], alpha: float
 ) -> tuple[float, float, float]:
     if alpha <= 0.0:
         return parent_rgb01
@@ -455,7 +399,7 @@ def _composite(
 
 
 def _hex(rgb01: tuple[float, float, float]) -> str:
-    return "#%02x%02x%02x" % tuple(round(c * 255) for c in rgb01)
+    return "#" + "".join(f"{round(c * 255):02x}" for c in rgb01)
 
 
 def _dim_px(dim: Any) -> float:
@@ -484,9 +428,7 @@ def _translate_px(box: Any) -> tuple[float, float]:
     return dx, dy
 
 
-def _decoration_style(
-    box: Any, style: ResolvedStyle, parent_bg: tuple[float, float, float],
-) -> ResolvedStyle:
+def _decoration_style(box: Any, style: ResolvedStyle, parent_bg: tuple[float, float, float]) -> ResolvedStyle:
     """A decoration's own style with what _resolve_style drops: `%`
     border-radius (`50%` -> circle) and element `opacity` (folded into the
     fill, composited onto the parent bg -- ODF draw:fill-color is opaque)."""

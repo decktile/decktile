@@ -4,6 +4,8 @@
 
 """Parse base.css + theme CSS with tinycss2 into PPTX styling rules."""
 
+import re
+
 import tinycss2
 
 
@@ -18,6 +20,7 @@ def parse_theme(base_css: str, theme_css: str) -> dict:
 def parse_dark_theme(base_css: str, theme_css: str) -> dict:
     """Parse dark-mode CSS variables from [data-variant='dark'] blocks."""
     import tinycss2
+
     for sheet in [base_css, theme_css]:
         rules = tinycss2.parse_stylesheet(sheet, skip_comments=True, skip_whitespace=True)
         in_dark = False
@@ -25,7 +28,7 @@ def parse_dark_theme(base_css: str, theme_css: str) -> dict:
             if rule.type != "qualified-rule":
                 continue
             selector = tinycss2.serialize(rule.prelude).strip()
-            if selector in ("[data-variant=\"dark\"]"):
+            if selector in ('[data-variant="dark"]'):
                 in_dark = True
                 continue
             elif selector.startswith("section[data-variant"):
@@ -47,13 +50,14 @@ def parse_dark_theme(base_css: str, theme_css: str) -> dict:
 def _parse_dark_variables(base_css: str, theme_css: str, styles: dict) -> None:
     """Extract dark mode CSS variables and override light mode values."""
     import tinycss2
+
     for sheet in [base_css, theme_css]:
         rules = tinycss2.parse_stylesheet(sheet, skip_comments=True, skip_whitespace=True)
         for rule in rules:
             if rule.type != "qualified-rule":
                 continue
             selector = tinycss2.serialize(rule.prelude).strip()
-            if selector not in ("section[data-variant=\"dark\"]"):
+            if selector not in ('section[data-variant="dark"]'):
                 continue
             decls = tinycss2.parse_declaration_list(rule.content)
             for decl in decls:
@@ -64,14 +68,13 @@ def _parse_dark_variables(base_css: str, theme_css: str, styles: dict) -> None:
                 if name.startswith("--"):
                     styles[name] = val
 
-
-
     _parse_sheet(base_css, styles)
     _parse_sheet(theme_css, styles)
     # Also parse the dark mode overrides
+
+
 def _extract_tag_colors(styles: dict) -> dict[str, tuple[str, str]]:
     """Extract per-tag fill and border colors from CSS .tag-* selectors."""
-    import re
     result: dict[str, list[str]] = {}
 
     # From :root CSS variables
@@ -125,7 +128,6 @@ def _parse_sheet(css: str, styles: dict) -> None:
                 styles[key] = val
 
             # Tag selectors (.tag-green, .tag-red, etc.)
-            import re
             tm = re.match(r"\.tag-(\w+)", selector.strip())
             if tm and name in ("background", "border-color"):
                 tag_key = f"tag_{tm.group(1)}_{'border' if name == 'border-color' else 'background'}"
@@ -133,7 +135,12 @@ def _parse_sheet(css: str, styles: dict) -> None:
 
 
 _PROPS = {
-    "section": {"padding": "section_padding", "font-family": "font_body_family", "text-align": "section_text_align", "font-size": "font_body_size"},
+    "section": {
+        "padding": "section_padding",
+        "font-family": "font_body_family",
+        "text-align": "section_text_align",
+        "font-size": "font_body_size",
+    },
     ".layout-title": {"text-align": "title_text_align"},
     "code": {"font-family": "font_code_family", "font-size": "font_code_size"},
     ".quote": {"font-size": "font_quote_size"},
@@ -144,10 +151,16 @@ _PROPS = {
 }
 
 _FONT_SIZES = {
-    "h1": "font_h1_size", "h2": "font_h2_size", "h3": "font_h3_size",
-    "h4": "font_h4_size", "h5": "font_h5_size", "h6": "font_h6_size",
-    "p": "font_body_size", "li": "font_li_size",
+    "h1": "font_h1_size",
+    "h2": "font_h2_size",
+    "h3": "font_h3_size",
+    "h4": "font_h4_size",
+    "h5": "font_h5_size",
+    "h6": "font_h6_size",
+    "p": "font_body_size",
+    "li": "font_li_size",
 }
+
 
 def _prop_for(name: str, selector: str) -> str | None:
     if name == "font-size" and selector in _FONT_SIZES:
@@ -164,7 +177,6 @@ def _to_rgb(value: str) -> tuple[int, int, int]:
         if len(value) == 6:
             return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
     if value.startswith("rgb"):
-        import re
         m = re.findall(r"\d+", value)
         if len(m) >= 3:
             return int(m[0]), int(m[1]), int(m[2])
@@ -212,20 +224,17 @@ def _parse_border_color(border: str) -> str:
     """Extract border color from CSS border shorthand, after the style keyword."""
     parts = border.split()
     for i, p in enumerate(parts):
-        if p in ("solid", "dashed", "dotted", "double", "none"):
-            if i + 1 < len(parts):
-                return parts[i + 1]
+        if p in ("solid", "dashed", "dotted", "double", "none") and i + 1 < len(parts):
+            return parts[i + 1]
     return parts[-1] if parts else ""
 
 
 def _resolve_color_var(color: str, styles: dict) -> str:
     """Resolve var(--name) to its value from CSS variables."""
-    import re
     m = re.match(r"var\((--[\w-]+)\)", color.strip())
     if m:
         return styles.get(m.group(1), color)
     return color
-
 
 
 def _build_theme_dict(styles: dict) -> dict:
@@ -236,8 +245,7 @@ def _build_theme_dict(styles: dict) -> dict:
         "muted_rgb": _to_rgb(styles.get("--muted", styles.get("--color-dimmed", ""))),
         "accent_rgb": _to_rgb(styles.get("--accent", styles.get("--color-accent", ""))),
         "font_body_family": styles.get("font_body_family", "Segoe UI"),
-        "font_code_family": styles.get("font_code_family",
-                                        styles.get("--font-mono", "Noto Sans Mono")),
+        "font_code_family": styles.get("font_code_family", styles.get("--font-mono", "Noto Sans Mono")),
         "font_h1": _parse_size(styles.get("font_h1_size", ""), 32),
         "font_h2": _parse_size(styles.get("font_h2_size", ""), 32),
         "font_h3": _parse_size(styles.get("font_h3_size", ""), 23),
@@ -256,13 +264,11 @@ def _build_theme_dict(styles: dict) -> dict:
         "title_text_align": styles.get("title_text_align", "left"),
         "section_padding": _parse_padding(styles.get("section_padding", "")),
         "border_radius": styles.get("--radius", "0.4em"),
-        "card_border_color": _resolve_color_var(
-            _parse_border_color(styles.get("--card-border", "")),
-            styles,
-        ),
+        "card_border_color": _resolve_color_var(_parse_border_color(styles.get("--card-border", "")), styles),
         "card_bg": styles.get("--color-card-bg", ""),
         "tag_colors": _extract_tag_colors(styles),
     }
+
 
 def _rgb_to_hex(rgb: tuple) -> str:
     return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"

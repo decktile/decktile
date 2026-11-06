@@ -62,11 +62,7 @@ def _css_theme_rcparams(name: str) -> dict | None:
     font_stack = font_family.group(1).strip() if font_family else "sans-serif"
     fonts = [f.strip().strip('"') for f in font_stack.split(",")]
 
-    style: dict = {
-        "font.family": "sans-serif",
-        "font.sans-serif": fonts,
-        "patch.force_edgecolor": True,
-    }
+    style: dict = {"font.family": "sans-serif", "font.sans-serif": fonts, "patch.force_edgecolor": True}
     for var, rc in _CSS_TO_RC.items():
         val = vars_.get(var)
         if val is None:
@@ -93,9 +89,11 @@ def set_theme(name: str) -> None:
         style = dict(getattr(mod, "STYLE", {}))
         if style:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
             import seaborn as sns
+
             palette = style.pop("seaborn_palette", _DEFAULT_PALETTE)
             sns.set_theme(style="darkgrid", palette=palette)
             plt.rcParams.update(style)
@@ -110,6 +108,7 @@ def set_theme(name: str) -> None:
     if css_style:
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
             import seaborn as sns
@@ -138,11 +137,12 @@ def render_seaborn_svg(content: str) -> str | None:
     """Execute seaborn code in-process, return SVG string. None on failure."""
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        import seaborn as sns
-        import pandas as pd
         import numpy as np
+        import pandas as pd
+        import seaborn as sns
     except ImportError:
         return None
 

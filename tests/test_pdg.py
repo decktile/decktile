@@ -15,16 +15,15 @@ def test_pdg_renders_svg():
 
 
 def test_pdg_blueprint_palette():
-    svg = render_pdg_svg('a "App" .cyan', blueprint=True,
-                         tag_colors={"cyan": ("#e0f7fa", "#00bcd4")})
+    svg = render_pdg_svg('a "App" .cyan', blueprint=True, tag_colors={"cyan": ("#e0f7fa", "#00bcd4")})
     assert "#67d8ff" in svg.lower()
     assert "#e0f7fa" not in svg.lower()
 
 
 def test_pdg_applies_theme_font_and_tag_colors():
-    svg = render_pdg_svg('a "App" .green\nb "DB"\na -> b',
-                         font_family="Liberation Mono", font_size=12,
-                         tag_colors={"green": ("#e8f5e9", "#0fd05d")})
+    svg = render_pdg_svg(
+        'a "App" .green\nb "DB"\na -> b', font_family="Liberation Mono", font_size=12, tag_colors={"green": ("#e8f5e9", "#0fd05d")}
+    )
     assert "Liberation Mono" in svg
     assert "#e8f5e9" in svg.lower()
 
@@ -52,8 +51,7 @@ def test_animated_pdg_moves_in_html_and_stays_still_in_print():
     from decktile.render.ir import build_ir
 
     md = "## S\n\n```pdg\na -> b flow=forward\n```\n\n```pdg\nc -> d\n```\n"
-    elems = [e for e in build_ir(parse(md), base_css(), load_theme("default"))[0].elements
-             if e.kind == "code"]
+    elems = [e for e in build_ir(parse(md), base_css(), load_theme("default"))[0].elements if e.kind == "code"]
     moving, still = elems
     assert "<animate" in moving.svg_live and "<animate" not in moving.svg
     assert still.svg_live == ""  # no animation, no second copy

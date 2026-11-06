@@ -11,13 +11,35 @@ logic between renderers.
 
 from __future__ import annotations
 
+import html
+import re
 from dataclasses import dataclass, field
+from html import escape
 from typing import Any
 
 from decktile.parser.ast import (
-    Document, Slide, Heading, Paragraph, CodeBlock, Grid, Card,
-    Table, Quote, ListNode, AttrNode, Text, Strong, Emphasis,
-    Strikethrough, CodeSpan, Image, SoftBreak, LucideIcon, Link, Arrow, Notes, Row,
+    Arrow,
+    AttrNode,
+    Card,
+    CodeBlock,
+    CodeSpan,
+    Document,
+    Emphasis,
+    Grid,
+    Heading,
+    Image,
+    Link,
+    ListNode,
+    LucideIcon,
+    Notes,
+    Paragraph,
+    Quote,
+    Row,
+    SoftBreak,
+    Strikethrough,
+    Strong,
+    Table,
+    Text,
 )
 from decktile.plugins.layouts import KNOWN_LAYOUTS
 from decktile.theme.parser import parse_theme
@@ -26,12 +48,13 @@ from decktile.theme.parser import parse_theme
 @dataclass
 class ResolvedStyle:
     """Style resolved from a weasyprint box's computed CSS, in CSS px / hex."""
-    bg: str = ""                 # alpha-composited onto the parent's resolved bg
+
+    bg: str = ""  # alpha-composited onto the parent's resolved bg
     bg_alpha: float = 1.0
     fg: str = "#333333"
     border_color: str = ""
-    border_width: float = 0.0    # px
-    border_radius: float = 0.0   # px
+    border_width: float = 0.0  # px
+    border_radius: float = 0.0  # px
     font_family: str = ""
     font_size_px: float = 18.0
     font_weight: str = "normal"
@@ -39,9 +62,9 @@ class ResolvedStyle:
     text_align: str = "left"
     bg_gradient: list[tuple[float, str, float]] | None = None  # (offset, hex, alpha) stops
     bg_angle_deg: float = 180.0
-    bg_image_url: str = ""       # local file path of a CSS background-image, if any
+    bg_image_url: str = ""  # local file path of a CSS background-image, if any
     bg_rgb01: tuple[float, float, float] = (1.0, 1.0, 1.0)  # composited bg, for child compositing
-    padding_top: float = 0.0     # px
+    padding_top: float = 0.0  # px
     padding_right: float = 0.0
     padding_bottom: float = 0.0
     padding_left: float = 0.0
@@ -50,24 +73,21 @@ class ResolvedStyle:
 @dataclass
 class BoxGeometry:
     """Border-box rect (cm, section-relative) plus resolved style for one Elem."""
+
     x: float = 0.0
     y: float = 0.0
     w: float = 0.0
     h: float = 0.0
     style: ResolvedStyle = field(default_factory=ResolvedStyle)
-    # section::before/::after (logo/watermark): position/size/file resolved
-    # the same way as any other box, including CSS variable swaps like
-    # `.layout-title { --logo: var(--logo-dark) }` -- weasyprint's own
-    # cascade already picked the right file, no separate Python-side
-    # light/dark logo selection needed.
-    logo: "BoxGeometry | None" = None
-    watermark: "BoxGeometry | None" = None
+    # section::before/::after (logo/watermark): weasyprint's cascade already picked the file
+    logo: BoxGeometry | None = None
+    watermark: BoxGeometry | None = None
     # <footer>/.slide-num: real DOM elements injected by the HTML template
     # (shell.html), not part of the parsed-markdown AST tree -- carry no
     # data-decktile-id, so they're captured by tag/class instead of by-id
     # like every other Elem, with their own plain-text content.
-    footer: "BoxGeometry | None" = None
-    slide_num: "BoxGeometry | None" = None
+    footer: BoxGeometry | None = None
+    slide_num: BoxGeometry | None = None
     text: str = ""
     # first-seen style per descendant tag within this Elem's own subtree:
     # card h3/p, table th/td/tr:odd/tr:even, list li/li::marker.
@@ -76,15 +96,16 @@ class BoxGeometry:
     # a timeline layout's .grid::before spine, .card::before/::after dot
     # and connector stub) -- geometry-only decorations the ODP renderer
     # draws as plain shapes, keyed by nothing but render order.
-    decorations: list["BoxGeometry"] = field(default_factory=list)
+    decorations: list[BoxGeometry] = field(default_factory=list)
 
 
 @dataclass
 class Elem:
     """A single styled element on a slide."""
+
     kind: str
-    content: str | list[Any] = ""       # HTML (for HTML renderer)
-    text: str = ""                       # plain text (for PPTX renderer)
+    content: str | list[Any] = ""  # HTML (for HTML renderer)
+    text: str = ""  # plain text (for PPTX renderer)
     # Resolved style properties (for PPTX, informational for HTML)
     font_size: int = 18
     font_weight: str = "normal"
@@ -111,21 +132,23 @@ class Elem:
     inlines: list[Any] = field(default_factory=list)
     item_inlines: list[list] = field(default_factory=list)
     svg: str = ""
-    svg_live: str = ""                   # animated variant for HTML only (PDF/ODP use svg)
+    svg_live: str = ""  # animated variant for HTML only (PDF/ODP use svg)
     pdf: bytes = b""
-    id: str = ""                         # data-decktile-id, assigned in build_ir
-    box: BoxGeometry | None = None       # filled by render/odf/geometry.py for ODP
+    id: str = ""  # data-decktile-id, assigned in build_ir
+    box: BoxGeometry | None = None  # filled by render/odf/geometry.py for ODP
 
 
 @dataclass
 class SlideIR:
     """A fully resolved slide ready for rendering."""
+
     id: str = ""
     layout: str = "content"
     elements: list[Elem] = field(default_factory=list)
     notes: str = ""
     variant: str = ""
     transition: str = ""
+
 
 def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[SlideIR]:
     """Convert a Document AST into a list of SlideIR objects."""
@@ -156,9 +179,16 @@ def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[Sli
         if subtitle_elem:
             elements.insert(1 if heading_elem else 0, subtitle_elem)
 
-        slides.append(SlideIR(id=f"s{idx}", layout=layout, elements=elements,
-                             notes=slide.notes or "",
-                             variant=slide.variant or "", transition=slide.transition or ""))
+        slides.append(
+            SlideIR(
+                id=f"s{idx}",
+                layout=layout,
+                elements=elements,
+                notes=slide.notes or "",
+                variant=slide.variant or "",
+                transition=slide.transition or "",
+            )
+        )
     _assign_elem_ids(slides)
     return slides
 
@@ -166,6 +196,7 @@ def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[Sli
 def _assign_elem_ids(slides: list[SlideIR]) -> None:
     """Assign a globally-unique data-decktile-id to every Elem (incl. nested children)."""
     from itertools import count
+
     counter = count(1)
 
     def walk(elems: list[Elem]) -> None:
@@ -187,9 +218,16 @@ def resolve_styles(base_css: str, theme_css: str) -> dict:
     return s
 
 
-def assemble_css(base_css: str, theme_css: str, dims: tuple[int, int],
-                 logo: str = "", watermark: str = "", pygments_style: str = "default",
-                 logo_dark: str = "", background: str = "") -> str:
+def assemble_css(
+    base_css: str,
+    theme_css: str,
+    dims: tuple[int, int],
+    logo: str = "",
+    watermark: str = "",
+    pygments_style: str = "default",
+    logo_dark: str = "",
+    background: str = "",
+) -> str:
     """Assemble the final CSS for HTML output: base + theme + logo + pygments."""
     css = base_css.replace("SLIDE_W", str(dims[0])).replace("SLIDE_H", str(dims[1]))
     css = css.replace("LOGO_CSS", "").replace("{logo_css}", "")
@@ -198,13 +236,13 @@ def assemble_css(base_css: str, theme_css: str, dims: tuple[int, int],
     # frontmatter images go in a :root rule AFTER the theme: injected into
     # base.css's :root, a theme's own --watermark/--bg-image always won.
     # "none" switches the theme's image off (e.g. another event's art).
-    images = {"--logo": logo, "--logo-dark": logo_dark,
-              "--watermark": watermark, "--bg-image": background}
+    images = {"--logo": logo, "--logo-dark": logo_dark, "--watermark": watermark, "--bg-image": background}
     decls = " ".join(f"{k}: {_css_url(v)};" for k, v in images.items() if v)
     if decls:
         css += f"\n:root {{ {decls} }}\n"
     if pygments_style:
         from decktile.render.html import _pygments_css
+
         css += _pygments_css(pygments_style)
     return css
 
@@ -235,7 +273,7 @@ def _apply_layout_ir(nodes: list, layout: str, styles: dict) -> list[Elem]:
         extra = [n for n in nodes if isinstance(n, Notes)]
         if arrow_idx is not None and arrow_idx > 0 and arrow_idx < len(nodes) - 1:
             left = nodes[:arrow_idx]
-            right = nodes[arrow_idx + 1:]
+            right = nodes[arrow_idx + 1 :]
             right = [n for n in right if not isinstance(n, Notes)]
             arrow_elem = _convert_node(nodes[arrow_idx], styles)
         else:
@@ -268,17 +306,17 @@ def _col_elem(side: str, nodes: list, styles: dict) -> Elem:
 def _split_image_ir(nodes: list) -> tuple[list, list]:
     col_idx = _find_col(nodes)
     if col_idx >= 0:
-        return nodes[:col_idx], nodes[col_idx + 1:]
+        return nodes[:col_idx], nodes[col_idx + 1 :]
     for i, n in enumerate(nodes):
         if isinstance(n, Paragraph) and any(isinstance(t, Image) for t in n.content):
-            return nodes[:i] + nodes[i + 1:], [n]
+            return nodes[:i] + nodes[i + 1 :], [n]
     return nodes, []
 
 
 def _split_two_col_ir(nodes: list) -> tuple[list, list]:
     col_idx = _find_col(nodes)
     if col_idx >= 0:
-        left, right = nodes[:col_idx], nodes[col_idx + 1:]
+        left, right = nodes[:col_idx], nodes[col_idx + 1 :]
     else:
         left, right = nodes, []
     # Group @row-separated elements into horizontal rows
@@ -309,8 +347,8 @@ def _apply_rows(elements: list[Elem]) -> list[Elem]:
 def _group_rows_ir(nodes: list) -> list:
     """Group @row-separated elements into horizontal Rows."""
     from decktile.parser.ast import AttrNode, Row
-    row_indices = [i for i, n in enumerate(nodes)
-                   if isinstance(n, AttrNode) and n.type == "row"]
+
+    row_indices = [i for i, n in enumerate(nodes) if isinstance(n, AttrNode) and n.type == "row"]
     if not row_indices:
         return list(nodes)
     # Everything from first element to last (between @row markers) goes in Row
@@ -335,9 +373,8 @@ def _find_col(nodes: list) -> int:
     return -1
 
 
-def _normalize_viewbox(svg: str) -> str:
+def normalize_viewbox(svg: str) -> str:
     """Normalize negative viewBox origin to 0,0, expanding dimensions."""
-    import re
     m = re.search(r'viewBox="([\d.-]+)\s+([\d.-]+)\s+([\d.]+)\s+([\d.]+)"', svg)
     if not m:
         return svg
@@ -350,83 +387,112 @@ def _normalize_viewbox(svg: str) -> str:
 
 def _convert_node(node, styles: dict) -> Elem:
     """Convert a single AST node to an IR element with resolved styles."""
-    base = Elem(kind="text", content="",
-                font_size=styles.get("font_body", 18),
-                color=styles.get("ink_rgb_hex", ""),
-                accent=styles.get("accent_rgb_hex", ""),
-                muted=styles.get("muted_rgb_hex", ""))
+    base = Elem(
+        kind="text",
+        content="",
+        font_size=styles.get("font_body", 18),
+        color=styles.get("ink_rgb_hex", ""),
+        accent=styles.get("accent_rgb_hex", ""),
+        muted=styles.get("muted_rgb_hex", ""),
+    )
 
     if isinstance(node, Heading):
         fs = styles[f"font_h{node.level}"]
-        return Elem(kind="heading", content=_render_inline_html(node.content),
-                    text=_render_inline_text(node.content),
-                    inlines=node.content,
-                    level=node.level, font_size=fs, color=base.color)
+        return Elem(
+            kind="heading",
+            content=_render_inline_html(node.content),
+            text=_render_inline_text(node.content),
+            inlines=node.content,
+            level=node.level,
+            font_size=fs,
+            color=base.color,
+        )
     elif isinstance(node, Paragraph):
-        return Elem(kind="text", content=_render_inline_html(node.content),
-                    text=_render_inline_text(node.content),
-                    inlines=node.content,
-                    font_size=base.font_size, color=base.color)
+        return Elem(
+            kind="text",
+            content=_render_inline_html(node.content),
+            text=_render_inline_text(node.content),
+            inlines=node.content,
+            font_size=base.font_size,
+            color=base.color,
+        )
     elif isinstance(node, CodeBlock):
         fs = styles.get("font_code", 14)
         svg = ""
         pdf = b""
         if node.language == "seaborn":
             from decktile.render.seaborn import render_seaborn_svg
+
             svg = render_seaborn_svg(node.content) or ""
         elif node.language == "mermaid":
             try:
                 from mermaidx import Diagram
+
                 d = Diagram(node.content)
-                svg = _normalize_viewbox(d.svg())
+                svg = normalize_viewbox(d.svg())
                 pdf = d.pdf()
             except Exception:
                 svg = ""
                 pdf = b""
         elif node.language == "pdg":
             from decktile.render.pdg import render_pdg_svg
+
             fam = styles.get("font_body_family", "")
             size = styles.get("font_body", 18)
             tags = styles.get("tag_colors", {})
-            opts = dict(font_family=fam, font_size=size, tag_colors=tags,
-                        blueprint=styles.get("pdg_blueprint", False))
+            opts = dict(font_family=fam, font_size=size, tag_colors=tags, blueprint=styles.get("pdg_blueprint", False))
             svg = render_pdg_svg(node.content, **opts) or ""
             live = render_pdg_svg(node.content, animated=True, **opts) or ""
             # only keep the animated copy when the diagram actually moves
             svg_live = live if svg and "<animate" in live else ""
-            return Elem(kind="code", content=node.content, text=node.content,
-                        language=node.language, font_size=fs, svg=svg, svg_live=svg_live)
-        return Elem(kind="code", content=node.content, text=node.content,
-                    language=node.language, font_size=fs, svg=svg, pdf=pdf)
+            return Elem(
+                kind="code", content=node.content, text=node.content, language=node.language, font_size=fs, svg=svg, svg_live=svg_live
+            )
+        return Elem(kind="code", content=node.content, text=node.content, language=node.language, font_size=fs, svg=svg, pdf=pdf)
     elif isinstance(node, ListNode):
         items_html = [_render_inline_html(item) for item in node.items]
         items_text = [_render_inline_text(item) for item in node.items]
         fs = styles.get("font_li", 16)
-        return Elem(kind="list", content=items_html, text=">".join(items_text),
-                    items=items_html,
-                    item_inlines=[list(item) for item in node.items],
-                    font_size=fs, color=base.color)
+        return Elem(
+            kind="list",
+            content=items_html,
+            text=">".join(items_text),
+            items=items_html,
+            item_inlines=[list(item) for item in node.items],
+            font_size=fs,
+            color=base.color,
+        )
     elif isinstance(node, Table):
         return Elem(kind="table", headers=node.headers, rows=node.rows)
     elif isinstance(node, Quote):
         fs = styles.get("font_quote", 18)
-        return Elem(kind="quote", content=_render_inline_html(node.content),
-                    text=_render_inline_text(node.content),
-                    inlines=node.content,
-                    font_size=fs, color=base.muted, accent=base.accent)
+        return Elem(
+            kind="quote",
+            content=_render_inline_html(node.content),
+            text=_render_inline_text(node.content),
+            inlines=node.content,
+            font_size=fs,
+            color=base.muted,
+            accent=base.accent,
+        )
     elif isinstance(node, Grid):
         children = [_convert_node(c, styles) for c in node.children]
         return Elem(kind="grid", cols=node.cols, class_=node.class_ or "", children=children)
     elif isinstance(node, Card):
         # a ```pdg fence inside ::: card {blueprint} draws in the card's palette
-        child_styles = ({**styles, "pdg_blueprint": True}
-                        if "blueprint" in (node.class_ or "").split() else styles)
+        child_styles = {**styles, "pdg_blueprint": True} if "blueprint" in (node.class_ or "").split() else styles
         children = [_convert_node(c, child_styles) for c in node.children]
-        return Elem(kind="card", header=node.header, body=node.body,
-                    tag=node.tag or "", class_=node.class_ or "",
-                    children=children,
-                    attrs={"label": node.label} if node.label else {},
-                    font_size=base.font_size, color=base.color)
+        return Elem(
+            kind="card",
+            header=node.header,
+            body=node.body,
+            tag=node.tag or "",
+            class_=node.class_ or "",
+            children=children,
+            attrs={"label": node.label} if node.label else {},
+            font_size=base.font_size,
+            color=base.color,
+        )
     elif isinstance(node, Arrow):
         content = node.content.strip()
         if not content:
@@ -434,6 +500,7 @@ def _convert_node(node, styles: dict) -> Elem:
         # Check if content is an image reference
         if content.startswith("!["):
             from markdown_it import MarkdownIt
+
             md = MarkdownIt()
             tokens = md.parseInline(content)
             html = ""
@@ -442,10 +509,8 @@ def _convert_node(node, styles: dict) -> Elem:
                     html = f'<img src="{t.attrs.get("src", "")}" alt="{t.attrs.get("alt", "arrow")}">'
                     break
             if html:
-                return Elem(kind="arrow", content=html, text=html, font_size=20,
-                            color=base.muted)
-        return Elem(kind="arrow", content=content, text=content, font_size=20,
-                    color=base.muted)
+                return Elem(kind="arrow", content=html, text=html, font_size=20, color=base.muted)
+        return Elem(kind="arrow", content=content, text=content, font_size=20, color=base.muted)
     elif isinstance(node, Row):
         children = [_convert_node(c, styles) for c in node.children]
         return Elem(kind="row", children=children)
@@ -459,9 +524,14 @@ def _convert_node(node, styles: dict) -> Elem:
             if node.type == "contributor":
                 attrs = {**attrs, "contributor": attrs.get("label", "Contributor")}
             text = f"{name}\n{role}" if role else name
-            return Elem(kind="speaker", content=_escape(node.value), text=text,
-                        attrs=attrs,
-                        font_size=styles.get("font_speaker", 18), color=base.color)
+            return Elem(
+                kind="speaker",
+                content=escape(node.value),
+                text=text,
+                attrs=attrs,
+                font_size=styles.get("font_speaker", 18),
+                color=base.color,
+            )
         elif node.type in ("kicker", "subtitle", "tiny"):
             font_key, default_fs, color = {
                 "kicker": ("font_kicker", 14, base.accent),
@@ -469,30 +539,23 @@ def _convert_node(node, styles: dict) -> Elem:
                 "tiny": ("font_small", 13, base.muted),
             }[node.type]
             content, text = _inline_markdown(node.value)
-            return Elem(kind=node.type, content=content, text=text,
-                        font_size=styles.get(font_key, default_fs), color=color)
+            return Elem(kind=node.type, content=content, text=text, font_size=styles.get(font_key, default_fs), color=color)
         elif node.type == "side-image":
             return Elem(kind="side-image", src=node.value, content="")
         elif node.type == "video":
             return Elem(kind="video", src=node.value, content="")
         elif node.type == "row":
             return Elem(kind="row-marker")
-        return Elem(kind="text", content=_escape(node.value), text=node.value)
+        return Elem(kind="text", content=escape(node.value), text=node.value)
     return Elem(kind="text", content="", text="")
-
-
-def _escape(s: str) -> str:
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 def _inline_markdown(value: str) -> tuple[str, str]:
     """Directive text (``@subtitle`` etc.) as inline HTML (code, bold,
     icons) plus plain text for renderers that can't use HTML (ODP). Was
     escaped as plain text, so `code` showed literal backticks."""
-    import html
-    import re
-
     from decktile.plugins.fenced import _expand_markdown
+
     rendered = _expand_markdown(value)
     return rendered, html.unescape(re.sub(r"<[^>]+>", "", rendered))
 
@@ -502,7 +565,7 @@ def _render_inline_html(nodes: list) -> str:
     s = ""
     for n in nodes:
         if isinstance(n, Text):
-            s += _escape(n.content)
+            s += escape(n.content)
         elif isinstance(n, Strong):
             s += f"<strong>{_render_inline_html(n.children)}</strong>"
         elif isinstance(n, Emphasis):
@@ -510,14 +573,14 @@ def _render_inline_html(nodes: list) -> str:
         elif isinstance(n, Strikethrough):
             s += f"<s>{_render_inline_html(n.children)}</s>"
         elif isinstance(n, CodeSpan):
-            s += f"<code>{_escape(n.content)}</code>"
+            s += f"<code>{escape(n.content)}</code>"
         elif isinstance(n, Image):
-            title = f' title="{_escape(n.title)}"' if n.title else ""
-            s += f'<img src="{_escape(n.src)}" alt="{_escape(n.alt)}" decoding="async"{title}>'
+            title = f' title="{escape(n.title)}"' if n.title else ""
+            s += f'<img src="{escape(n.src)}" alt="{escape(n.alt)}" decoding="async"{title}>'
         elif isinstance(n, SoftBreak):
             s += " "
         elif isinstance(n, Link):
-            s += f'<a href="{_escape(n.href)}">{_render_inline_html(n.children)}</a>'
+            s += f'<a href="{escape(n.href)}">{_render_inline_html(n.children)}</a>'
         elif isinstance(n, LucideIcon):
             s += _render_lucide_inline(n.name, n.attrs)
     return s
@@ -526,6 +589,7 @@ def _render_inline_html(nodes: list) -> str:
 def _render_lucide_inline(name: str, attrs: dict) -> str:
     """Render a LucideIcon as inline SVG. Delegates to shared plugin renderer."""
     from decktile.plugins.lucide import render_icon
+
     return render_icon(name, attrs)
 
 

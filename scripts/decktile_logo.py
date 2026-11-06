@@ -56,8 +56,7 @@ class DecktileLogo:
         body = self.mark_body(dark)
         if bg:  # padding inside the avatar square
             body = f'<g transform="translate(128 128) scale(0.8) translate(-128 -128)">{body}</g>'
-        return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" '
-                f'width="256" height="256">{bg_rect}{body}\n</svg>\n')
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">{bg_rect}{body}\n</svg>\n'
 
     # --- wordmark -------------------------------------------------------
     def text_path(self, text: str, size: float) -> tuple[str, float, float]:
@@ -92,11 +91,13 @@ class DecktileLogo:
         # baseline so the x-height sits on the mark's visual centre
         baseline = 128 + cap * 0.5 + 12
         width = int(tx + w1 + w2 + 24)
-        return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} 256" '
-                f'width="{width}" height="256">{self.mark_body(dark)}\n'
-                f'  <path transform="translate({tx} {baseline:.1f})" fill="{ink}" d="{d1}"/>\n'
-                f'  <path transform="translate({tx + w1:.1f} {baseline:.1f})" fill="{accent}" d="{d2}"/>\n'
-                f'</svg>\n')
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} 256" '
+            f'width="{width}" height="256">{self.mark_body(dark)}\n'
+            f'  <path transform="translate({tx} {baseline:.1f})" fill="{ink}" d="{d1}"/>\n'
+            f'  <path transform="translate({tx + w1:.1f} {baseline:.1f})" fill="{accent}" d="{d2}"/>\n'
+            f"</svg>\n"
+        )
 
     # --- export ---------------------------------------------------------
     def write(self, name: str, svg: str) -> Path:
@@ -120,8 +121,7 @@ class DecktileLogo:
             self.write("decktile-logo.svg", self.lockup_svg()),
             self.write("decktile-logo-dark.svg", self.lockup_svg(dark=True)),
         ]
-        pngs = [self.png(files[2], 500), self.png(files[0], 512), self.png(files[3], 1200),
-                self.png(files[4], 1200)]
+        pngs = [self.png(files[2], 500), self.png(files[0], 512), self.png(files[3], 1200), self.png(files[4], 1200)]
         return files + pngs
 
 

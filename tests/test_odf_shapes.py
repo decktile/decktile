@@ -4,24 +4,25 @@
 
 """Unit tests for render/odf/shapes.py helpers."""
 
-from decktile.render.odf.shapes import _normalize_svg_viewbox, _svg_dims
+from decktile.render.ir import normalize_viewbox
+from decktile.render.odf.shapes import _svg_dims
 
 
 def test_normalize_svg_negative_origin():
     svg = '<svg viewBox="-10 -5 100 50" width="100%"><rect/></svg>'
-    result = _normalize_svg_viewbox(svg)
+    result = normalize_viewbox(svg)
     assert 'viewBox="0 0 110 55"' in result
     assert "<g transform" not in result  # no translate wrapper
 
 
 def test_normalize_svg_positive_origin_unchanged():
     svg = '<svg viewBox="0 0 100 50" width="100%"><rect/></svg>'
-    assert _normalize_svg_viewbox(svg) == svg
+    assert normalize_viewbox(svg) == svg
 
 
 def test_normalize_svg_no_viewbox_unchanged():
     svg = '<svg width="100" height="50"><rect/></svg>'
-    assert _normalize_svg_viewbox(svg) == svg
+    assert normalize_viewbox(svg) == svg
 
 
 def test_svg_dims_preserves_aspect_ratio_within_max_width():

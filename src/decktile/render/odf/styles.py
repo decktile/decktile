@@ -13,21 +13,20 @@ keeps the registration/use sites next to each other.
 
 from __future__ import annotations
 
-import math
 import functools
+import math
 import os
 import tempfile
-
+from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import count
-from typing import Callable
 
 from odfdo import Document, DrawFillImage, Style, StyleMasterPage, StylePageLayout
 from odfdo.element import Element
 
-from decktile.render.ir import ResolvedStyle
+from decktile.render.ir import BoxGeometry, ResolvedStyle
 
-PX_TO_PT = 0.75          # CSS px (96dpi) -> pt (72dpi)
+PX_TO_PT = 0.75  # CSS px (96dpi) -> pt (72dpi)
 CM_PER_PX = 2.54 / 96.0
 
 
@@ -130,9 +129,7 @@ def _round_image_corners_cached(path: str, radius_cm: float, frame_w_cm: float) 
             im = im.convert("RGBA")
             radius_px = max(1, round(radius_cm / frame_w_cm * im.width))
             mask = Image.new("L", im.size, 0)
-            ImageDraw.Draw(mask).rounded_rectangle(
-                [0, 0, im.width - 1, im.height - 1], radius=radius_px, fill=255,
-            )
+            ImageDraw.Draw(mask).rounded_rectangle([0, 0, im.width - 1, im.height - 1], radius=radius_px, fill=255)
             alpha = ImageChops.multiply(mask, im.getchannel("A")) if had_alpha else mask
             im.putalpha(alpha)
             fd, out_path = tempfile.mkstemp(suffix=".png")
@@ -180,7 +177,7 @@ def _master_label(key: tuple, tint_hex: str | None) -> str:
     baking tints into distinct masters is a layout switched per slide,
     which should read as one in the UI, not just in the XML."""
     if key[0] == "bitmap-tinted" and tint_hex:
-        r, g, b = (int(tint_hex[i:i + 2], 16) for i in (1, 3, 5))
+        r, g, b = (int(tint_hex[i : i + 2], 16) for i in (1, 3, 5))
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
         return "Light" if luminance > 0.5 else "Dark"
     if key[0] in ("bitmap", "gradient"):
@@ -198,6 +195,7 @@ class _TextKey:
     text_align: str
     margin_bottom_px: float = 0.0
     scope: str = "content"
+
 
 @dataclass(frozen=True)
 class _GraphicKey:
@@ -239,14 +237,14 @@ class StyleRegistry:
         self._page_h: float = 0.0
         self._counter = count(1)
 
-    # ---- fonts ----
-
     def ensure_font(self, family: str, mono: bool = False) -> None:
         if not family or family in self._fonts:
             return
         self._fonts.add(family)
         face = Style(
-            "font-face", font_name=family, font_family=family,
+            "font-face",
+            font_name=family,
+            font_family=family,
             font_family_generic="modern" if mono else "swiss",
             font_pitch="fixed" if mono else "variable",
         )
@@ -307,11 +305,7 @@ class StyleRegistry:
         self._notes_style_name = name
         return name
 
-
-    # ---- text (paragraph default + inline run) styles ----
-
-    def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False,
-                        margin_bottom_px: float = 0.0, scope: str = "content") -> str:
+    def paragraph_style(self, style: ResolvedStyle, *, mono: bool = False, margin_bottom_px: float = 0.0, scope: str = "content") -> str:
         """``scope="content"`` (default): an automatic style in content.xml
         -- verified empirically: Impress's draw:text-box only resolves
         text:p/text:span against automatic styles there, silently
@@ -324,9 +318,16 @@ class StyleRegistry:
         font/black text instead of erroring) -- register into styles.xml's
         own automatic-styles section instead.
         """
-        key = _TextKey(style.fg, style.font_family, style.font_size_px,
-                      style.font_weight, style.font_italic, style.text_align,
-                      round(margin_bottom_px, 1), scope)
+        key = _TextKey(
+            style.fg,
+            style.font_family,
+            style.font_size_px,
+            style.font_weight,
+            style.font_italic,
+            style.text_align,
+            round(margin_bottom_px, 1),
+            scope,
+        )
         cached = self._paragraph.get(key)
         if cached:
             return cached
@@ -337,9 +338,13 @@ class StyleRegistry:
         if margin_bottom_px:
             s.set_properties({"fo:margin-bottom": px_to_cm(margin_bottom_px)}, area="paragraph")
         s.set_properties(
-            area="text", color=style.fg, font=style.font_family,
-            font_family=style.font_family, family_generic="modern" if mono else "swiss",
-            size=px_to_pt(style.font_size_px), weight=style.font_weight,
+            area="text",
+            color=style.fg,
+            font=style.font_family,
+            font_family=style.font_family,
+            family_generic="modern" if mono else "swiss",
+            size=px_to_pt(style.font_size_px),
+            weight=style.font_weight,
             font_style="italic" if style.font_italic else "normal",
         )
         if scope == "styles":
@@ -349,10 +354,10 @@ class StyleRegistry:
         self._paragraph[key] = name
         return name
 
-    def run_style(self, fg: str, font_family: str, font_size_px: float,
-                 bold: bool, italic: bool, *, mono: bool = False, scope: str = "content") -> str:
-        key = _TextKey(fg, font_family, font_size_px,
-                      "bold" if bold else "normal", italic, "", scope=scope)
+    def run_style(
+        self, fg: str, font_family: str, font_size_px: float, bold: bool, italic: bool, *, mono: bool = False, scope: str = "content"
+    ) -> str:
+        key = _TextKey(fg, font_family, font_size_px, "bold" if bold else "normal", italic, "", scope=scope)
         cached = self._run.get(key)
         if cached:
             return cached
@@ -360,8 +365,12 @@ class StyleRegistry:
         name = f"DecktileT{next(self._counter)}"
         s = Style("text", name=name, bold=bold, italic=italic)
         s.set_properties(
-            area="text", color=fg, font=font_family, font_family=font_family,
-            family_generic="modern" if mono else "swiss", size=px_to_pt(font_size_px),
+            area="text",
+            color=fg,
+            font=font_family,
+            font_family=font_family,
+            family_generic="modern" if mono else "swiss",
+            size=px_to_pt(font_size_px),
         )
         if scope == "styles":
             self._doc.styles.get_element("office:automatic-styles").append(s)
@@ -414,13 +423,11 @@ class StyleRegistry:
         name = f"DecktileTC{next(self._counter)}"
         s = Style("table-cell", name=name)
         s.set_properties(
-            {"draw:fill": "solid" if bg else "none", "draw:fill-color": bg or "#ffffff",
-             "draw:textarea-vertical-align": "middle"},
+            {"draw:fill": "solid" if bg else "none", "draw:fill-color": bg or "#ffffff", "draw:textarea-vertical-align": "middle"},
             area="graphic",
         )
         s.set_properties(
-            {"fo:border": f"{px_to_pt(border_width_px) if border_width_px else '0.5pt'} "
-                          f"solid {border_color or '#cccccc'}"},
+            {"fo:border": f"{px_to_pt(border_width_px) if border_width_px else '0.5pt'} solid {border_color or '#cccccc'}"},
             area="paragraph",
         )
         self._doc.insert_style(s, automatic=True)
@@ -457,15 +464,16 @@ class StyleRegistry:
         self._table_dims[("row", key)] = name
         return name
 
-    # ---- graphic (frame fill/border/padding) ----
-
-    def graphic_style(self, style: ResolvedStyle, *, fill: bool = True,
-                      vertical_align: str = "top", border: bool = True) -> str:
+    def graphic_style(self, style: ResolvedStyle, *, fill: bool = True, vertical_align: str = "top", border: bool = True) -> str:
         padding = (style.padding_top, style.padding_right, style.padding_bottom, style.padding_left)
         key = _GraphicKey(
-            style.bg if fill else "", style.border_color if border else "",
+            style.bg if fill else "",
+            style.border_color if border else "",
             style.border_width if border else 0.0,
-            style.border_radius, style.text_align, vertical_align, padding,
+            style.border_radius,
+            style.text_align,
+            vertical_align,
+            padding,
         )
         cached = self._graphic.get(key)
         if cached:
@@ -474,13 +482,8 @@ class StyleRegistry:
         s = Style("graphic", name=name)
         props: dict[str, str] = {
             "draw:textarea-vertical-align": vertical_align,
-            # LibreOffice's text engine can wrap a few percent wider than
-            # weasyprint measured (font substitution/metrics differences);
-            # auto-grow-height let that push the frame past its measured
-            # box and collide with the next sibling (fixed-position frames
-            # don't reflow). shrink-to-fit keeps every frame at its
-            # weasyprint-measured size and scales text down instead,
-            # verified empirically to eliminate the overlap.
+            # LibreOffice wraps slightly wider than weasyprint; shrink-to-fit keeps the measured size
+            # instead of growing into the next (non-reflowing) frame
             "draw:auto-grow-height": "false",
             "style:shrink-to-fit": "true",
             "fo:padding-top": px_to_cm(style.padding_top),
@@ -509,7 +512,6 @@ class StyleRegistry:
         self._graphic[key] = name
         return name
 
-    # ---- family-less raw styles: draw:gradient / draw:opacity ----
     # odfdo has no Style class for either family (Style("gradient"/"opacity", ...)
     # raises "Unknown family value") -- both are built as raw XML and appended
     # directly to office:styles, same escape hatch insert_style(str) documents.
@@ -527,8 +529,7 @@ class StyleRegistry:
         # rendering every stop) carry the full N-stop gradient so a middle
         # stop's hue (e.g. kcd_vietnam's #7a0504 red) isn't lost.
         stop_xml = "".join(
-            f'<loext:gradient-stop svg:offset="{offset:.4f}" '
-            f'loext:color-type="rgb" loext:color-value="{hex_color}"/>'
+            f'<loext:gradient-stop svg:offset="{offset:.4f}" loext:color-type="rgb" loext:color-value="{hex_color}"/>'
             for offset, hex_color, _alpha in stops
         )
         el = Element.from_tag(
@@ -602,8 +603,6 @@ class StyleRegistry:
         self._overlay[key] = (name, opacity)
         return name, opacity
 
-    # ---- page layout + master page (slide/master background) ----
-
     def ensure_page_layout(self, width_cm: float, height_cm: float) -> str:
         self._page_w, self._page_h = width_cm, height_cm
         if self._page_layout_name:
@@ -611,8 +610,12 @@ class StyleRegistry:
         name = "DecktilePageLayout"
         pl = StylePageLayout(name=name)
         pl.set_properties(
-            page_width=f"{width_cm:.3f}cm", page_height=f"{height_cm:.3f}cm",
-            margin_top="0cm", margin_bottom="0cm", margin_left="0cm", margin_right="0cm",
+            page_width=f"{width_cm:.3f}cm",
+            page_height=f"{height_cm:.3f}cm",
+            margin_top="0cm",
+            margin_bottom="0cm",
+            margin_left="0cm",
+            margin_right="0cm",
             print_orientation="landscape" if width_cm >= height_cm else "portrait",
         )
         self._doc.insert_style(pl)
@@ -634,9 +637,7 @@ class StyleRegistry:
         """
         return downscale_image(path, width_cm, height_cm)
 
-    def _composite_tint_image(
-        self, path: str, hex_color: str, alpha: float, width_cm: float, height_cm: float,
-    ) -> tuple[str, bool]:
+    def _composite_tint_image(self, path: str, hex_color: str, alpha: float, width_cm: float, height_cm: float) -> tuple[str, bool]:
         """Bakes a uniform overlay tint directly into a downscaled copy of
         the background image -- replaces a per-slide alpha-composited
         overlay shape on top of one shared bitmap master with ONE
@@ -652,7 +653,8 @@ class StyleRegistry:
         downscaled = self._prepare_bg_image(path, width_cm, height_cm)
         try:
             from PIL import Image
-            rgb = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+
+            rgb = tuple(int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
             with Image.open(downscaled) as im:
                 tint_layer = Image.new("RGB", im.size, rgb)
                 composited = Image.blend(im.convert("RGB"), tint_layer, max(0.0, min(1.0, alpha)))
@@ -663,9 +665,7 @@ class StyleRegistry:
         except Exception:
             return downscaled, False
 
-    def _bake_footer_bar(
-        self, img_path: str, footer: BoxGeometry, width_cm: float, height_cm: float,
-    ) -> str | None:
+    def _bake_footer_bar(self, img_path: str, footer: BoxGeometry, width_cm: float, height_cm: float) -> str | None:
         """Paints the footer bar directly onto a *copy* of the composited
         master image at its exact weasyprint-measured position, returning
         the new file's path -- never mutates ``img_path`` in place. On the
@@ -679,7 +679,8 @@ class StyleRegistry:
         """
         try:
             from PIL import Image, ImageDraw
-            rgb = tuple(int(footer.style.bg[i:i + 2], 16) for i in (1, 3, 5))
+
+            rgb = tuple(int(footer.style.bg[i : i + 2], 16) for i in (1, 3, 5))
             alpha = max(0.0, min(1.0, footer.style.bg_alpha))
             with Image.open(img_path) as im:
                 im = im.convert("RGB")
@@ -703,6 +704,7 @@ class StyleRegistry:
         if self._pil_ok is None:
             try:
                 import PIL  # noqa: F401
+
                 self._pil_ok = True
             except ImportError:
                 self._pil_ok = False
@@ -737,8 +739,7 @@ class StyleRegistry:
         return self._master_objects[name]
 
     def master_for(
-        self, style: ResolvedStyle, width_cm: float, height_cm: float,
-        add_file: Callable[[str], str], footer: BoxGeometry | None = None,
+        self, style: ResolvedStyle, width_cm: float, height_cm: float, add_file: Callable[[str], str], footer: BoxGeometry | None = None
     ) -> tuple[str, bool]:
         """Dedup'd master page for a slide's base background (solid/gradient/bitmap).
 
@@ -780,9 +781,7 @@ class StyleRegistry:
         dp = Style("drawing-page", name=dp_name)
         if key[0] in ("bitmap", "bitmap-tinted"):
             if tint_baked:
-                img_path, _ = self._composite_tint_image(
-                    style.bg_image_url, tint_key[2], tint_key[3], width_cm, height_cm,
-                )
+                img_path, _ = self._composite_tint_image(style.bg_image_url, tint_key[2], tint_key[3], width_cm, height_cm)
                 footer_baked = False
                 if footer is not None and footer.style.bg_alpha > 0:
                     baked_path = self._bake_footer_bar(img_path, footer, width_cm, height_cm)
@@ -793,30 +792,15 @@ class StyleRegistry:
                 img_path = self._prepare_bg_image(style.bg_image_url, width_cm, height_cm)
             uri = add_file(img_path)
             img_name = f"DecktileBgImg{next(self._counter)}"
-            # draw:fill-image is family-less, same as draw:gradient/
-            # draw:opacity -- append to styles.xml office:styles (same
-            # container, same resolution scope as the gradient path,
-            # confirmed working) rather than insert_style(automatic=True),
-            # which would place it in content.xml where this master's
-            # styles.xml drawing-page style couldn't resolve it.
+            # family-less: must live in styles.xml next to the master that references it, not content.xml
             img = DrawFillImage(name=img_name, url=uri)
             self._doc.styles.get_element("office:styles").append(img)
-            dp.set_properties(
-                {"draw:fill": "bitmap", "draw:fill-image-name": img_name,
-                 "style:repeat": "stretch"},
-                area="drawing-page",
-            )
+            dp.set_properties({"draw:fill": "bitmap", "draw:fill-image-name": img_name, "style:repeat": "stretch"}, area="drawing-page")
         elif key[0] == "gradient":
             grad_name = self.gradient_name(style.bg_gradient, style.bg_angle_deg)
-            dp.set_properties(
-                {"draw:fill": "gradient", "draw:fill-gradient-name": grad_name},
-                area="drawing-page",
-            )
+            dp.set_properties({"draw:fill": "gradient", "draw:fill-gradient-name": grad_name}, area="drawing-page")
         else:
-            dp.set_properties(
-                {"draw:fill": "solid", "draw:fill-color": key[1] or "#ffffff"},
-                area="drawing-page",
-            )
+            dp.set_properties({"draw:fill": "solid", "draw:fill-color": key[1] or "#ffffff"}, area="drawing-page")
         # Master backgrounds must live in styles.xml automatic-styles directly:
         # insert_style(automatic=True) targets content.xml, but a master-page's
         # draw_style_name only resolves drawing-page styles from styles.xml

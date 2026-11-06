@@ -5,19 +5,38 @@
 """Markdown parser using markdown-it-py with plugin extensions."""
 
 import re
+
 import frontmatter
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
 from decktile.parser.ast import (
-    Document, Meta, Slide,
-    Heading, Paragraph, CodeBlock, Card, Grid, Table, Quote, ListNode, AttrNode,
-    Text, Strong, Emphasis, Strikethrough, CodeSpan, Image, SoftBreak, LucideIcon, Link,
+    AttrNode,
+    Card,
+    CodeBlock,
+    CodeSpan,
+    Document,
+    Emphasis,
+    Grid,
+    Heading,
+    Image,
+    Link,
+    ListNode,
+    LucideIcon,
+    Meta,
+    Paragraph,
+    Quote,
+    Slide,
+    SoftBreak,
+    Strikethrough,
+    Strong,
+    Table,
+    Text,
 )
-from decktile.plugins.fenced import extract_fenced, interleave_fences
-from decktile.plugins.directives import preprocess_directives, extract_attrs, parse_attr_token
-from decktile.plugins.lucide import lucide_plugin
 from decktile.plugins.cards import group_cards
+from decktile.plugins.directives import extract_attrs, parse_attr_token, preprocess_directives
+from decktile.plugins.fenced import extract_fenced, interleave_fences
+from decktile.plugins.lucide import lucide_plugin
 
 # Renders a table cell's inline tokens to HTML (bold, code, links, icons).
 # Concatenating token .content dropped every inline markup.
@@ -168,16 +187,14 @@ def _tokens_to_nodes(tokens: list[Token]) -> list:
                     cell = ""
                     while i < len(tokens) and tokens[i].type not in ("th_close", "td_close"):
                         if tokens[i].type == "inline":
-                            cell += _CELL_MD.renderer.renderInline(
-                                tokens[i].children or [], _CELL_MD.options, {})
+                            cell += _CELL_MD.renderer.renderInline(tokens[i].children or [], _CELL_MD.options, {})
                         else:
                             cell += tokens[i].content
                         i += 1
                     cur.append(cell.strip())
-                elif t.type == "tr_close":
-                    if cur:
-                        rows.append(cur)
-                        cur = []
+                elif t.type == "tr_close" and cur:
+                    rows.append(cur)
+                    cur = []
                 i += 1
             if cur:
                 rows.append(cur)
@@ -230,9 +247,7 @@ def _token_inline(token: Token) -> list:
         return [Text(content=token.content)]
     elif token.type == "code_inline":
         return [CodeSpan(content=token.content)]
-    elif token.type == "softbreak":
-        return [SoftBreak()]
-    elif token.type == "hardbreak":
+    elif token.type == "softbreak" or token.type == "hardbreak":
         return [SoftBreak()]
     elif token.type == "image":
         attrs = dict(token.attrs or {})
@@ -299,9 +314,7 @@ def _detect_layout(nodes: list) -> str:
         return "title"
     for n in nodes:
         if isinstance(n, Grid):
-            if n.children and all(
-                isinstance(c, Card) and "metric" in (c.class_ or "") for c in n.children
-            ):
+            if n.children and all(isinstance(c, Card) and "metric" in (c.class_ or "") for c in n.children):
                 return f"metrics-{n.cols}" if n.cols else "metrics-2"
             return f"grid-{n.cols}" if n.cols else "grid-2"
     return "content"

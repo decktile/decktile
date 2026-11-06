@@ -9,23 +9,27 @@ Grid: ``cols=N`` and ``class=name`` used literally.
 """
 
 import re
+
 from markdown_it import MarkdownIt
+
 from decktile.parser.ast import Arrow, Card, CodeBlock, Grid, Node, Notes
 from decktile.plugins.lucide import lucide_plugin
 
 _CARD_MD = MarkdownIt("gfm-like", {"breaks": False, "html": True, "linkify": True})
 _CARD_MD.use(lucide_plugin)
 
-_ICON_RE = re.compile(r'\{icon:(\S+)\s*([^}]*)\}')
+_ICON_RE = re.compile(r"\{icon:(\S+)\s*([^}]*)\}")
 
 
 def _expand_icons(text: str) -> str:
     """Expand {icon:...} markers using the shared lucide plugin renderer."""
     if not text or "{" not in text:
         return text
-    from decktile.plugins.lucide import render_icon, _parse_opts
+    from decktile.plugins.lucide import _parse_opts, render_icon
+
     def _render(m):
         return render_icon(m.group(1), _parse_opts(m.group(2)))
+
     return _ICON_RE.sub(_render, text)
 
 
@@ -67,11 +71,7 @@ def extract_fenced(content: str) -> tuple[str, list[Node]]:
             elif typ == "notes":
                 nodes.append(_parse_notes(inner_text, rest))
 
-            # blank lines around the marker: adjacent fences (cards with no
-            # blank line between them) would otherwise merge into one
-            # markdown paragraph, and interleave_fences restores one fence
-            # per marker paragraph -- the rest got appended after every
-            # other block, splitting a card group
+            # blank lines keep adjacent fences from merging into one paragraph
             result.extend(["", f"\u25caFENCE_{count}", ""])
             count += 1
             i = j
@@ -215,6 +215,7 @@ def _parse_notes(text: str, rest: str) -> Notes:
 def interleave_fences(nodes: list[Node], fence_nodes: list[Node]) -> list[Node]:
     """Replace FENCE marker paragraphs with actual fence nodes."""
     from decktile.parser.ast import Paragraph, Text
+
     result = []
     fi = 0
     for node in nodes:

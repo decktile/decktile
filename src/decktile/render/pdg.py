@@ -15,11 +15,13 @@ import re
 
 # ::: card {blueprint} (base.css): light lines and translucent fills on the
 # card's blue grid; tags keep their meaning as brighter accents.
-_BLUEPRINT_TAGS = {"default": ("rgba(143,211,255,0.08)", "#8fd3ff"),
-                   "green": ("rgba(126,226,168,0.20)", "#7ee2a8"),
-                   "red": ("rgba(255,138,138,0.20)", "#ff8a8a"),
-                   "cyan": ("rgba(103,216,255,0.22)", "#67d8ff"),
-                   "yellow": ("rgba(255,209,102,0.20)", "#ffd166")}
+_BLUEPRINT_TAGS = {
+    "default": ("rgba(143,211,255,0.08)", "#8fd3ff"),
+    "green": ("rgba(126,226,168,0.20)", "#7ee2a8"),
+    "red": ("rgba(255,138,138,0.20)", "#ff8a8a"),
+    "cyan": ("rgba(103,216,255,0.22)", "#67d8ff"),
+    "yellow": ("rgba(255,209,102,0.20)", "#ffd166"),
+}
 _BLUEPRINT_CSS = """\
 graph { color: #eaf4ff; }
 node { color: #eaf4ff; }
@@ -27,8 +29,7 @@ group { fill: none; stroke: rgba(143,211,255,0.55); stroke-dasharray: 4 3; color
 edge { stroke: #8fd3ff; color: #eaf4ff; }"""
 
 
-def theme_css(font_family: str = "", font_size: int = 0,
-              tag_colors: dict[str, tuple[str, str]] | None = None) -> str:
+def theme_css(font_family: str = "", font_size: int = 0, tag_colors: dict[str, tuple[str, str]] | None = None) -> str:
     """Slide theme as a predictygraph stylesheet."""
     rules = []
     graph = []
@@ -51,9 +52,14 @@ def theme_css(font_family: str = "", font_size: int = 0,
     return "\n".join(rules)
 
 
-def render_pdg_svg(content: str, font_family: str = "", font_size: int = 0,
-                   tag_colors: dict[str, tuple[str, str]] | None = None,
-                   blueprint: bool = False, animated: bool = False) -> str | None:
+def render_pdg_svg(
+    content: str,
+    font_family: str = "",
+    font_size: int = 0,
+    tag_colors: dict[str, tuple[str, str]] | None = None,
+    blueprint: bool = False,
+    animated: bool = False,
+) -> str | None:
     """Render a predictygraph diagram to SVG, or None if it fails to parse.
 
     ``blueprint`` uses the palette for ``::: card {blueprint}`` (light lines,
