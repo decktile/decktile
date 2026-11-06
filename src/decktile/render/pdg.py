@@ -72,13 +72,17 @@ def render_pdg_svg(
     css = theme_css(font_family, font_size, _BLUEPRINT_TAGS if blueprint else tag_colors)
     if blueprint:
         css += "\n" + _BLUEPRINT_CSS
-    # Theme goes first so css inside the block overrides it.
-    text = "css {\n" + css + "\n}\n" + content
+    # A diagram's own theme= wins over the slide theme; otherwise slide theme
+    # goes first so css inside the block overrides it.
+    text = content if _OWN_THEME.search(content) else "css {\n" + css + "\n}\n" + content
     try:
         svg = predictygraph.render(text, t=None if animated else 0)
     except Exception:
         return None
     return _strip_xml_decl(svg)
+
+
+_OWN_THEME = re.compile(r"^\s*graph\b[^\n]*\stheme=", re.M)
 
 
 def _strip_xml_decl(svg: str) -> str:
