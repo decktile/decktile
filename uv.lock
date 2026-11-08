@@ -804,15 +804,15 @@ docs = [
     { name = "sphinx", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.12.*'" },
     { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
 ]
+plot = [
+    { name = "pillow" },
+    { name = "seaborn" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
-]
-plot = [
-    { name = "pillow" },
-    { name = "seaborn" },
 ]
 
 [package.metadata]
@@ -825,26 +825,24 @@ requires-dist = [
     { name = "mermaidx", specifier = ">=0.8.1" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.1.0" },
     { name = "odfdo", specifier = ">=3.27.2" },
+    { name = "pillow", marker = "extra == 'plot'", specifier = ">=11.0.0" },
     { name = "predictygraph", specifier = ">=0.3.0" },
     { name = "pygments-styles", specifier = ">=0.3.0" },
     { name = "python-frontmatter", specifier = ">=1.3.0" },
     { name = "python-lucide", specifier = ">=0.5.0" },
     { name = "python-pptx", specifier = ">=1.0.2" },
+    { name = "seaborn", marker = "extra == 'plot'", specifier = ">=0.13.2" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=9.0.4" },
     { name = "tinycss2", specifier = ">=1.5.1" },
     { name = "typer", specifier = ">=0.26.8" },
     { name = "weasyprint", specifier = ">=69.0,<70" },
 ]
-provides-extras = ["docs"]
+provides-extras = ["plot", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
-]
-plot = [
-    { name = "pillow", specifier = ">=11.0.0" },
-    { name = "seaborn", specifier = ">=0.13.2" },
 ]
 
 [[package]]

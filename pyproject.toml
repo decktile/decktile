@@ -19,6 +19,10 @@ Homepage = "https://github.com/decktile/decktile"
 Source = "https://github.com/decktile/decktile"
 
 [project.optional-dependencies]
+plot = [
+    "pillow>=11.0.0",
+    "seaborn>=0.13.2",
+]
 docs = [
     "sphinx>=9.0.4",
     "furo>=2025.12.19",
@@ -32,10 +36,6 @@ build-backend = "pdm.backend"
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-]
-plot = [
-    "pillow>=11.0.0",
-    "seaborn>=0.13.2",
 ]
 
 [tool.pytest.ini_options]

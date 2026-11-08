@@ -42,8 +42,10 @@ style: |                 # raw CSS override
 ## Install
 
 ```bash
-pip install decktile    # or: uv tool install decktile
+uv tool install 'decktile[plot]'    # or: pipx install 'decktile[plot]'
 ```
+
+`[plot]` adds seaborn/matplotlib for ```` ```seaborn ```` charts; drop it if you don't need them.
 
 HTML output works everywhere. PDF and ODP output use WeasyPrint, which needs Pango
 from your system:
