@@ -1,0 +1,172 @@
+/* decktile KubeCon CloudNativeCon North America 2026 theme
+   Colors from the official Title slide: blue #113E82, navy #052243,
+   magenta #D62293, green #2E9C68/#40BE95, yellow #FFEE88, ice #E3F6FF */
+
+:root {
+  --color-background: #ffffff;
+  --color-background-stripe: #E3F6FF;
+  --color-foreground: #052243;
+  --color-dimmed: #5A6F8E;
+  --color-accent: #113E82;
+  --color-accent-bg: rgba(17, 62, 130, 0.10);
+  --color-border: #ADC5EF;
+  --color-card-bg: #F3F8FF;
+  --bg-image: url("assets/brand/kubecon_na/background.png");
+  --bg-overlay: rgba(255,255,255,0.88);
+  --logo-dark: url("assets/brand/dynamia-logo-white.png");
+  --tag-green-bg: #E6F5EE;
+  --tag-cyan-bg: #E3F6FF;
+  --tag-yellow-bg: #FFF9DB;
+  --tag-red-bg: #FBE6F2;
+  --tag-default-bg: #F3F8FF;
+  --tag-green-border: #2E9C68;
+  --tag-cyan-border: #113E82;
+  --tag-yellow-border: #D9B800;
+  --tag-red-border: #D62293;
+  --tag-default-border: #ADC5EF;
+
+  --color-accent-primary: #113E82;
+  --color-accent-secondary: #D62293;
+  --color-accent-contrast: #2E9C68;
+  --list-style: "\25B8  ";
+  --card-border: 1px solid #ADC5EF;
+  --title-h1-size: 2em;
+  --title-subtitle-size: 1em;
+}
+
+body {
+  background: #113E82;
+}
+
+[data-theme="dark"] {
+  --color-background: #052243;
+  --color-background-stripe: #0B2E57;
+  --color-foreground: #E3F6FF;
+  --color-dimmed: #ADC5EF;
+  --color-accent: #FFEE88;
+  --color-accent-bg: rgba(255, 238, 136, 0.12);
+  --color-border: #1E4B8A;
+  --color-card-bg: #0B2E57;
+  --bg-overlay: rgba(5, 34, 67, 0.88);
+  --tag-green-bg: #0E3A3A;
+  --tag-cyan-bg: #0E3360;
+  --tag-yellow-bg: #3A3A20;
+  --tag-red-bg: #3D1640;
+  --tag-default-bg: #0B2E57;
+  --tag-green-border: #40BE95;
+  --tag-cyan-border: #ADC5EF;
+  --tag-yellow-border: #FFEE88;
+  --tag-red-border: #E85BB4;
+  --tag-default-border: #1E4B8A;
+
+  --color-accent-primary: #FFEE88;
+  --color-accent-secondary: #E85BB4;
+  --color-accent-contrast: #40BE95;
+  --card-border: 1px solid #1E4B8A;
+}
+
+section {
+  background: linear-gradient(var(--bg-overlay), var(--bg-overlay)), var(--bg-image) left top / cover no-repeat;
+  color: var(--color-foreground);
+  font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
+}
+
+section::after {
+  opacity: 0.9;
+}
+.layout-title::after {
+  background-image: none;
+}
+/* Title: the pptx Title slide as is, blue with the illustration strip along the bottom;
+   content sits in the blue upper half like the pptx title box */
+.layout-title {
+  background: var(--bg-image) left top / cover no-repeat;
+  color: #ffffff;
+  justify-content: flex-start;
+  padding-top: 1.6em;
+}
+.layout-title h1,
+.layout-title .subtitle { max-width: 72%; }
+.layout-title h1 { margin-bottom: 0.1em; }
+.layout-title .speaker { margin-top: 0.2em; text-shadow: 0 1px 3px rgba(5,34,67,0.9); }
+/* Several speakers sit side by side so they stay above the illustration */
+.layout-title .speaker:has(+ .speaker),
+.layout-title .speaker + .speaker { display: inline-block; vertical-align: top; width: 30%; margin-right: 2%; font-size: 0.85em; }
+.layout-title h1,
+.layout-title h2,
+.layout-title h3,
+.layout-title h4,
+.layout-title h5,
+.layout-title h6 { color: #ffffff; }
+.layout-title .kicker { color: #FFEE88; }
+.layout-title .subtitle { color: #E3F6FF; }
+.layout-title .speaker { color: rgba(255,255,255,0.9); }
+.layout-title .speaker .role { color: #ADC5EF; }
+.layout-title .speaker-links a { color: rgba(255,255,255,0.8); }
+.layout-title .speaker-links svg { stroke: rgba(255,255,255,0.8); }
+
+.layout-title { --logo: var(--logo-dark); }
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-foreground);
+  font-family: Roboto, Arial, "Helvetica Neue", sans-serif;
+}
+h1 { font-size: 2.5em; font-weight: 700; }
+h2 { font-size: 1.8em; padding-top: 0; margin-bottom: 0.15em; }
+h3 { font-size: 1.15em; }
+h4 { font-size: 0.85em; }
+h3::after {
+  display: block;
+  content: "";
+  width: 100%;
+  height: 0;
+  border-bottom: 2px solid var(--color-accent-secondary);
+  margin-top: 0.3em;
+  opacity: 0.5;
+}
+
+li { font-size: 0.9em; padding-left: 0.3em; }
+ul li::marker { color: var(--color-accent-secondary); font-weight: bold; }
+
+blockquote {
+  border-left-color: var(--color-accent-secondary);
+  color: var(--color-dimmed);
+}
+
+th { background: var(--color-accent-bg); color: var(--color-foreground); font-weight: 700; }
+th, td { border: 1px solid var(--color-border); }
+tr:nth-child(even) { background: var(--color-background-stripe); }
+
+a { color: var(--color-accent-secondary); }
+
+.card {
+  background: var(--color-card-bg);
+  border: var(--card-border);
+}
+.card p { font-size: 0.9em; }
+
+.quote { border-left-color: var(--color-accent-secondary); color: var(--color-accent-primary); }
+
+.kicker { color: var(--color-accent-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.75em; }
+.speaker { color: var(--color-foreground); }
+.speaker .role { color: var(--color-dimmed); }
+
+footer { color: var(--color-dimmed); }
+.slide-num { color: var(--color-dimmed); }
+.layout-title footer,
+.layout-title .slide-num { color: #E3F6FF; }
+
+.subtitle { color: var(--color-dimmed); }
+h2 + .subtitle { font-size: 0.85em; }
+.tiny { font-size: 0.7em; color: var(--color-dimmed); }
+.muted { color: var(--color-dimmed); }
+
+.accent-primary { color: var(--color-accent-primary); fill: var(--color-accent-primary); stroke: var(--color-accent-primary); }
+.accent-secondary { color: var(--color-accent-secondary); fill: var(--color-accent-secondary); stroke: var(--color-accent-secondary); }
+.accent-contrast { color: var(--color-accent-contrast); fill: var(--color-accent-contrast); stroke: var(--color-accent-contrast); }
+
+.tag-green  { border-color: var(--tag-green-border); background: var(--tag-green-bg); }
+.tag-cyan   { border-color: var(--tag-cyan-border); background: var(--tag-cyan-bg); }
+.tag-yellow { border-color: var(--tag-yellow-border); background: var(--tag-yellow-bg); }
+.tag-red    { border-color: var(--tag-red-border); background: var(--tag-red-bg); }
+.tag-quote  { border-left: 0.25em solid var(--color-accent-secondary); font-style: italic; background: none; }
