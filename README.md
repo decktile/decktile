@@ -441,7 +441,25 @@ Pre-imported: `sns`, `plt`, `pd`, `np`. Set `seaborn_theme: kcd_vietnam` in
 frontmatter to apply brand colors from the matching CSS theme file. Colors
 and fonts are parsed from the `:root` block. Falls
 back to seaborn palette names (`Paired` is the default, also `deep`,
-`muted`, `pastel`, etc.) if no theme CSS matches.
+`muted`, `pastel`, etc.) if no theme CSS matches. `seaborn_theme: hami`
+matches the predictygraph `hami` diagram colours.
+
+To keep a chart theme in your own repo, point `seaborn_theme` at a `.toml`
+file, relative to the deck:
+
+```toml
+# brand.toml
+palette = ["#16a34a", "#2563eb", "#ca8a04"]
+
+[style]  # matplotlib rcParams
+"text.color" = "#1e293b"
+"xtick.color" = "#64748b"
+"axes.facecolor" = "#ffffff"
+```
+
+```yaml
+seaborn_theme: themes/brand.toml
+```
 
 ### Custom charts with matplotlib
 

@@ -23,7 +23,9 @@ app = typer.Typer(help="Markdown to styled HTML + ODP + PDF", no_args_is_help=Tr
 
 @app.callback(invoke_without_command=True)
 def main(
-    files: list[Path] | None = typer.Argument(None, help="Markdown files to build; globs like '*.deck.md' or 'talks/**/*.deck.md' are expanded"),
+    files: list[Path] | None = typer.Argument(
+        None, help="Markdown files to build; globs like '*.deck.md' or 'talks/**/*.deck.md' are expanded"
+    ),
     output_dir: Path | None = typer.Option(None, "-o", "--output-dir", help="Output directory (default: <input>/dist/)"),
     pdf: bool = typer.Option(False, "--pdf", help="Generate PDF"),
     odp: bool = typer.Option(False, "--odp", help="Generate ODP (programmatic)"),
@@ -103,6 +105,8 @@ def _build(
 ) -> None:
     content = file.read_text(encoding="utf-8")
     doc = parse(content)
+    if doc.meta.seaborn_theme.endswith(".toml"):  # downstream theme file, relative to the deck
+        doc.meta.seaborn_theme = str((file.parent / doc.meta.seaborn_theme).resolve())
     dims = doc.meta.dimensions()
 
     out_dir = output_dir or file.parent / "dist"

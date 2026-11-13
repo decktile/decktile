@@ -11,8 +11,10 @@ Only active when seaborn + matplotlib are installed (pdm install -G plot).
 Falls back to plain code highlighting otherwise.
 
 Theme support: the ``seaborn_theme`` frontmatter field accepts either a
-seaborn palette name ("Paired", "deep", etc.) or a decktile theme name that
-matches a CSS file in ``decktile/themes/<name>.css``. CSS variables are
+seaborn palette name ("Paired", "deep", etc.), a decktile theme name that
+matches a CSS file in ``decktile/themes/<name>.css``, or a path to a ``.toml``
+theme file kept next to the deck (``palette = [...]`` plus ``[style]`` rcParams).
+CSS variables are
 parsed and mapped to matplotlib rcParams -- no hardcoded color duplication.
 Style modules in ``decktile.seaborn_styles.<name>`` take precedence over CSS
 and can set ``seaborn_palette`` to override the default ("Paired").
@@ -21,6 +23,7 @@ and can set ``seaborn_palette`` to override the default ("Paired").
 import importlib
 import io
 import re
+import tomllib
 from pathlib import Path
 
 _DEFAULT_FIGSIZE = (6.4, 4.8)
@@ -75,30 +78,53 @@ def _css_theme_rcparams(name: str) -> dict | None:
     return style
 
 
-def set_theme(name: str) -> None:
-    """Apply a seaborn palette or decktile style by name.
+def _file_theme(path: Path) -> dict:
+    """A downstream theme file: ``palette = [...]`` plus a ``[style]`` table of rcParams."""
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    style = dict(data.get("style", {}))
+    if "palette" in data:
+        style["seaborn_palette"] = data["palette"]
+    return style
 
-    Resolution order: decktile style module > CSS theme file > palette name.
+
+def _apply(style: dict) -> None:
+    global _palette, _style
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    palette = style.pop("seaborn_palette", _DEFAULT_PALETTE)
+    sns.set_theme(style="darkgrid", palette=palette)
+    plt.rcParams.update(style)
+    _style, _palette = style, palette
+
+
+def set_theme(name: str) -> None:
+    """Apply a seaborn palette or decktile style by name or theme file.
+
+    Resolution order: ``.toml`` theme file > decktile style module > CSS theme
+    file > palette name.
     """
     global _palette, _style
     if not name:
         name = _DEFAULT_PALETTE
+    if name.endswith(".toml"):
+        path = Path(name)
+        if not path.is_file():
+            raise FileNotFoundError(f"seaborn theme file not found: {path}")
+        try:
+            _apply(_file_theme(path))
+        except ImportError:
+            _palette, _style = None, None
+        return
     try:
         # 1) style module (for custom overrides CSS can't express)
         mod = importlib.import_module(f"decktile.seaborn_styles.{name}")
         style = dict(getattr(mod, "STYLE", {}))
         if style:
-            import matplotlib
-
-            matplotlib.use("Agg")
-            import matplotlib.pyplot as plt
-            import seaborn as sns
-
-            palette = style.pop("seaborn_palette", _DEFAULT_PALETTE)
-            sns.set_theme(style="darkgrid", palette=palette)
-            plt.rcParams.update(style)
-            _style = style
-            _palette = palette
+            _apply(style)
             return
     except ImportError:
         pass

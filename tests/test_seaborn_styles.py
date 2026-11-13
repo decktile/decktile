@@ -140,3 +140,28 @@ class TestStyleModulePalette:
         set_theme("ossummit_europe")
         svg = render_seaborn_svg(self.BAR)
         assert "#e05845" in svg.lower()
+
+
+class TestHamiAndFileThemes:
+    def test_hami_module(self):
+        from decktile.seaborn_styles.hami import STYLE
+
+        assert STYLE["seaborn_palette"][0] == "#16a34a"
+
+    def test_toml_theme_file(self, tmp_path):
+        import pytest
+
+        pytest.importorskip("seaborn")
+        import decktile.render.seaborn as sb
+
+        f = tmp_path / "brand.toml"
+        f.write_text('palette = ["#112233", "#445566"]\n[style]\n"text.color" = "#010203"\n')
+        sb.set_theme(str(f))
+        assert sb._palette == ["#112233", "#445566"]
+        assert sb._style["text.color"] == "#010203"
+
+    def test_missing_toml_theme_file(self, tmp_path):
+        import pytest
+
+        with pytest.raises(FileNotFoundError):
+            set_theme(str(tmp_path / "nope.toml"))
