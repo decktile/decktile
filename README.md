@@ -441,20 +441,31 @@ Pre-imported: `sns`, `plt`, `pd`, `np`. Set `seaborn_theme: kcd_vietnam` in
 frontmatter to apply brand colors from the matching CSS theme file. Colors
 and fonts are parsed from the `:root` block. Falls
 back to seaborn palette names (`Paired` is the default, also `deep`,
-`muted`, `pastel`, etc.) if no theme CSS matches. `seaborn_theme: hami`
-matches the predictygraph `hami` diagram colours.
+`muted`, `pastel`, etc.) if no theme CSS matches.
 
-To keep a chart theme in your own repo, point `seaborn_theme` at a `.toml`
-file, relative to the deck:
+Chart themes are [predictygraph](https://github.com/predictygraph/predictygraph)
+themes, the same TOML as a diagram's `theme=`, so one file styles both.
+`seaborn_theme: hami` uses predictygraph's bundled `hami` theme; decktile adds
+`kubecon_na` and `ossummit_europe`, and `PDG_THEME_PATH` directories are searched
+too. The palette sets the chart: `fg` text, `muted` ticks, `border` axes, `bg`
+background, `bg-alt` grid, and the hues (green, blue, cyan, ...) the colour cycle.
+
+To keep a theme in your own repo, point `seaborn_theme` (and diagram `theme=`)
+at a `.toml` file next to the deck. An optional `[seaborn]` table, ignored by
+predictygraph, changes the colour order and sets any matplotlib rcParam;
+values may name palette keys:
 
 ```toml
-# brand.toml
-palette = ["#16a34a", "#2563eb", "#ca8a04"]
+# themes/brand.toml
+schema = 1
+extends = "hami"
 
-[style]  # matplotlib rcParams
-"text.color" = "#1e293b"
-"xtick.color" = "#64748b"
-"axes.facecolor" = "#ffffff"
+[palette]
+green = "#0f9d58"
+
+[seaborn]
+palette = ["green", "blue", "yellow"]
+"grid.color" = "bg-alt"
 ```
 
 ```yaml

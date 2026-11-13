@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# KubeCon NA 2026 title-slide colours, as a predictygraph theme (diagrams and charts).
+schema = 1
+name = "kubecon_na"
+dark = false
+
+[palette]
+bg = "#ffffff"
+surface = "#ffffff"
+fg = "#052243"
+muted = "#5A6F8E"
+border = "#052243"
+bg-alt = "#E3F6FF"
+red = "#D62293"
+orange = "#D62293"
+yellow = "#E8C400"
+green = "#2E9C68"
+cyan = "#40BE95"
+blue = "#113E82"
+purple = "#D62293"
+
+[shape]
+font = "Roboto"
+
+[seaborn]
+palette = ["blue", "red", "green", "yellow", "cyan", "fg"]
+"patch.edgecolor" = "#ffffff"

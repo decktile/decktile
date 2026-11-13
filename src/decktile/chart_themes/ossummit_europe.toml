@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Reza Jelveh
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Open Source Summit Europe colours, as a predictygraph theme (diagrams and charts).
+schema = 1
+name = "ossummit_europe"
+dark = false
+
+[palette]
+bg = "#ffffff"
+surface = "#ffffff"
+fg = "#003841"
+muted = "#4F6F73"
+border = "#003841"
+bg-alt = "#EDF5F4"
+red = "#E05845"
+orange = "#E58570"
+yellow = "#E58570"
+green = "#0DA89D"
+cyan = "#0DA89D"
+blue = "#0A5560"
+purple = "#0A5560"
+
+[shape]
+font = "Roboto"
+
+[seaborn]
+palette = ["red", "green", "blue", "orange", "fg"]
+"patch.edgecolor" = "#ffffff"

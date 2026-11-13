@@ -142,23 +142,38 @@ class TestStyleModulePalette:
         assert "#e05845" in svg.lower()
 
 
-class TestHamiAndFileThemes:
-    def test_hami_module(self):
-        from decktile.seaborn_styles.hami import STYLE
+class TestPredictygraphThemes:
+    def test_hami_from_predictygraph(self):
+        import pytest
 
-        assert STYLE["seaborn_palette"][0] == "#16a34a"
+        pytest.importorskip("seaborn")
+        import decktile.render.seaborn as sb
 
-    def test_toml_theme_file(self, tmp_path):
+        sb.set_theme("hami")
+        assert sb._palette[0] == "#16a34a"
+        assert sb._style["text.color"] == "#1e293b"
+
+    def test_kubecon_na_chart_theme(self):
+        import pytest
+
+        pytest.importorskip("seaborn")
+        import decktile.render.seaborn as sb
+
+        sb.set_theme("kubecon_na")
+        assert sb._palette[:2] == ["#113E82", "#D62293"]
+        assert sb._style["patch.edgecolor"] == "#ffffff"
+
+    def test_toml_file_extends_with_seaborn_section(self, tmp_path):
         import pytest
 
         pytest.importorskip("seaborn")
         import decktile.render.seaborn as sb
 
         f = tmp_path / "brand.toml"
-        f.write_text('palette = ["#112233", "#445566"]\n[style]\n"text.color" = "#010203"\n')
+        f.write_text('schema = 1\nextends = "hami"\n[seaborn]\npalette = ["blue", "#112233"]\n"grid.color" = "muted"\n')
         sb.set_theme(str(f))
-        assert sb._palette == ["#112233", "#445566"]
-        assert sb._style["text.color"] == "#010203"
+        assert sb._palette == ["#2563eb", "#112233"]
+        assert sb._style["grid.color"] == "#64748b"
 
     def test_missing_toml_theme_file(self, tmp_path):
         import pytest

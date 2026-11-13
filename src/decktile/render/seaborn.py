@@ -10,20 +10,15 @@ SVG strings for both HTML inline and ODP embedding.
 Only active when seaborn + matplotlib are installed (pdm install -G plot).
 Falls back to plain code highlighting otherwise.
 
-Theme support: the ``seaborn_theme`` frontmatter field accepts either a
-seaborn palette name ("Paired", "deep", etc.), a decktile theme name that
-matches a CSS file in ``decktile/themes/<name>.css``, or a path to a ``.toml``
-theme file kept next to the deck (``palette = [...]`` plus ``[style]`` rcParams).
-CSS variables are
-parsed and mapped to matplotlib rcParams -- no hardcoded color duplication.
-Style modules in ``decktile.seaborn_styles.<name>`` take precedence over CSS
-and can set ``seaborn_palette`` to override the default ("Paired").
+Theme support: the ``seaborn_theme`` frontmatter field takes a predictygraph
+theme (the same TOML as diagram ``theme=``): a name from ``decktile/chart_themes``,
+``PDG_THEME_PATH`` or predictygraph's bundled themes, or a ``.toml`` path next to
+the deck. Without one, a decktile CSS theme ``decktile/themes/<name>.css`` is
+parsed for colours, else the name is a seaborn palette ("Paired", "deep", ...).
 """
 
-import importlib
 import io
 import re
-import tomllib
 from pathlib import Path
 
 _DEFAULT_FIGSIZE = (6.4, 4.8)
@@ -78,13 +73,45 @@ def _css_theme_rcparams(name: str) -> dict | None:
     return style
 
 
-def _file_theme(path: Path) -> dict:
-    """A downstream theme file: ``palette = [...]`` plus a ``[style]`` table of rcParams."""
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-    style = dict(data.get("style", {}))
-    if "palette" in data:
-        style["seaborn_palette"] = data["palette"]
-    return style
+_CHART_THEMES = Path(__file__).parent.parent / "chart_themes"
+_HUE_ORDER = ("green", "blue", "cyan", "yellow", "purple", "red", "orange")
+
+
+def _pdg_theme(name: str) -> dict | None:
+    """A predictygraph theme (decktile's chart_themes, PDG_THEME_PATH, bundled, or a .toml path) as rcParams.
+
+    Palette roles drive the chart: fg = text, muted = ticks, border = axes, bg = background,
+    bg-alt = grid; hues in a fixed order are the colour cycle. An optional ``[seaborn]`` table
+    overrides that: ``palette`` (palette keys or hex) and any matplotlib rcParam.
+    """
+    from predictygraph.theme import ThemeError, load_theme
+
+    local = _CHART_THEMES / f"{name}.toml"
+    if not local.is_file() and (_THEME_DIR / f"{name}.css").is_file():
+        return None  # decktile CSS theme wins over a same-named predictygraph one (e.g. default)
+    try:
+        t = load_theme(str(local) if local.is_file() else name)
+    except ThemeError:
+        return None
+    pal = t.get("palette", {})
+    extra = dict(t.get("seaborn", {}))
+    order = extra.pop("palette", None) or [h for h in _HUE_ORDER if h in pal]
+    style = {
+        "seaborn_palette": [pal.get(c, c) for c in order],
+        "axes.facecolor": pal.get("surface", "#ffffff"),
+        "figure.facecolor": pal.get("bg", "#ffffff"),
+        "axes.edgecolor": pal.get("border"),
+        "grid.color": pal.get("bg-alt"),
+        "patch.force_edgecolor": True,
+    }
+    for rc in ("axes.labelcolor", "axes.titlecolor", "text.color"):
+        style[rc] = pal.get("fg")
+    for rc in ("xtick.color", "ytick.color"):
+        style[rc] = pal.get("muted")
+    if font := t.get("shape", {}).get("font"):
+        style |= {"font.family": "sans-serif", "font.sans-serif": [font, "Arial", "Helvetica", "sans-serif"]}
+    style |= {k: pal.get(v, v) if isinstance(v, str) else v for k, v in extra.items()}
+    return {k: v for k, v in style.items() if v is not None}
 
 
 def _apply(style: dict) -> None:
@@ -102,32 +129,23 @@ def _apply(style: dict) -> None:
 
 
 def set_theme(name: str) -> None:
-    """Apply a seaborn palette or decktile style by name or theme file.
+    """Apply a chart theme by name or ``.toml`` path.
 
-    Resolution order: ``.toml`` theme file > decktile style module > CSS theme
-    file > palette name.
+    Resolution order: predictygraph theme (decktile chart_themes, PDG_THEME_PATH,
+    predictygraph bundled, ``.toml`` path) > decktile CSS theme > seaborn palette name.
     """
     global _palette, _style
     if not name:
         name = _DEFAULT_PALETTE
-    if name.endswith(".toml"):
-        path = Path(name)
-        if not path.is_file():
-            raise FileNotFoundError(f"seaborn theme file not found: {path}")
+    style = _pdg_theme(name)
+    if style is None and name.endswith(".toml"):
+        raise FileNotFoundError(f"seaborn theme file not found: {name}")
+    if style is not None:
         try:
-            _apply(_file_theme(path))
-        except ImportError:
-            _palette, _style = None, None
-        return
-    try:
-        # 1) style module (for custom overrides CSS can't express)
-        mod = importlib.import_module(f"decktile.seaborn_styles.{name}")
-        style = dict(getattr(mod, "STYLE", {}))
-        if style:
             _apply(style)
-            return
-    except ImportError:
-        pass
+        except ImportError:  # charts are optional (decktile[plot])
+            _palette, _style = name, None
+        return
 
     # 2) CSS theme file (single source of truth for brand colors)
     css_style = _css_theme_rcparams(name)

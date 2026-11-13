@@ -47,7 +47,7 @@ src/decktile/
     ├── default.css       # Built-in light theme (CSS variables, card, quote, table, tag colors)
     ├── kcd_vietnam.css   # KCD Vietnam theme
     └── kubecon_japan.css # KubeCon Japan theme
-├── seaborn_styles/      # optional STYLE modules (CSS theme parsing is the default)
+├── chart_themes/        # predictygraph TOML themes for seaborn charts (kubecon_na, ossummit_europe)
 ```
 
 ## ODP rendering (render/odf/)
@@ -237,9 +237,12 @@ matching a CSS file in `decktile/themes/<name>.css`. CSS `:root` variables
 are parsed and mapped to matplotlib rcParams (card bg → axes.facecolor,
 foreground → text.color, accent → edgecolor, dimmed → tick colors, font).
 
-Style modules in `decktile.seaborn_styles.<name>` take precedence over CSS
-for themes needing rcParams not derivable from CSS variables (e.g. custom
-palette overrides, special matplotlib settings).
+predictygraph themes (TOML, same as diagram `theme=`) take precedence over
+CSS: `decktile/chart_themes/<name>.toml`, `PDG_THEME_PATH`, predictygraph's
+bundled themes (e.g. `hami`), or a `.toml` path relative to the deck. Palette
+roles map to rcParams; an optional `[seaborn]` table sets the colour order and
+extra rcParams. A decktile CSS theme of the same name beats a bundled
+predictygraph one (so `default` stays the CSS theme).
 
 ### Custom chart authoring
 
