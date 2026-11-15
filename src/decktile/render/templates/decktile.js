@@ -8,6 +8,12 @@ var KEYS_BACK = ['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'];
 var autoplaySpeed = {{ autoplay }};
 var _autoAdvancing = false;
 
+// A click or tap in the left third of `el` goes back, anywhere else forward.
+function tapDirection(e, el) {
+  var r = el.getBoundingClientRect();
+  return e.clientX < r.left + r.width / 3 ? -1 : 1;
+}
+
 // ===== VIDEO SYNC (shared) =====
 // Presenter and main windows are separate documents (window.open), each
 // with its own independent <video> element for the same slide -- playing
@@ -143,7 +149,8 @@ if (isPresenter) {
   _wireVideoSync('#pres-main', bc);
   show(0);
 
-  document.getElementById('pres-main').addEventListener('click', function() { advance(1); });
+  var presMain = document.getElementById('pres-main');
+  presMain.addEventListener('click', function(e) { advance(tapDirection(e, presMain)); });
   document.getElementById('pres-main').addEventListener('contextmenu', function(e) {
     e.preventDefault(); advance(-1);
   });
@@ -327,7 +334,7 @@ if (isPresenter) {
     var t = e.target;
     if (t.closest('button, a, input, textarea, select, #decktile-nav, #presenter-panel')) return;
     if (window.getSelection().toString()) return;
-    show(current + 1);
+    show(current + tapDirection(e, document.documentElement));
   });
 
   document.addEventListener('contextmenu', function(e) {

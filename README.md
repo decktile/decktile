@@ -118,8 +118,8 @@ places that should be one. PRs that consolidate repeated logic are welcome.
 
 | Action | Key / Mouse |
 |--------|-------------|
-| Next slide | Left click (on slide area), Right arrow, Down arrow, PgDn, Space |
-| Previous slide | Right click, Left arrow, Up arrow, PgUp, Backspace |
+| Next slide | Click or tap the right two thirds of the slide, Right arrow, Down arrow, PgDn, Space |
+| Previous slide | Click or tap the left third of the slide, Right click, Left arrow, Up arrow, PgUp, Backspace |
 | First slide | Home |
 | Last slide | End |
 | Toggle fullscreen | `f` |
