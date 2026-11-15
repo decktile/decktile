@@ -786,7 +786,7 @@ dependencies = [
     { name = "mdit-py-plugins" },
     { name = "mermaidx" },
     { name = "odfdo" },
-    { name = "predictygraph" },
+    { name = "predictygraph", extra = ["icons"] },
     { name = "pygments-styles" },
     { name = "python-frontmatter" },
     { name = "python-lucide" },
@@ -826,7 +826,7 @@ requires-dist = [
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.1.0" },
     { name = "odfdo", specifier = ">=3.27.2" },
     { name = "pillow", marker = "extra == 'plot'", specifier = ">=11.0.0" },
-    { name = "predictygraph", specifier = ">=0.3.1" },
+    { name = "predictygraph", extras = ["icons"], specifier = ">=0.3.3" },
     { name = "pygments-styles", specifier = ">=0.3.0" },
     { name = "python-frontmatter", specifier = ">=1.3.0" },
     { name = "python-lucide", specifier = ">=0.5.0" },
@@ -1914,16 +1914,21 @@ wheels = [
 
 [[package]]
 name = "predictygraph"
-version = "0.3.1"
+version = "0.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pillow" },
     { name = "tinycss2" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b6/c9/ed9c0793de99bf25b3ccaf4418bd66fae4698b656992eaba552cbd3ea059/predictygraph-0.3.1.tar.gz", hash = "sha256:7a4216e7fe0cfb0585abf3bfea7104e04f2a429d35a4e94c08d166495dc0d020", size = 149109, upload-time = "2026-11-13T05:55:10.491Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/c8/048e32c9a9847006322e5d515ee4113f5f120f5e75e8bce53fc78ee7bb80/predictygraph-0.3.3.tar.gz", hash = "sha256:7950a7091443fe7bc03dc6bd033788c593d40a8d67c368ab2eee50f07b4fcc6d", size = 153376, upload-time = "2026-11-15T11:19:50.436Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/f8/0a42e849d299ccc40b4a39232ef5705a041e187c0f48250a2adfdab3f99e/predictygraph-0.3.1-py3-none-any.whl", hash = "sha256:503e72c15e7d59d0edb7c1e6676934e805d3423babbdd36c04bc0bcc3dfdd030", size = 161708, upload-time = "2026-11-13T05:55:09.126Z" },
+    { url = "https://files.pythonhosted.org/packages/73/9f/53bc5dc56485539581ef224aa78ebb7020632784e29022f524db67de552b/predictygraph-0.3.3-py3-none-any.whl", hash = "sha256:f9c9a2375b8d7dff5a3287b3c66aefb3317c5afde82fbbf0ad2177ba2528f37e", size = 165772, upload-time = "2026-11-15T11:19:49.066Z" },
+]
+
+[package.optional-dependencies]
+icons = [
+    { name = "python-lucide" },
 ]
 
 [[package]]
