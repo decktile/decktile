@@ -531,7 +531,7 @@ transition: fade
 | `zoom` | Scale .85 + fade |
 | `wipe` | Clip-path reveal |
 
-Clicks and taps change slides after 0.3s, so a pinch zoom (second finger) cancels them; while zoomed in, taps do not navigate.
+Clicks and taps change slides after 0.15s, so a pinch zoom (second finger) cancels them; while zoomed in, taps do not navigate.
 
 All transitions run 0.4s, forwards-only (incoming slide animates).
 

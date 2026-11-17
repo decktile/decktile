@@ -16,7 +16,7 @@ function tapDirection(e, el) {
 
 // Clicks navigate after a short delay so a pinch zoom can cancel them: a second
 // finger, a zoom change or a zoomed-in page means the user wants to look closer.
-var TAP_DELAY = 300;
+var TAP_DELAY = 150;
 var _tapTimer = null;
 function _zoomed() { return window.visualViewport && window.visualViewport.scale > 1.01; }
 function _cancelTap() { clearTimeout(_tapTimer); _tapTimer = null; }
