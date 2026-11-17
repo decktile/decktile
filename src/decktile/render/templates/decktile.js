@@ -14,6 +14,20 @@ function tapDirection(e, el) {
   return e.clientX < r.left + r.width / 3 ? -1 : 1;
 }
 
+// Clicks navigate after a short delay so a pinch zoom can cancel them: a second
+// finger, a zoom change or a zoomed-in page means the user wants to look closer.
+var TAP_DELAY = 300;
+var _tapTimer = null;
+function _zoomed() { return window.visualViewport && window.visualViewport.scale > 1.01; }
+function _cancelTap() { clearTimeout(_tapTimer); _tapTimer = null; }
+function delayedTap(fn) {
+  _cancelTap();
+  if (_zoomed()) return;
+  _tapTimer = setTimeout(function() { _tapTimer = null; if (!_zoomed()) fn(); }, TAP_DELAY);
+}
+document.addEventListener('touchstart', function(e) { if (e.touches.length > 1) _cancelTap(); }, { passive: true });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', _cancelTap);
+
 // ===== VIDEO SYNC (shared) =====
 // Presenter and main windows are separate documents (window.open), each
 // with its own independent <video> element for the same slide -- playing
@@ -150,7 +164,7 @@ if (isPresenter) {
   show(0);
 
   var presMain = document.getElementById('pres-main');
-  presMain.addEventListener('click', function(e) { advance(tapDirection(e, presMain)); });
+  presMain.addEventListener('click', function(e) { var d = tapDirection(e, presMain); delayedTap(function() { advance(d); }); });
   document.getElementById('pres-main').addEventListener('contextmenu', function(e) {
     e.preventDefault(); advance(-1);
   });
@@ -334,7 +348,8 @@ if (isPresenter) {
     var t = e.target;
     if (t.closest('button, a, input, textarea, select, #decktile-nav, #presenter-panel')) return;
     if (window.getSelection().toString()) return;
-    show(current + tapDirection(e, document.documentElement));
+    var d = tapDirection(e, document.documentElement);
+    delayedTap(function() { show(current + d); });
   });
 
   document.addEventListener('contextmenu', function(e) {
