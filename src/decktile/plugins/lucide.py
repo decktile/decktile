@@ -8,7 +8,8 @@ import re
 
 from markdown_it.rules_inline import StateInline
 
-_ICON_RE = re.compile(r"\{icon:(\S+)\s*([^}]*)\}")
+# name stops at "}" so "{icon:mail} a {icon:x}" is two icons, not one named "mail}"
+_ICON_RE = re.compile(r"\{icon:([^\s}]+)\s*([^}]*)\}")
 
 
 def render_icon(name: str, attrs: dict[str, str] | None = None) -> str:

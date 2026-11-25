@@ -339,6 +339,7 @@ Per-slide, placed anywhere in the slide body. `@layout`, `@variant`, and
 | `@variant dark` | Use the theme's dark palette for this slide |
 | `@transition <name>` | Override the frontmatter transition for this slide |
 | `@hidden` / `@hide` | Drop the slide from output (kept in source) |
+| `@class a b` | Extra CSS classes on the slide; `cols-1-2` (2-1, 1-3, 3-1, 2-3, 3-2) sets the two-col/image column ratio |
 | `@row` | Group following content into a horizontal band |
 | `@side-image <path>` | Corner image, does not affect row sizing |
 | `@video <path>` | Inline video player |
@@ -370,6 +371,11 @@ Available: `fade`, `slide`, `zoom`, `flip`, `wipe`. All 0.4s, incoming-only.
 ::: card                       # basic card with border-radius
 ::: card {tag=green}           # colored card: green, cyan, yellow, red
 ::: card {metric}              # big number + label, auto-grids
+::: card {metric kpi}          # value, bold label above it (line 2), footnote lines below
+::: card {tile}                # no panel: ### {icon:x} Title as a big icon over a caption
+::: card {plain}               # no panel, thin rule between neighbours
+::: card {person}              # round photo, ### name, role lines
+::: card {logo}                # one logo centred in its cell
 ::: card {side-image}          # centered, no chrome, doesn't affect row sizing
 > quote text                   # blockquote, renders as .quote div
 | col1 | col2 | col3 |         # pipe table with header row
@@ -453,9 +459,20 @@ When present, overrides auto-detection.
 
 ## Theme creation
 
-Create a `.css` file with CSS custom properties and visual rules. The theme is
-loaded after `base.css` (which handles layout, positioning, spacing). Themes
-should only define colors, fonts, and visual decoration.
+Scaffold a theme folder and preview it:
+
+```bash
+decktile theme create themes/brand   # theme.css (copy of default), theme.toml, assets/, preview.deck.md
+decktile -w themes/brand/preview.deck.md
+```
+
+Decks use it with `theme: themes/brand` (folder relative to the deck, must be inside
+the deck's folder) or `decktile --theme themes/brand deck.md`. `theme.css` replaces the
+built-in theme; `url("assets/...")` in it resolves inside the folder; `theme.toml` is
+the pdg/seaborn palette unless the deck sets `pdg_theme`/`seaborn_theme`.
+
+The theme is loaded after `base.css` (which handles layout, positioning, spacing).
+Themes should only define colors, fonts, and visual decoration.
 
 ### Theme template
 
@@ -509,8 +526,8 @@ footer, .slide-num { color: var(--color-dimmed); }
 .tag-red   { border-color: #ff7a7a; }
 ```
 
-Apply via: `pdm run decktile slides.md --theme ./my-theme.css` or reference by filename
-in frontmatter: `theme: my-theme`.
+Apply via frontmatter `theme: my-theme` (built-in name) or `theme: themes/brand`
+(folder); `decktile --css extra.css` layers extra CSS on top of either.
 
 ## Reference
 

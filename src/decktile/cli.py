@@ -6,19 +6,57 @@
 
 import glob
 import re
+import sys
 import time
 from pathlib import Path
 
 import typer
 
 from decktile.parser.markdown import parse
-from decktile.render.html import base_css, default_theme, load_theme
+from decktile.render.html import THEME_DIR, base_css, default_theme, load_theme
 from decktile.render.html import render as render_html
 from decktile.render.ir import assemble_css
 from decktile.render.odp import render as render_odp
 from decktile.render.pdf import render as render_pdf
 
 app = typer.Typer(help="Markdown to styled HTML + ODP + PDF", no_args_is_help=True)
+theme_app = typer.Typer(help="Manage theme folders", no_args_is_help=True)
+
+
+def run() -> None:
+    """Console entry point. `decktile theme ...` goes to the theme commands; the
+    main command takes any number of deck files, so it can't host subcommands."""
+    if sys.argv[1:2] == ["theme"]:
+        theme_app(args=sys.argv[2:], prog_name="decktile theme")
+    else:
+        app()
+
+
+@theme_app.callback()
+def _theme_group() -> None:
+    """Manage theme folders."""
+
+
+@theme_app.command("create")
+def theme_create(path: Path = typer.Argument(..., help="Folder to create, e.g. themes/acme")) -> None:
+    """Create a theme folder: theme.css (a copy of the default theme), theme.toml
+    (diagram and chart palette), assets/, and preview.deck.md to try it on."""
+    if path.exists() and (not path.is_dir() or any(path.iterdir())):
+        _error(path, "already exists and is not an empty folder")
+        raise typer.Exit(1)
+    name = path.resolve().name
+    skeleton = THEME_DIR / "skeleton"
+    (path / "assets").mkdir(parents=True, exist_ok=True)
+    header = (
+        f"/* {name}: decktile theme folder. Starts as a copy of decktile's default theme.\n"
+        "   Use it with `theme: <path to this folder>` in a deck's frontmatter, or\n"
+        '   `decktile --theme <folder>`. url("assets/...") resolves inside this folder. */\n\n'
+    )
+    (path / "theme.css").write_text(header + default_theme(), encoding="utf-8")
+    for f in ("theme.toml", "preview.deck.md"):
+        (path / f).write_text((skeleton / f).read_text(encoding="utf-8").replace("THEME_NAME", name), encoding="utf-8")
+    typer.echo(f"Created {path}/: theme.css, theme.toml, assets/, preview.deck.md")
+    typer.echo(f"Preview: decktile -w {path / 'preview.deck.md'}")
 
 
 @app.callback(invoke_without_command=True)
@@ -38,12 +76,18 @@ def main(
     ),
     watch: bool = typer.Option(False, "-w", "--watch", help="Watch file and rebuild on changes"),
     debug: bool = typer.Option(False, "--debug", help="Dump AST + write debug CSS"),
-    css: Path | None = typer.Option(None, "--css", help="Custom CSS theme file (overrides default)"),
+    css: Path | None = typer.Option(None, "--css", help="Extra CSS file layered on top of the deck's theme"),
+    theme: Path | None = typer.Option(
+        None, "--theme", help="Theme folder (theme.css, optional theme.toml); overrides the deck's theme"
+    ),
 ):
     if not files:
         raise typer.Exit()
     if css and not css.is_file():
         _error(css, "CSS file not found")
+        raise typer.Exit(1)
+    if theme and not (theme / "theme.css").is_file():
+        _error(theme, "not a theme folder (no theme.css)")
         raise typer.Exit(1)
 
     paths, missing = _expand(files)
@@ -51,13 +95,13 @@ def main(
         _error(f, "no files match" if any(c in str(f) for c in "*?[") else "not a file" if f.exists() else "no such file")
 
     if watch:
-        _watch(paths, output_dir, pdf, odp, image_odp, debug, css)
+        _watch(paths, output_dir, pdf, odp, image_odp, debug, css, theme)
         return
 
     failed = len(missing)
     for f in paths:
         try:
-            _build(f, output_dir, pdf, odp, image_odp, dist, optimize_images, debug, css)
+            _build(f, output_dir, pdf, odp, image_odp, dist, optimize_images, debug, css, theme)
         except Exception as e:
             if debug:
                 raise
@@ -102,11 +146,26 @@ def _build(
     optimize_images: bool,
     debug: bool,
     css_path: Path | None,
+    theme_dir: Path | None = None,
 ) -> None:
     content = file.read_text(encoding="utf-8")
     doc = parse(content)
-    if doc.meta.seaborn_theme.endswith(".toml"):  # downstream theme file, relative to the deck
+    # a theme folder: --theme, else frontmatter `theme:` naming a folder next to the deck
+    if theme_dir is None and doc.meta.theme and (file.parent / doc.meta.theme / "theme.css").is_file():
+        theme_dir = file.parent / doc.meta.theme
+    theme_css = None
+    if theme_dir is not None:
+        theme_css = _folder_theme_css(theme_dir, file.parent)
+        # theme.toml carries the pdg and seaborn palettes unless the deck names its own
+        if (theme_dir / "theme.toml").is_file():
+            toml = str((theme_dir / "theme.toml").resolve())
+            doc.meta.pdg_theme = doc.meta.pdg_theme or toml
+            doc.meta.seaborn_theme = doc.meta.seaborn_theme or toml
+    # downstream theme files, relative to the deck
+    if doc.meta.seaborn_theme.endswith(".toml"):
         doc.meta.seaborn_theme = str((file.parent / doc.meta.seaborn_theme).resolve())
+    if doc.meta.pdg_theme.endswith(".toml"):
+        doc.meta.pdg_theme = str((file.parent / doc.meta.pdg_theme).resolve())
     dims = doc.meta.dimensions()
 
     out_dir = output_dir or file.parent / "dist"
@@ -114,7 +173,8 @@ def _build(
     _symlink_assets(file.parent, out_dir)
     stem = file.name.removesuffix(".deck.md") if file.name.endswith(".deck.md") else file.stem
 
-    theme_css = load_theme(doc.meta.theme) if doc.meta.theme not in (None, "", "default") else default_theme()
+    if theme_css is None:
+        theme_css = load_theme(doc.meta.theme) if doc.meta.theme not in (None, "", "default") else default_theme()
     if css_path and css_path.is_file():
         theme_css += "\n" + css_path.read_text(encoding="utf-8")
     theme_css += "\n" + (doc.meta.style or "")
@@ -174,7 +234,16 @@ def _build(
                 typer.echo(f"    {type(n).__name__}: {_node_summary(n)}")
 
 
-def _watch(files: list[Path], output_dir: Path | None, pdf: bool, odp: bool, image_odp: bool, debug: bool, css_path: Path | None) -> None:
+def _watch(
+    files: list[Path],
+    output_dir: Path | None,
+    pdf: bool,
+    odp: bool,
+    image_odp: bool,
+    debug: bool,
+    css_path: Path | None,
+    theme_dir: Path | None,
+) -> None:
     if not files:
         raise typer.Exit(1)
     mtimes: dict[Path, float] = {}
@@ -191,7 +260,7 @@ def _watch(files: list[Path], output_dir: Path | None, pdf: bool, odp: bool, ima
                     mtimes[f] = mtime
                     typer.echo("---")
                     try:
-                        _build(f, output_dir, pdf, odp, image_odp, False, False, debug, css_path)
+                        _build(f, output_dir, pdf, odp, image_odp, False, False, debug, css_path, theme_dir)
                     except Exception as e:
                         _error(f, e)
             time.sleep(1)
@@ -249,6 +318,31 @@ def _symlink_assets(source_dir: Path, dist_dir: Path) -> None:
         dest = dist_dir / item.name
         if not dest.exists():
             dest.symlink_to(item.resolve())
+
+
+_CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
+
+
+def _folder_theme_css(theme_dir: Path, deck_dir: Path) -> str:
+    """Read a theme folder's theme.css with its relative url()s rebased onto the
+    deck folder, the base every output (HTML in dist/ via the asset symlinks,
+    PDF, ODP, --dist zip) resolves paths from. So the folder must sit inside the
+    deck folder: from anywhere else its assets are unreachable from dist/."""
+    css_file = theme_dir / "theme.css"
+    if not css_file.is_file():
+        raise FileNotFoundError(f"theme folder has no theme.css: {theme_dir}")
+    root, deck = theme_dir.resolve(), deck_dir.resolve()
+    if not root.is_relative_to(deck):
+        raise ValueError(f"theme folder {theme_dir} must be inside the deck folder {deck_dir}")
+    prefix = root.relative_to(deck).as_posix()
+
+    def rebase(m: re.Match) -> str:
+        q, url = m.groups()
+        if url.startswith(("data:", "http:", "https:", "#", "/", "var(")):
+            return m.group(0)
+        return f"url({q}{prefix}/{url}{q})"
+
+    return _CSS_URL.sub(rebase, css_file.read_text(encoding="utf-8"))
 
 
 def _make_dist(source_dir: Path, out_dir: Path, html_path: Path, html: str, theme_css: str, stem: str) -> None:

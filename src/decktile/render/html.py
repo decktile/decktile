@@ -84,6 +84,7 @@ def render_from_ir(ir_slides: list[SlideIR], doc: Document, assembled_css: str, 
                 "paginate": doc.meta.paginate or False,
                 "variant": slide.variant or doc.meta.theme_variant,
                 "transition": slide.transition or doc.meta.transition or "",
+                "classes": slide.classes,
             }
         )
 

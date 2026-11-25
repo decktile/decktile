@@ -2,6 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from decktile.cli import app
+from decktile.cli import run
 
-app(prog_name="decktile")
+run()

@@ -148,11 +148,14 @@ class SlideIR:
     notes: str = ""
     variant: str = ""
     transition: str = ""
+    classes: str = ""  # extra section classes from @class
 
 
 def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[SlideIR]:
     """Convert a Document AST into a list of SlideIR objects."""
     styles = resolve_styles(base_css, theme_css) if base_css else {}
+    if doc.meta.pdg_theme:
+        styles["pdg_theme"] = doc.meta.pdg_theme
     slides = []
     for idx, slide in enumerate(doc.slides):
         layout = slide.layout
@@ -187,6 +190,7 @@ def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[Sli
                 notes=slide.notes or "",
                 variant=slide.variant or "",
                 transition=slide.transition or "",
+                classes=slide.classes,
             )
         )
     _assign_elem_ids(slides)
@@ -440,7 +444,13 @@ def _convert_node(node, styles: dict) -> Elem:
             fam = styles.get("font_body_family", "")
             size = styles.get("font_body", 18)
             tags = styles.get("tag_colors", {})
-            opts = dict(font_family=fam, font_size=size, tag_colors=tags, blueprint=styles.get("pdg_blueprint", False))
+            opts = dict(
+                font_family=fam,
+                font_size=size,
+                tag_colors=tags,
+                blueprint=styles.get("pdg_blueprint", False),
+                theme=styles.get("pdg_theme", ""),
+            )
             svg = render_pdg_svg(node.content, **opts) or ""
             live = render_pdg_svg(node.content, animated=True, **opts) or ""
             # only keep the animated copy when the diagram actually moves

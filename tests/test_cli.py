@@ -71,3 +71,56 @@ def test_seaborn_theme_without_chart_libraries(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", no_plot)
     sb.set_theme("default")  # must not raise
+
+
+def _make_theme(tmp_path):
+    from decktile.cli import theme_app
+
+    result = CliRunner().invoke(theme_app, ["create", str(tmp_path / "themes" / "acme")])
+    assert result.exit_code == 0, result.output
+    css = tmp_path / "themes" / "acme" / "theme.css"
+    css.write_text(css.read_text() + '\nsection { background-image: url("assets/bg.png"); }\n.acme-marker { color: red; }\n')
+    return css
+
+
+def test_theme_folder_from_frontmatter_replaces_theme_and_rebases_assets(tmp_path):
+    """A theme folder's url("assets/...") must resolve from dist/, which sees the
+    deck folder through symlinks: the path is rebased onto the deck folder."""
+    _make_theme(tmp_path)
+    deck = tmp_path / "d.deck.md"
+    deck.write_text("---\ntheme: themes/acme\n---\n\n## Slide\n\nBody.\n")
+    result = CliRunner().invoke(app, [str(deck)])
+    assert result.exit_code == 0, result.output
+    html = (tmp_path / "dist" / "d.html").read_text()
+    assert ".acme-marker" in html
+    assert 'url("themes/acme/assets/bg.png")' in html
+
+
+def test_theme_option_overrides_frontmatter_theme(tmp_path):
+    _make_theme(tmp_path)
+    deck = tmp_path / "d.deck.md"
+    deck.write_text("---\ntheme: kubecon_japan\n---\n\n## Slide\n")
+    result = CliRunner().invoke(app, ["--theme", str(tmp_path / "themes" / "acme"), str(deck)])
+    assert result.exit_code == 0, result.output
+    html = (tmp_path / "dist" / "d.html").read_text()
+    assert ".acme-marker" in html and "KubeCon" not in html
+
+
+def test_theme_folder_outside_deck_folder_is_an_error(tmp_path):
+    _make_theme(tmp_path)
+    (tmp_path / "decks").mkdir()
+    deck = tmp_path / "decks" / "d.deck.md"
+    deck.write_text(DECK)
+    result = CliRunner().invoke(app, ["--theme", str(tmp_path / "themes" / "acme"), str(deck)])
+    assert result.exit_code == 1
+    assert "must be inside the deck folder" in result.output
+
+
+def test_theme_create_refuses_non_empty_folder(tmp_path):
+    from decktile.cli import theme_app
+
+    (tmp_path / "acme").mkdir()
+    (tmp_path / "acme" / "theme.css").write_text("keep me")
+    result = CliRunner().invoke(theme_app, ["create", str(tmp_path / "acme")])
+    assert result.exit_code == 1
+    assert (tmp_path / "acme" / "theme.css").read_text() == "keep me"

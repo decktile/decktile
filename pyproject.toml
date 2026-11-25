@@ -11,8 +11,8 @@ readme = "README.md"
 license = {text = "Apache-2.0"}
 
 [project.scripts]
-decktile = "decktile.cli:app"
-slidr = "decktile.cli:app"  # old name, kept so existing Makefiles keep working
+decktile = "decktile.cli:run"
+slidr = "decktile.cli:run"  # old name, kept so existing Makefiles keep working
 
 [project.urls]
 Homepage = "https://github.com/decktile/decktile"

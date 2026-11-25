@@ -65,6 +65,7 @@ def parse(input_text: str) -> Document:
         background=background_raw,
         pygments_style=raw_meta.pop("pygments_style", "default"),
         seaborn_theme=raw_meta.pop("seaborn_theme", None) or Meta.seaborn_theme,
+        pdg_theme=raw_meta.pop("pdg_theme", None) or Meta.pdg_theme,
         theme_variant=raw_meta.pop("variant", Meta.theme_variant),
         transition=raw_meta.pop("transition", Meta.transition),
         autoplay=raw_meta.pop("autoplay", Meta.autoplay),
@@ -122,6 +123,7 @@ def _parse_slide(content: str) -> Slide:
     layout = _detect_layout(nodes)
     variant = ""
     transition = ""
+    classes = []
     hidden = False
     for n in list(nodes):
         if isinstance(n, AttrNode) and n.type == "layout":
@@ -133,6 +135,10 @@ def _parse_slide(content: str) -> Slide:
         elif isinstance(n, AttrNode) and n.type == "transition":
             transition = n.value.strip()
             nodes.remove(n)
+        elif isinstance(n, AttrNode) and n.type == "class":
+            # class names land in an HTML attribute: keep only CSS identifiers
+            classes += [c for c in n.value.split() if re.fullmatch(r"[A-Za-z_][\w-]*", c)]
+            nodes.remove(n)
         elif isinstance(n, AttrNode) and n.type in ("hidden", "hide"):
             hidden = True
             nodes.remove(n)
@@ -140,7 +146,7 @@ def _parse_slide(content: str) -> Slide:
     if hidden:
         return None
 
-    return Slide(layout=layout, children=nodes, notes=notes, variant=variant, transition=transition)
+    return Slide(layout=layout, children=nodes, notes=notes, variant=variant, transition=transition, classes=" ".join(classes))
 
 
 def _tokens_to_nodes(tokens: list[Token]) -> list:

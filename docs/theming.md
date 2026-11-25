@@ -274,6 +274,29 @@ The rest fall back to `default.css`.
 }
 ```
 
+## Theme folder
+
+A theme that lives outside decktile (a brand theme in a private repo) is a
+folder. Create one with:
+
+```bash
+decktile theme create themes/brand
+```
+
+```
+themes/brand/
+  theme.css         full theme: replaces the built-in one (starts as a copy of default.css)
+  theme.toml        pdg diagram + seaborn chart palette (predictygraph theme, [seaborn] table)
+  assets/           images for theme.css: url("assets/bg.jpg") resolves here
+  preview.deck.md   every component on one deck: decktile -w themes/brand/preview.deck.md
+```
+
+Use it with `theme: themes/brand` in a deck's frontmatter (path relative to the
+deck) or `decktile --theme themes/brand deck.md`, which wins over the
+frontmatter. The folder must be inside the deck's folder: decktile rebases
+`url()`s onto the deck folder, which `dist/` reaches through its asset symlinks.
+A deck's own `pdg_theme:` / `seaborn_theme:` override `theme.toml`.
+
 ## Global layout variables
 
 These are in `base.css` and control spacing:

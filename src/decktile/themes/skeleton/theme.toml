@@ -1,0 +1,46 @@
+# Palette for ```pdg diagrams and ```seaborn charts in decks using this theme.
+# Keep the colours in step with theme.css. Format: predictygraph theme
+# (pdg --help-theme); the [seaborn] table holds matplotlib rcParams.
+schema = 1
+name = "THEME_NAME"
+dark = false
+
+# CSS for diagrams: node/group/edge classes usable as `.name` in pdg blocks
+css = """
+node.accent { fill: #0288d1; color: #ffffff; }
+node.soft   { fill: #e0f7fa; color: #333333; }
+group.soft  { fill: #f5f5f5; stroke: #dddddd; }
+edge.accent { stroke: #0288d1; }
+"""
+
+[palette]
+bg = "#ffffff"
+bg-alt = "#f5f5f5"
+surface = "#fafafa"
+fg = "#333333"
+muted = "#777777"
+border = "#dddddd"
+red = "#ff7a7a"
+orange = "#ffb347"
+yellow = "#ffd166"
+green = "#0fd05d"
+cyan = "#67d8ff"
+blue = "#0288d1"
+purple = "#7e57c2"
+
+[roles]
+accent = "blue"
+edge = "fg"
+group-text = "fg"
+
+[shape]
+radius = 4
+font = "Roboto"
+
+[seaborn]
+palette = ["blue", "green", "orange", "red", "purple", "cyan"]
+"axes.edgecolor" = "#dddddd"
+"axes.labelcolor" = "#333333"
+"xtick.color" = "#777777"
+"ytick.color" = "#777777"
+"grid.color" = "#eeeeee"

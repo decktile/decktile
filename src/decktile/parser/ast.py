@@ -32,6 +32,7 @@ class Meta:
     background: str = ""
     pygments_style: str = "default"
     seaborn_theme: str = ""
+    pdg_theme: str = ""
     theme_variant: str = "light"
     transition: str = ""
     autoplay: int = 7
@@ -62,6 +63,7 @@ class Slide:
     notes: str = ""
     variant: str = ""
     transition: str = ""
+    classes: str = ""
 
 
 class Node:

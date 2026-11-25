@@ -28,7 +28,8 @@ good out of the box with minimal markup, this is the one.
 ```yaml
 ---
 title: My Talk
-theme: dynamia           # theme name (default, dynamia, kubecon_japan)
+theme: dynamia           # built-in theme name (default, dynamia, kubecon_japan), or a theme folder path
+pdg_theme: themes/brand.toml     # palette for ```pdg diagrams: predictygraph theme name or .toml path
 variant: dark            # global dark mode
 logo: assets/logo.svg    # top-right logo (replaces theme default)
 logo_dark: assets/logo-white.png  # dark mode variant of logo
@@ -138,6 +139,8 @@ places that should be one. PRs that consolidate repeated logic are welcome.
 @tiny text             # small annotation below content
 @variant dark          # switch to dark mode for this slide
 @hidden                # exclude slide from output (alias: @hide)
+@class a b             # extra CSS classes on the slide's <section>; with two-col /
+                       # image-left / image-right, cols-1-2 (also 2-1, 1-3, 3-1, 2-3, 3-2) sets the column ratio
 {icon:star}            # inline lucide icon, e.g. {icon:heart stroke=#d05a39}
 ```
 
@@ -322,6 +325,11 @@ The arrow block accepts text or images:
 ::: card{ tag="green" }         # colored left border + background
 ::: card{ tag="quote" }         # accent left border, italic, no fill
 ::: card {metric}                      # big number + label card (first line = value, rest = label)
+::: card {metric kpi}                  # value with a bold label above it (line 2) and footnote lines below
+::: card {tile}                        # no panel: big icon heading (### {icon:cpu} Title) over a caption
+::: card {plain}                       # no panel, thin rule between neighbouring cards
+::: card {person}                      # round photo (first image), ### name, role lines
+::: card {logo}                        # one logo image centred in its cell
 ::: card {blueprint}                   # blue engineering-drawing panel; a ```dot inside uses the blueprint palette
 ::: arrow                       # connector for compare layout
 ::: notes{ tag="green" }        # full-width conclusion card
@@ -471,6 +479,23 @@ palette = ["green", "blue", "yellow"]
 ```yaml
 seaborn_theme: themes/brand.toml
 ```
+
+### Theme folders
+
+Keep a brand theme in your own repo as a folder next to the decks:
+
+```bash
+decktile theme create themes/brand    # theme.css, theme.toml, assets/, preview.deck.md
+decktile -w themes/brand/preview.deck.md
+```
+
+`theme.css` replaces the built-in theme (it starts as a copy of the default),
+`theme.toml` styles ```` ```pdg ```` diagrams and ```` ```seaborn ```` charts unless the
+deck sets `pdg_theme`/`seaborn_theme`, and `url("assets/...")` in `theme.css`
+resolves inside the folder. Select it per deck with `theme: themes/brand` (relative
+to the deck) or per build with `decktile --theme themes/brand deck.md`. The folder
+must sit inside the deck's folder, so dist/ reaches its assets. `--css file.css`
+still layers extra CSS on top of whichever theme is active.
 
 ### Custom charts with matplotlib
 

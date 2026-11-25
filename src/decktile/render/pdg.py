@@ -59,24 +59,29 @@ def render_pdg_svg(
     tag_colors: dict[str, tuple[str, str]] | None = None,
     blueprint: bool = False,
     animated: bool = False,
+    theme: str = "",
 ) -> str | None:
     """Render a predictygraph diagram to SVG, or None if it fails to parse.
 
     ``blueprint`` uses the palette for ``::: card {blueprint}`` (light lines,
     translucent fills). ``animated`` keeps predictygraph's SMIL animation
     (``flow=``, ``border=``) for HTML; the default is a still frame, which PDF
-    and ODP need.
+    and ODP need. ``theme`` is the deck's ``pdg_theme`` (a predictygraph theme
+    name or ``.toml`` path): it replaces the slide's tag colours, the slide
+    font still applies.
     """
     import predictygraph
 
-    css = theme_css(font_family, font_size, _BLUEPRINT_TAGS if blueprint else tag_colors)
+    own_theme = bool(_OWN_THEME.search(content))
+    deck_theme = theme if theme and not blueprint and not own_theme else None
+    css = theme_css(font_family, font_size, _BLUEPRINT_TAGS if blueprint else None if deck_theme else tag_colors)
     if blueprint:
         css += "\n" + _BLUEPRINT_CSS
     # A diagram's own theme= wins over the slide theme; otherwise slide theme
     # goes first so css inside the block overrides it.
-    text = content if _OWN_THEME.search(content) else "css {\n" + css + "\n}\n" + content
+    text = content if own_theme else "css {\n" + css + "\n}\n" + content
     try:
-        svg = predictygraph.render(text, t=None if animated else 0)
+        svg = predictygraph.render(text, t=None if animated else 0, theme=deck_theme)
     except Exception:
         return None
     return _strip_xml_decl(svg)
