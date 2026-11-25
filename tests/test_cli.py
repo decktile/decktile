@@ -124,3 +124,19 @@ def test_theme_create_refuses_non_empty_folder(tmp_path):
     result = CliRunner().invoke(theme_app, ["create", str(tmp_path / "acme")])
     assert result.exit_code == 1
     assert (tmp_path / "acme" / "theme.css").read_text() == "keep me"
+
+
+def test_created_theme_preview_deck_builds_against_its_folder(tmp_path):
+    """The scaffold must be usable as-is: its preview deck selects the folder
+    with `theme: .` and every block in it renders (no diagram fallback)."""
+    from decktile.cli import theme_app
+
+    folder = tmp_path / "acme"
+    assert CliRunner().invoke(theme_app, ["create", str(folder)]).exit_code == 0
+    css = folder / "theme.css"
+    css.write_text(css.read_text() + "\n.acme-marker { color: red; }\n")
+    result = CliRunner().invoke(app, [str(folder / "preview.deck.md")])
+    assert result.exit_code == 0, result.output
+    html = (folder / "dist" / "preview.html").read_text()
+    assert ".acme-marker" in html
+    assert "pdg-fallback" not in html
