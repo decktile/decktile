@@ -119,6 +119,9 @@ def _parse_card(text: str, rest: str = "") -> Card:
             continue
         elif line.startswith("### "):
             header = _expand_markdown(line[4:])
+        elif line.startswith("#### "):
+            # section label inside the card, kept in place among the body lines
+            body.append(f"<h4>{_expand_markdown(line[5:])}</h4>")
         elif line.startswith("- "):
             items = []
             while i < len(lines) and lines[i].strip().startswith("- "):

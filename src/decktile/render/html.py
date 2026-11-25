@@ -190,7 +190,7 @@ def _render_elem(e: Elem) -> str:
         if e.header:
             s += f"<h3>{e.header}</h3>\n"
         for line in e.body:
-            if line.startswith("<ul") or line.startswith("<ol"):
+            if line.startswith(("<ul", "<ol", "<h4")):
                 s += line + "\n"
             else:
                 s += f"<p>{line}</p>\n"

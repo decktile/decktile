@@ -344,7 +344,8 @@ The arrow block accepts text or images:
 
 Card/grid `{...}` attributes: bare words are CSS classes (`{metric}` → `.card.metric`),
 `k=v` pairs produce `k-v` classes (`{tag=green}` → `.card.tag-green`). Grid
-also accepts `cols=N` and `class=name` literally.
+also accepts `cols=N` and `class=name` literally. Inside a card, `### Title` is the
+card heading and `#### Label` a section label that stays where it is written.
 
 ## Lucide icons
 

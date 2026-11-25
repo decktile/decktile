@@ -140,3 +140,20 @@ def test_created_theme_preview_deck_builds_against_its_folder(tmp_path):
     html = (folder / "dist" / "preview.html").read_text()
     assert ".acme-marker" in html
     assert "pdg-fallback" not in html
+
+
+def test_mistyped_theme_folder_is_an_error_not_the_default_theme(tmp_path):
+    _make_theme(tmp_path)
+    deck = tmp_path / "d.deck.md"
+    deck.write_text("---\ntheme: themes/acmee\n---\n\n## Slide\n")
+    result = CliRunner().invoke(app, [str(deck)])
+    assert result.exit_code == 1
+    assert "no theme.css" in result.output
+
+
+def test_card_h4_is_a_label_in_place(tmp_path):
+    deck = tmp_path / "d.deck.md"
+    deck.write_text("---\ntitle: T\n---\n\n## S\n\n::: card\n### Head\nfirst\n#### Label\nsecond\n:::\n")
+    assert CliRunner().invoke(app, [str(deck)]).exit_code == 0
+    html = (tmp_path / "dist" / "d.html").read_text()
+    assert "<p>first</p>\n<h4>Label</h4>\n<p>second</p>" in html

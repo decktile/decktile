@@ -150,9 +150,12 @@ def _build(
 ) -> None:
     content = file.read_text(encoding="utf-8")
     doc = parse(content)
-    # a theme folder: --theme, else frontmatter `theme:` naming a folder next to the deck
-    if theme_dir is None and doc.meta.theme and (file.parent / doc.meta.theme / "theme.css").is_file():
-        theme_dir = file.parent / doc.meta.theme
+    # a theme folder: --theme, else a frontmatter `theme:` that is a path (built-in
+    # names never contain "/"), so a mistyped folder errors instead of silently
+    # building with the default theme
+    meta_theme = doc.meta.theme or ""
+    if theme_dir is None and meta_theme and ("/" in meta_theme or meta_theme.startswith(".") or (file.parent / meta_theme).is_dir()):
+        theme_dir = file.parent / meta_theme
     theme_css = None
     if theme_dir is not None:
         theme_css = _folder_theme_css(theme_dir, file.parent)
