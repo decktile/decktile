@@ -321,6 +321,7 @@ The arrow block accepts text or images:
 ```
 ::: grid {cols=2}              # responsive grid
 ::: grid {cols=3}              # 3-column grid
+::: grid {cols=5, fill}        # rows spread over the rest of the slide (no empty band below)
 ::: card                        # basic card
 ::: card{ tag="green" }         # colored left border + background
 ::: card{ tag="quote" }         # accent left border, italic, no fill

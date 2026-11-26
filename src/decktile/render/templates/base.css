@@ -162,6 +162,10 @@ th { font-weight: 700; }
 
 .grid { display: grid; gap: var(--gap); margin: 0 0 var(--gap) 0; }
 .grid > * { min-width: 0; }
+/* {fill}: the grid takes the rest of the slide body and spreads its rows over it,
+   content centred in each row, so a short grid leaves no empty band at the bottom */
+.slide-body:has(> .grid.fill) { display: flex; flex-direction: column; }
+.grid.fill { flex: 1; grid-auto-rows: 1fr; align-items: center; margin-bottom: 0; }
 
 .card {
   border-radius: var(--radius);

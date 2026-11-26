@@ -220,3 +220,30 @@ def test_email_in_speaker_role_is_a_link():
 def test_mailto_links_keep_text_colour():
     css = base_css()
     assert 'a[href^="mailto:"]' in css and "color: inherit" in css
+
+
+def test_grid_fill_spreads_rows_over_the_slide():
+    """{fill}: rows of a short grid spread down the slide instead of leaving a band."""
+    from weasyprint import HTML
+
+    md = "---\ntitle: t\n---\n\n## Fill\n\n::: grid {cols=2, %s}\n" + "".join(f"::: card\n### C{i}\nx\n:::\n" for i in range(4)) + ":::\n"
+
+    def row2_y(flag):
+        from decktile.render.ir import assemble_css
+
+        css = assemble_css(base_css(), default_theme(), (1280, 720))
+        doc = HTML(string=render(parse(md % flag), default_theme(), css, (1280, 720))).render()
+        page = doc.pages[0]._page_box
+
+        def walk(box):
+            yield box
+            for c in getattr(box, "children", []):
+                yield from walk(c)
+
+        ys = [b.position_y for b in walk(page) if getattr(b, "element_tag", "") == "h3" and "C2" in "".join(b.element.itertext())]
+        return ys[0], page.height
+
+    plain, h = row2_y("plain-grid")
+    filled, _ = row2_y("fill")
+    assert filled > plain + h * 0.1
+    assert "grid fill" in _full_page(md % "fill")
