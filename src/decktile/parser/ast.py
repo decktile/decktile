@@ -33,6 +33,8 @@ class Meta:
     pygments_style: str = "default"
     seaborn_theme: str = ""
     pdg_theme: str = ""
+    # "native": diagrams drawn 1:1 at their column's width, 1em = the slide's body text
+    pdg_scale: str = ""
     theme_variant: str = "light"
     transition: str = ""
     autoplay: int = 7

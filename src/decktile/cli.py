@@ -194,7 +194,7 @@ def _build(
         doc.meta.background,
     )
 
-    html = render_html(doc, theme_css, css, dims, doc.meta.logo)
+    html = render_html(doc, theme_css, css, dims, doc.meta.logo, base_url=f"{file.parent}/")
     html_path = out_dir / f"{stem}.html"
     html_path.write_text(html, encoding="utf-8")
     typer.echo(f"Wrote {html_path} ({len(html)} bytes)")

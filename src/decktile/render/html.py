@@ -15,7 +15,7 @@ from pygments.lexers import TextLexer, get_lexer_by_name
 from pygments.util import ClassNotFound
 
 from decktile.parser.ast import Document
-from decktile.render.ir import Elem, SlideIR, build_ir
+from decktile.render.ir import Elem, SlideIR, build_ir, fit_pdg_columns
 
 _pygments_style = "default"
 
@@ -53,7 +53,7 @@ def base_css() -> str:
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
-def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, int], logo: str = "") -> str:
+def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, int], logo: str = "", base_url: str = ".") -> str:
     from decktile.render.seaborn import set_palette
 
     global _pygments_style
@@ -61,6 +61,7 @@ def render(doc: Document, theme_css: str, assembled_css: str, dims: tuple[int, i
     set_palette(doc.meta.seaborn_theme)
 
     ir_slides = build_ir(doc, base_css(), theme_css)
+    fit_pdg_columns(ir_slides, doc, assembled_css, dims, base_url)
     return render_from_ir(ir_slides, doc, assembled_css, dims)
 
 

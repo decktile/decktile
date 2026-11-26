@@ -66,6 +66,7 @@ def parse(input_text: str) -> Document:
         pygments_style=raw_meta.pop("pygments_style", "default"),
         seaborn_theme=raw_meta.pop("seaborn_theme", None) or Meta.seaborn_theme,
         pdg_theme=raw_meta.pop("pdg_theme", None) or Meta.pdg_theme,
+        pdg_scale=str(raw_meta.pop("pdg_scale", "") or ""),
         theme_variant=raw_meta.pop("variant", Meta.theme_variant),
         transition=raw_meta.pop("transition", Meta.transition),
         autoplay=raw_meta.pop("autoplay", Meta.autoplay),

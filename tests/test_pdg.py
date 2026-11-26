@@ -57,3 +57,46 @@ def test_animated_pdg_moves_in_html_and_stays_still_in_print():
     assert still.svg_live == ""  # no animation, no second copy
     html = _render_elem(moving)
     assert 'class="pdg-live"' in html and 'class="pdg-still"' in html
+
+
+def test_body_text_px_follows_section_and_p_sizes():
+    from decktile.theme.parser import body_text_px
+
+    assert body_text_px("section { font-size: 18pt; } p { font-size: 0.8em; }") == 19.2
+    assert body_text_px("section { font-size: 20px; }") == 20
+    assert body_text_px("p { font-size: 1.5rem; }") == 24
+
+
+NATIVE = """---
+title: t
+pdg_scale: %s
+---
+
+## Native
+
+```pdg
+graph layout=column align=stretch
+group r layout=row gap=10 justify=fill { a "A"; b "B" }
+```
+"""
+
+
+def test_native_scale_draws_diagrams_one_to_one_at_body_size():
+    """pdg_scale: native renders each diagram as wide as its column (drawn 1:1) and
+    gives nodes the slide's body size; without it, diagrams keep pdg's own sizes."""
+    import re
+
+    from decktile.parser.markdown import parse
+    from decktile.render.html import base_css, default_theme, render
+    from decktile.render.ir import assemble_css
+
+    css = assemble_css(base_css(), default_theme(), (1280, 720))
+
+    def svg_of(mode):
+        html = render(parse(NATIVE % mode), default_theme(), css, (1280, 720))
+        return html[html.index('<div class="pdg-plot"') :]
+
+    native, plain = svg_of("native"), svg_of("")
+    assert float(re.search(r'<svg[^>]* width="([\d.]+)"', native)[1]) > 1000  # the full column
+    assert float(re.search(r'<svg[^>]* width="([\d.]+)"', plain)[1]) < 300  # natural size
+    assert 'font-size="24"' in native and 'font-size="14"' in plain  # body (18pt), pdg default

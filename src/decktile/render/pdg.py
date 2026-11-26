@@ -29,14 +29,14 @@ group { fill: none; stroke: rgba(143,211,255,0.55); stroke-dasharray: 4 3; color
 edge { stroke: #8fd3ff; color: #eaf4ff; }"""
 
 
-def theme_css(font_family: str = "", font_size: int = 0, tag_colors: dict[str, tuple[str, str]] | None = None) -> str:
+def theme_css(font_family: str = "", font_size: float = 0, tag_colors: dict[str, tuple[str, str]] | None = None) -> str:
     """Slide theme as a predictygraph stylesheet."""
     rules = []
     graph = []
     if font_family:
         graph.append(f"font-family: {font_family};")
     if font_size:
-        graph.append(f"font-size: {int(font_size)}px;")
+        graph.append(f"font-size: {font_size:g}px;")
     if graph:
         rules.append("graph { " + " ".join(graph) + " }")
     for tag, (fill, stroke) in (tag_colors or {}).items():
@@ -55,12 +55,13 @@ def theme_css(font_family: str = "", font_size: int = 0, tag_colors: dict[str, t
 def render_pdg_svg(
     content: str,
     font_family: str = "",
-    font_size: int = 0,
+    font_size: float = 0,
     tag_colors: dict[str, tuple[str, str]] | None = None,
     blueprint: bool = False,
     animated: bool = False,
     theme: str = "",
     flush: bool = False,
+    min_width: float = 0,
 ) -> str | None:
     """Render a predictygraph diagram to SVG, or None if it fails to parse.
 
@@ -82,8 +83,9 @@ def render_pdg_svg(
     # A diagram's own theme= wins over the slide theme; otherwise slide theme
     # goes first so css inside the block overrides it.
     text = content if own_theme else "css {\n" + css + "\n}\n" + content
-    if flush:
-        text = "css { graph { padding: 0; } }\n" + text
+    graph = ("padding: 0; " if flush else "") + (f"min-width: {min_width:.2f}px; " if min_width else "")
+    if graph:
+        text = "css { graph { " + graph + "} }\n" + text
     try:
         svg = predictygraph.render(text, t=None if animated else 0, theme=deck_theme)
     except Exception:

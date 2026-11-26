@@ -12,6 +12,7 @@ logic between renderers.
 from __future__ import annotations
 
 import html
+import json
 import re
 from dataclasses import dataclass, field
 from html import escape
@@ -43,7 +44,7 @@ from decktile.parser.ast import (
     Text,
 )
 from decktile.plugins.layouts import KNOWN_LAYOUTS
-from decktile.theme.parser import parse_theme
+from decktile.theme.parser import body_text_px, parse_theme
 
 
 @dataclass
@@ -155,6 +156,7 @@ class SlideIR:
 def build_ir(doc: Document, base_css: str = "", theme_css: str = "") -> list[SlideIR]:
     """Convert a Document AST into a list of SlideIR objects."""
     styles = resolve_styles(base_css, theme_css) if base_css else {}
+    styles["pdg_native"] = doc.meta.pdg_scale == "native"
     if doc.meta.pdg_theme:
         styles["pdg_theme"] = doc.meta.pdg_theme
     slides = []
@@ -220,6 +222,7 @@ def resolve_styles(base_css: str, theme_css: str) -> dict:
     s["ink_rgb_hex"] = _rgb_to_hex(s.get("ink_rgb", (51, 51, 51)))
     s["muted_rgb_hex"] = _rgb_to_hex(s.get("muted_rgb", (119, 119, 119)))
     s["accent_rgb_hex"] = _rgb_to_hex(s.get("accent_rgb", (2, 136, 209)))
+    s["pdg_font_px"] = body_text_px(base_css + "\n" + theme_css)
     return s
 
 
@@ -390,6 +393,51 @@ def normalize_viewbox(svg: str) -> str:
     return svg.replace(m.group(0), f'viewBox="0 0 {new_w:g} {new_h:g}"', 1)
 
 
+def pdg_svgs(content: str, opts: dict) -> tuple[str, str]:
+    """(still frame, animated copy or "" when the diagram doesn't move) for a pdg block."""
+    from decktile.render.pdg import render_pdg_svg
+
+    svg = render_pdg_svg(content, **opts) or ""
+    live = render_pdg_svg(content, animated=True, **opts) or ""
+    return svg, (live if svg and "<animate" in live else "")
+
+
+def walk_elems(elems: list[Elem]):
+    for e in elems:
+        yield e
+        yield from walk_elems(e.children)
+
+
+def fit_pdg_columns(ir_slides: list[SlideIR], doc: Document, assembled_css: str, dims: tuple[int, int], base_url: str = ".") -> None:
+    """``pdg_scale: native``: lay the slides out once, measure the column each diagram
+    sits in, and re-render the diagram exactly that wide (graph min-width; its stretched
+    tiers take the space). The slide then draws it 1:1, so its font sizes are real slide
+    sizes. A diagram wider than its column still shrinks to fit."""
+    targets = {e.id: e for e in walk_elems([x for s in ir_slides for x in s.elements]) if e.attrs.get("pdg_opts")}
+    if not targets:
+        return
+    from weasyprint import HTML
+
+    from decktile.render.html import render_from_ir
+
+    pages = HTML(string=render_from_ir(ir_slides, doc, assembled_css, dims), base_url=base_url).render().pages
+    widths: dict[str, float] = {}
+
+    def walk(box):
+        el = getattr(box, "element", None)
+        eid = el.get("data-decktile-id") if el is not None else None
+        if el is not None and eid in targets and eid not in widths and "pdg-plot" in (el.get("class") or ""):
+            widths[eid] = box.width
+        for c in getattr(box, "children", None) or []:
+            walk(c)
+
+    for page in pages:
+        walk(page._page_box)
+    for eid, w in widths.items():
+        e = targets[eid]
+        e.svg, e.svg_live = pdg_svgs(str(e.content), {**json.loads(e.attrs["pdg_opts"]), "min_width": w})
+
+
 def _stack_arrow_svg(color: str) -> str:
     """Down arrow for a stack gap: shaft and head, scaled to the gap's height. A real SVG
     (not CSS borders), so PDF and ODP draw the same thing; the colour is the theme's
@@ -451,25 +499,29 @@ def _convert_node(node, styles: dict) -> Elem:
                 svg = ""
                 pdf = b""
         elif node.language == "pdg":
-            from decktile.render.pdg import render_pdg_svg
-
-            fam = styles.get("font_body_family", "")
-            size = styles.get("font_body", 18)
-            tags = styles.get("tag_colors", {})
+            native = styles.get("pdg_native", False)
             opts = dict(
-                font_family=fam,
-                font_size=size,
-                tag_colors=tags,
+                font_family=styles.get("font_body_family", ""),
+                # pdg_scale: native: 1em in a diagram is the slide's body text; otherwise
+                # nodes keep pdg's own default size, as they always have
+                font_size=styles.get("pdg_font_px", 0) if native else 0,
+                tag_colors=styles.get("tag_colors", {}),
                 blueprint=styles.get("pdg_blueprint", False),
                 theme=styles.get("pdg_theme", ""),
                 flush=styles.get("pdg_flush", False),
             )
-            svg = render_pdg_svg(node.content, **opts) or ""
-            live = render_pdg_svg(node.content, animated=True, **opts) or ""
-            # only keep the animated copy when the diagram actually moves
-            svg_live = live if svg and "<animate" in live else ""
+            svg, svg_live = pdg_svgs(node.content, opts)
+            # native: fit_pdg_columns re-renders it at its column's width, with these options
+            attrs = {"pdg_opts": json.dumps(opts)} if native else {}
             return Elem(
-                kind="code", content=node.content, text=node.content, language=node.language, font_size=fs, svg=svg, svg_live=svg_live
+                kind="code",
+                content=node.content,
+                text=node.content,
+                language=node.language,
+                font_size=fs,
+                svg=svg,
+                svg_live=svg_live,
+                attrs=attrs,
             )
         return Elem(kind="code", content=node.content, text=node.content, language=node.language, font_size=fs, svg=svg, pdf=pdf)
     elif isinstance(node, ListNode):

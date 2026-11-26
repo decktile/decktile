@@ -30,6 +30,7 @@ good out of the box with minimal markup, this is the one.
 title: My Talk
 theme: dynamia           # built-in theme name (default, dynamia, kubecon_japan), or a theme folder path
 pdg_theme: themes/brand.toml     # palette for ```pdg diagrams: predictygraph theme name or .toml path
+pdg_scale: native                # ```pdg drawn 1:1 at their column's width; 1em in a diagram = the slide's body text
 variant: dark            # global dark mode
 logo: assets/logo.svg    # top-right logo (replaces theme default)
 logo_dark: assets/logo-white.png  # dark mode variant of logo
@@ -340,6 +341,17 @@ The arrow block accepts text or images:
 {icon:arrow-right size=24}
 :::
 ```
+
+## Diagram scale
+
+By default a ```pdg diagram is scaled to fit its column, so its text comes out at
+whatever size the scale gives. With `pdg_scale: native` in the front matter, decktile
+lays the slides out once, measures each diagram's column and renders the diagram exactly
+that wide: the slide draws it 1:1, so a diagram's font sizes are real slide sizes. Its
+stretched tiers (`align=stretch`, `justify=fill`) take the width; a diagram that is wider
+than its column at its own sizes still shrinks to fit. In this mode the graph's font size
+is the theme's body text size (`section` and `p` font sizes), so `1em` in a diagram means
+body text, and `0.8em` stays relative to it when the theme changes.
 
 ## Stacks
 

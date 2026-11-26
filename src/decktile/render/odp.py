@@ -37,7 +37,7 @@ def render(doc: ASTDocument, output_path: Path, base_css: str = "", theme_css: s
     (the old default 28x15.75cm) would clip content: the geometry pass
     lays out frames assuming the page equals the content's real size.
     """
-    from decktile.render.ir import assemble_css
+    from decktile.render.ir import assemble_css, fit_pdg_columns
     from decktile.render.odf.geometry import PX_TO_CM
     from decktile.render.seaborn import set_palette
 
@@ -56,6 +56,7 @@ def render(doc: ASTDocument, output_path: Path, base_css: str = "", theme_css: s
     )
 
     ir_slides = build_ir(doc, base_css, theme_css)
+    fit_pdg_columns(ir_slides, doc, css, dims, f"{source_dir}/" if source_dir else ".")
     section_box, global_tags = annotate_geometry(ir_slides, doc, css, dims, source_dir)
 
     odp = Document("presentation")

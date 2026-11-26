@@ -229,6 +229,31 @@ def _parse_border_color(border: str) -> str:
     return parts[-1] if parts else ""
 
 
+def body_text_px(css: str) -> float:
+    """The slide's body text size in CSS px: the last `p` font size, relative to the last
+    `section` one (pt = 4/3 px, em/% relative to the parent, rem to 16px). This is what
+    1em in a diagram means with `pdg_scale: native`."""
+    sizes: dict[str, str] = {}
+    for rule in tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True):
+        if rule.type != "qualified-rule":
+            continue
+        sels = {s.strip() for s in tinycss2.serialize(rule.prelude).split(",")}
+        for decl in tinycss2.parse_declaration_list(rule.content, skip_comments=True, skip_whitespace=True):
+            if decl.type == "declaration" and decl.lower_name == "font-size":
+                for sel in sels & {"section", "p"}:
+                    sizes[sel] = tinycss2.serialize(decl.value).strip()
+    section = _css_px(sizes.get("section", ""), 16.0)
+    return round(_css_px(sizes.get("p", ""), section), 2)
+
+
+def _css_px(value: str, parent: float) -> float:
+    m = re.fullmatch(r"([\d.]+)(px|pt|rem|em|%)", value.replace(" ", ""))
+    if not m:
+        return parent
+    n, unit = float(m.group(1)), m.group(2)
+    return {"px": n, "pt": n * 4 / 3, "rem": n * 16, "em": n * parent, "%": n * parent / 100}[unit]
+
+
 def _resolve_color_var(color: str, styles: dict) -> str:
     """Resolve var(--name) to its value from CSS variables."""
     m = re.match(r"var\((--[\w-]+)\)", color.strip())
