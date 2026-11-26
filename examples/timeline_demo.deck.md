@@ -72,3 +72,34 @@ Same idea, rotated: cards alternate above/below a horizontal spine.
 Keep horizontal-timeline card text brief (a title plus one short line)
 -- cards have a fixed height so the connector always reaches the spine.
 -->
+
+---
+
+@layout timeline-steps
+
+## Agenda
+
+::: grid {cols=4}
+::: card {label="Part"}
+### 01
+Why GPUs sit idle
+:::
+::: card {label="Part"}
+### 02
+Sharing one GPU
+:::
+::: card {label="Part"}
+### 03
+Scheduling across nodes
+:::
+::: card {label="Part"}
+### 04
+Results
+:::
+:::
+
+<!--
+timeline-steps: columns on rules with a marker on top, nothing alternates.
+{label} prints above the ### heading. Good for agendas and numbered parts.
+-->
+

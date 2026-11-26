@@ -247,3 +247,37 @@ def test_grid_fill_spreads_rows_over_the_slide():
     filled, _ = row2_y("fill")
     assert filled > plain + h * 0.1
     assert "grid fill" in _full_page(md % "fill")
+
+
+def test_timeline_steps_columns_with_label_above_heading():
+    """timeline-steps: equal columns side by side, {label} above the ### heading."""
+    from weasyprint import HTML
+
+    from decktile.render.ir import assemble_css
+
+    md = "---\ntitle: t\n---\n\n@layout timeline-steps\n\n## Agenda\n\n::: grid {cols=4}\n"
+    md += "".join(f'::: card {{label="Part"}}\n### 0{i}\nTopic {i}\n:::\n' for i in range(1, 5)) + ":::\n"
+    css = assemble_css(base_css(), default_theme(), (1280, 720))
+    page = HTML(string=render(parse(md), default_theme(), css, (1280, 720))).render().pages[0]._page_box
+
+    def walk(box):
+        yield box
+        for c in getattr(box, "children", []):
+            yield from walk(c)
+
+    def cls(b):
+        el = getattr(b, "element", None)
+        return el.get("class", "") if el is not None else ""
+
+    cards = [b for b in walk(page) if getattr(b, "element_tag", "") == "div" and cls(b).split()[:1] == ["card"]]
+    cards = list({id(b.element): b for b in cards}.values())
+    assert len(cards) == 4
+    xs = [c.position_x for c in cards]
+    ws = [c.width for c in cards]
+    assert xs == sorted(xs) and len({round(x) for x in xs}) == 4
+    assert max(ws) - min(ws) < 2
+    ys = {round(c.position_y) for c in cards}
+    assert len(ys) == 1  # nothing alternates
+    label = next(b for b in walk(page) if "timeline-label" in cls(b))
+    h3 = next(b for b in walk(page) if getattr(b, "element_tag", "") == "h3")
+    assert label.position_y < h3.position_y

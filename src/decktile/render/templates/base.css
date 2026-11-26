@@ -576,6 +576,44 @@ LOGO_CSS
 }
 .layout-timeline-horizontal .card:nth-child(even)::after { top: -2em; }
 .layout-timeline-horizontal .card:nth-child(odd)::after  { bottom: -2em; }
+/* timeline-steps: the agenda variant of the timeline. Items sit side by side
+   in equal columns, each on its own rule that runs from a marker at the top
+   down to the bottom of the slide; nothing alternates. {label="Part"} prints
+   above the card's ### heading instead of on a spine. Themes restyle the
+   marker (::before) and the rule (border-left). */
+.layout-timeline-steps .slide-body { display: flex; flex-direction: column; padding-bottom: 0; }
+.layout-timeline-steps .grid { display: flex; flex-direction: row; flex: 1; gap: 0; margin: 2em 0 0; padding-left: 0.4em; } /* room for the first marker */
+.layout-timeline-steps .card {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: none;
+  border: none;
+  border-left: 0.06em solid var(--color-accent-primary);
+  border-radius: 0;
+  padding: 0.4em 0.8em 0 1em;
+}
+.layout-timeline-steps .card::before {
+  content: "";
+  position: absolute;
+  left: -0.33em;
+  top: -0.3em;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+}
+.layout-timeline-steps .timeline-label {
+  position: static;
+  font-size: 0.75em;
+  font-weight: 400;
+  color: inherit;
+  margin-bottom: 0.1em;
+}
+.layout-timeline-steps .card h3 { font-size: 2.4em; line-height: 1; margin: 0 0 0.4em; }
+
 /* {label="..."}: short name printed directly on the spine, next to
    this card's own dot -- distinct from the card's fuller ### header */
 .timeline-label {

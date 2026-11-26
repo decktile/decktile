@@ -156,6 +156,7 @@ places that should be one. PRs that consolidate repeated logic are welcome.
 | `@layout ecosystem` | Compact stacked layout for partner/device logos. Small labels, uniform image sizing |
 | `@layout timeline-vertical` | Cards alternate left/right of a central vertical spine, connected by stubs |
 | `@layout timeline-horizontal` | Cards alternate above/below a central horizontal spine |
+| `@layout timeline-steps` | Agenda-style: equal columns, each on a rule from a marker at the top; `{label}` sits above the heading |
 | Custom | `@layout <name>` adds CSS class `layout-<name>`, style via frontmatter `style:` block |
 
 ### Compare layout
@@ -284,6 +285,30 @@ Next major
 `timeline-horizontal` cards have a fixed height (keep text brief -- a
 title plus one short line) so the connector stub reliably reaches the
 spine regardless of content length.
+
+`timeline-steps` is the agenda variant: no spine and no alternating, every
+item gets a column with a marker and a rule down the slide.
+
+```markdown
+@layout timeline-steps
+
+## Agenda
+
+::: grid {cols=3}
+::: card {label="Part"}
+### 01
+Industry trends
+:::
+::: card {label="Part"}
+### 02
+About HAMi
+:::
+::: card {label="Part"}
+### 03
+Use cases
+:::
+:::
+```
 
 ### Section labels and side images
 
