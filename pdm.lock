@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs", "plot"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:bd489359f744485f32f05f0231bddb8ff1998dd7c1c5dfcb5593037a3842933e"
+content_hash = "sha256:a2b47b4c92bdc455c6d5985137d755fa073e253af7f28a5d98b56090f9b9c31b"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -1928,7 +1928,7 @@ files = [
 
 [[package]]
 name = "predictygraph"
-version = "0.3.0"
+version = "0.3.6"
 requires_python = ">=3.11"
 summary = "Predictable graphs: a readable, CSS-styled diagram DSL with per-group layouts, rendered to SVG/APNG"
 groups = ["default"]
@@ -1938,8 +1938,24 @@ dependencies = [
     "typer>=0.26.8",
 ]
 files = [
-    {file = "predictygraph-0.3.0-py3-none-any.whl", hash = "sha256:954c3fb4938051975655f633032340930fe4c265f125e4084a94cc36b07cc489"},
-    {file = "predictygraph-0.3.0.tar.gz", hash = "sha256:d45a827aa7bdd90a00dbdadb6a57ff256f88c00902424817aaae6dba69a3951c"},
+    {file = "predictygraph-0.3.6-py3-none-any.whl", hash = "sha256:2cfad081a3f5fac15799e996fd7fb0d6857245818453b92580a06e471f307881"},
+    {file = "predictygraph-0.3.6.tar.gz", hash = "sha256:3a043dd1944fdd1f552bf534ad71be3f3d8d88d96d564eaac852f1d586dac737"},
+]
+
+[[package]]
+name = "predictygraph"
+version = "0.3.6"
+extras = ["icons"]
+requires_python = ">=3.11"
+summary = "Predictable graphs: a readable, CSS-styled diagram DSL with per-group layouts, rendered to SVG/APNG"
+groups = ["default"]
+dependencies = [
+    "predictygraph==0.3.6",
+    "python-lucide>=0.5.0",
+]
+files = [
+    {file = "predictygraph-0.3.6-py3-none-any.whl", hash = "sha256:2cfad081a3f5fac15799e996fd7fb0d6857245818453b92580a06e471f307881"},
+    {file = "predictygraph-0.3.6.tar.gz", hash = "sha256:3a043dd1944fdd1f552bf534ad71be3f3d8d88d96d564eaac852f1d586dac737"},
 ]
 
 [[package]]
