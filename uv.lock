@@ -826,7 +826,7 @@ requires-dist = [
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.1.0" },
     { name = "odfdo", specifier = ">=3.27.2" },
     { name = "pillow", marker = "extra == 'plot'", specifier = ">=11.0.0" },
-    { name = "predictygraph", extras = ["icons"], specifier = ">=0.3.7" },
+    { name = "predictygraph", extras = ["icons"], specifier = ">=0.3.11" },
     { name = "pygments-styles", specifier = ">=0.3.0" },
     { name = "python-frontmatter", specifier = ">=1.3.0" },
     { name = "python-lucide", specifier = ">=0.5.0" },
@@ -1914,16 +1914,16 @@ wheels = [
 
 [[package]]
 name = "predictygraph"
-version = "0.3.7"
+version = "0.3.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pillow" },
     { name = "tinycss2" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/f8/a60ede1c6de02f0359b1811a0735bc83f68961f26a5472abbf8933748023/predictygraph-0.3.7.tar.gz", hash = "sha256:3054d5d4fa8a2735008053be9756eb1217c23a2c65ace737cb97f8a095ef142d", size = 157800, upload-time = "2026-11-26T07:50:34.516Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/83/d0e0e7a00cd6fa84aef3e0f22acd2d6defc553ac6759ac2c14ed978a292b/predictygraph-0.3.11.tar.gz", hash = "sha256:ac30952dc7a4ad13b2bf17f14ab8362bc2d4eb11cf4dde925405b790c9ecb0da", size = 159083, upload-time = "2026-11-26T16:07:33.212Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/d4/22367f1e4f86e996bb2a643a582d602fccb3fb710597a3941154914a24ec/predictygraph-0.3.7-py3-none-any.whl", hash = "sha256:1b971a9fd8cfc29fcda9672210dabdd54e33649da11590344471e6b5c384df49", size = 167879, upload-time = "2026-11-26T07:50:33.46Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/9a/78cddb1df29f3698bf9dd8b71a7815fbd573db452b5d8c27a7213888ea45/predictygraph-0.3.11-py3-none-any.whl", hash = "sha256:9d4a73638ca17752c1a987020c55804b068fd2939ece02a77fd03546d79a6804", size = 168606, upload-time = "2026-11-26T16:07:32.252Z" },
 ]
 
 [package.optional-dependencies]
