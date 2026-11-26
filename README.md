@@ -341,12 +341,39 @@ The arrow block accepts text or images:
 :::
 ```
 
+## Stacks
+
+`::: stack` puts any blocks (tables, ```pdg diagrams, cards, text) one under another.
+Every block is as wide as the stack and every gap is the same (`gap=`, default 0.8em),
+so tiers line up on both sides without hand-tuned widths. A ```pdg diagram inside a
+stack drops its outer margin and fills the width, so its boxes meet the table's edges
+(`graph padding=` still wins). A `::: arrow` fence between two blocks draws a down
+arrow in that gap; `{arrows}` puts one in every gap. The arrow takes the theme accent;
+set CSS `--stack-arrow-color` to change it (HTML, PDF and ODP).
+
+````markdown
+::: stack {gap=1.2em}
+| Team | Cost |
+| --- | --- |
+| R&D | 2,400 |
+
+::: arrow
+:::
+
+```pdg
+graph layout=row
+a "Job Details"; b "Export Records"
+```
+:::
+````
+
 ## Fenced blocks
 
 ```
 ::: grid {cols=2}              # responsive grid
 ::: grid {cols=3}              # 3-column grid
 ::: grid {cols=5, fill}        # rows spread over the rest of the slide (no empty band below)
+::: stack {gap=1.2em, arrows}   # blocks one under another, same width, equal gaps; ::: arrow inside (or {arrows}) draws down arrows
 ::: card                        # basic card
 ::: card{ tag="green" }         # colored left border + background
 ::: card{ tag="quote" }         # accent left border, italic, no fill

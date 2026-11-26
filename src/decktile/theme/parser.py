@@ -237,9 +237,22 @@ def _resolve_color_var(color: str, styles: dict) -> str:
     return color
 
 
+def _var(styles: dict, *names: str) -> str:
+    """First of the CSS custom properties that is set, with var(--x) chains resolved."""
+    val = next((styles[n] for n in names if styles.get(n)), "")
+    for _ in range(8):  # var(--a) -> var(--b) -> #hex; bounded against cycles
+        m = re.fullmatch(r"var\((--[\w-]+)\)", val.strip())
+        if not m:
+            break
+        val = styles.get(m.group(1), "")
+    return val
+
+
 def _build_theme_dict(styles: dict) -> dict:
     ink = _to_rgb(styles.get("--ink", styles.get("--color-foreground", "")))
     return {
+        # ::: stack arrows: --stack-arrow-color, else the theme accent
+        "stack_arrow_hex": _var(styles, "--stack-arrow-color", "--accent", "--color-accent"),
         "ink_rgb": ink,
         "ink_rgb_hex": _rgb_to_hex(ink),
         "muted_rgb": _to_rgb(styles.get("--muted", styles.get("--color-dimmed", ""))),

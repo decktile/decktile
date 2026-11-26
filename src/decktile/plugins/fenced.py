@@ -12,7 +12,7 @@ import re
 
 from markdown_it import MarkdownIt
 
-from decktile.parser.ast import Arrow, Card, CodeBlock, Grid, Node, Notes
+from decktile.parser.ast import Arrow, Card, CodeBlock, Grid, Node, Notes, Stack
 from decktile.plugins.lucide import _ICON_RE, lucide_plugin
 
 _CARD_MD = MarkdownIt("gfm-like", {"breaks": False, "html": True, "linkify": True})
@@ -64,6 +64,8 @@ def extract_fenced(content: str) -> tuple[str, list[Node]]:
                 nodes.append(_parse_card(inner_text, rest))
             elif typ == "grid":
                 nodes.append(_parse_grid(inner_text, rest))
+            elif typ == "stack":
+                nodes.append(_parse_stack(inner_text, rest))
             elif typ == "arrow":
                 nodes.append(_parse_arrow(inner_text))
             elif typ == "notes":
@@ -192,6 +194,22 @@ def _parse_grid(inner_text: str, rest: str) -> Grid:
     if cols == 0:
         cols = len(children) or 2
     return Grid(cols=cols, class_=class_, children=children)
+
+
+def _parse_stack(inner_text: str, rest: str) -> Stack:
+    """``::: stack {gap=1.2em, arrows, cls}``: any markdown blocks, one under another."""
+    from decktile.parser.markdown import parse_blocks  # the full block parser, lazily (it imports us)
+
+    stack = Stack(children=parse_blocks(inner_text))
+    for attr in " ".join(rest.split()[1:]).strip("{}").split(","):
+        k, _, v = (p.strip().strip('"') for p in attr.partition("="))
+        if k == "gap":
+            stack.gap = v
+        elif k == "arrows":
+            stack.arrows = True
+        elif k:
+            stack.class_ = f"{stack.class_} {k}".strip()
+    return stack
 
 
 def _parse_arrow(text: str) -> Arrow:

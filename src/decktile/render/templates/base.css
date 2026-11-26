@@ -294,6 +294,24 @@ LOGO_CSS
   .pdg-animated .pdg-still { display: block; }
 }
 
+/* ::: stack: blocks one under another, all as wide as the stack, one gap between each
+   (or, with `arrows`, an arrow filling the gap). Diagrams fill the width edge to edge. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--stack-gap, 0.8em);
+  width: 100%;
+}
+.stack.arrows { gap: 0; }
+.stack > * { margin: 0; }
+.stack > table { width: 100%; }
+.slide .stack > .pdg-plot svg { display: block; width: 100%; max-width: none; max-height: none; overflow: visible; }
+.stack-arrow { height: var(--stack-gap, 0.8em); display: flex; justify-content: center; }
+/* with arrows the arrow is the gap; blocks next to each other without one keep it */
+.stack.arrows > :not(.stack-arrow) + :not(.stack-arrow) { margin-top: var(--stack-gap, 0.8em); }
+.stack-arrow svg { height: 100%; width: auto; }
+
 /* @row: put the following blocks side by side, sharing the width equally */
 .row {
   display: flex;

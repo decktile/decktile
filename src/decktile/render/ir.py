@@ -36,6 +36,7 @@ from decktile.parser.ast import (
     Quote,
     Row,
     SoftBreak,
+    Stack,
     Strikethrough,
     Strong,
     Table,
@@ -389,6 +390,17 @@ def normalize_viewbox(svg: str) -> str:
     return svg.replace(m.group(0), f'viewBox="0 0 {new_w:g} {new_h:g}"', 1)
 
 
+def _stack_arrow_svg(color: str) -> str:
+    """Down arrow for a stack gap: shaft and head, scaled to the gap's height. A real SVG
+    (not CSS borders), so PDF and ODP draw the same thing; the colour is the theme's
+    --stack-arrow-color (else its accent), set here because PDF ignores currentColor."""
+    c = escape(color or "#888888")
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 40" width="24" height="40">'
+        f'<rect x="9" y="0" width="6" height="25" fill="{c}"/><path d="M0 23 H24 L12 40 Z" fill="{c}"/></svg>'
+    )
+
+
 def _convert_node(node, styles: dict) -> Elem:
     """Convert a single AST node to an IR element with resolved styles."""
     base = Elem(
@@ -450,6 +462,7 @@ def _convert_node(node, styles: dict) -> Elem:
                 tag_colors=tags,
                 blueprint=styles.get("pdg_blueprint", False),
                 theme=styles.get("pdg_theme", ""),
+                flush=styles.get("pdg_flush", False),
             )
             svg = render_pdg_svg(node.content, **opts) or ""
             live = render_pdg_svg(node.content, animated=True, **opts) or ""
@@ -485,6 +498,19 @@ def _convert_node(node, styles: dict) -> Elem:
             color=base.muted,
             accent=base.accent,
         )
+    elif isinstance(node, Stack):
+        # diagrams in a stack drop pdg's outer margin, so their edges meet the stack's
+        # ::: arrow between two blocks puts an arrow in that gap; {arrows} in every gap
+        children: list[Elem] = []
+        for c in node.children:
+            arrow = isinstance(c, Arrow)
+            if arrow or (node.arrows and children and children[-1].kind != "stack-arrow"):
+                children.append(Elem(kind="stack-arrow", svg=_stack_arrow_svg(styles.get("stack_arrow_hex", ""))))
+            if not arrow:
+                children.append(_convert_node(c, {**styles, "pdg_flush": True}))
+        has_arrows = any(k.kind == "stack-arrow" for k in children)
+        attrs = {"gap": node.gap} if node.gap else {}
+        return Elem(kind="stack", class_=f"{node.class_} arrows".strip() if has_arrows else node.class_, children=children, attrs=attrs)
     elif isinstance(node, Grid):
         children = [_convert_node(c, styles) for c in node.children]
         return Elem(kind="grid", cols=node.cols, class_=node.class_ or "", children=children)

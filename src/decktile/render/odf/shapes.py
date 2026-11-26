@@ -644,6 +644,8 @@ _RENDERERS: dict[str, Any] = {
     "card": _render_card,
     "grid": _render_grid,
     "row": _render_row,
+    "stack": _render_grid,
+    "stack-arrow": lambda elem, reg, add_file, source_dir, global_tags: _render_image_data(elem, elem.box, add_file),
     "speaker": _render_speaker,
     "side-image": _render_image,
     "video": _render_skip,

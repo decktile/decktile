@@ -200,6 +200,13 @@ def _render_elem(e: Elem) -> str:
         return s
     elif e.kind == "arrow":
         return f'<div class="card-arrow"{sid}>{e.content}</div>'
+    elif e.kind == "stack":
+        cls = f"stack {e.class_}".strip()
+        style = f' style="--stack-gap: {escape(e.attrs["gap"])}"' if e.attrs.get("gap") else ""
+        children = "\n".join(filter(None, (_render_elem(c) for c in e.children)))
+        return f'<div class="{cls}"{style}{sid}>\n{children}\n</div>'
+    elif e.kind == "stack-arrow":
+        return f'<div class="stack-arrow"{sid}>{e.svg}</div>'
     elif e.kind == "row":
         children = "\n".join(filter(None, (_render_elem(c) for c in e.children)))
         return f'<div class="row"{sid}>\n{children}\n</div>'

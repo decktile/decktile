@@ -84,6 +84,14 @@ def parse(input_text: str) -> Document:
     return Document(meta=meta, slides=slides)
 
 
+def parse_blocks(content: str) -> list:
+    """Markdown with ::: fences -> block nodes (a slide body, or a ::: stack's inside)."""
+    content, fence_nodes = extract_fenced(content)
+    md = MarkdownIt("gfm-like", {"breaks": True, "html": True, "linkify": True})
+    md.use(lucide_plugin)
+    return interleave_fences(_tokens_to_nodes(md.parse(content)), fence_nodes)
+
+
 def _parse_slide(content: str) -> Slide:
     notes = ""
     # Collect all HTML comments as speaker notes
@@ -108,15 +116,7 @@ def _parse_slide(content: str) -> Slide:
     content = re.sub(r"<!--(?!attr:).*?-->", "", content, flags=re.DOTALL).strip()
     content = preprocess_directives(content)
 
-    # Extract fenced blocks
-    content, fence_nodes = extract_fenced(content)
-
-    md = MarkdownIt("gfm-like", {"breaks": True, "html": True, "linkify": True})
-    md.use(lucide_plugin)
-    tokens = md.parse(content)
-    nodes = _tokens_to_nodes(tokens)
-
-    nodes = interleave_fences(nodes, fence_nodes)
+    nodes = parse_blocks(content)
     nodes = extract_attrs(nodes)
     nodes = group_cards(nodes)
 

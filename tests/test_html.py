@@ -281,3 +281,72 @@ def test_timeline_steps_columns_with_label_above_heading():
     label = next(b for b in walk(page) if "timeline-label" in cls(b))
     h3 = next(b for b in walk(page) if getattr(b, "element_tag", "") == "h3")
     assert label.position_y < h3.position_y
+
+
+STACK_MD = """---
+title: t
+---
+
+## Stack
+
+::: stack {gap=1em, arrows, bill}
+| A | B |
+| --- | --- |
+| 1 | 2 |
+
+```pdg
+graph layout=row gap=10
+x "left" width=200
+y "right" width=200
+```
+
+```pdg
+graph layout=row gap=10
+z "below" width=300
+```
+:::
+"""
+
+
+def test_stack_parses_any_blocks_with_arrows_between():
+    """::: stack: a table and diagrams in order, an arrow in each gap, gap and classes kept."""
+    html = _full_page(STACK_MD)
+    body = html[html.index('class="stack') :]
+    assert body.startswith('class="stack bill arrows" style="--stack-gap: 1em"')
+    order = [body.index(k) for k in ("<table", "stack-arrow", "pdg-plot", "stack-arrow", "pdg-plot")[:3]]
+    assert order == sorted(order)
+    assert body.count('class="stack-arrow"') == 2 * body.count('class="stack bill arrows"')  # one per gap
+
+
+def test_stack_diagrams_drop_the_pdg_margin():
+    """A diagram in a stack starts at its SVG's edge (no 16px margin), so its boxes line up
+    with the table above; outside a stack the margin stays."""
+    import re
+
+    def first_x(md):
+        html = _full_page(md)
+        svg = html[html.index('<div class="pdg-plot"') :]
+        return float(re.search(r'<rect x="([\d.]+)"', svg)[1])
+
+    assert first_x(STACK_MD) == 0
+    assert first_x(STACK_MD.replace("::: stack {gap=1em, arrows, bill}\n", "").replace("\n:::\n", "\n")) == 16
+
+
+def test_stack_arrow_fence_marks_one_gap():
+    """`::: arrow` between two blocks of a stack puts an arrow only in that gap."""
+    md = STACK_MD.replace("{gap=1em, arrows, bill}", "{gap=1em}").replace(
+        "\n```pdg\ngraph layout=row gap=10\nx", "\n::: arrow\n:::\n\n```pdg\ngraph layout=row gap=10\nx", 1
+    )
+    html = _full_page(md)
+    stacks = html.count('class="stack arrows"')
+    assert stacks and html.count('class="stack-arrow"') == stacks  # one arrow per stack: table -> first diagram
+    body = html[html.index('class="stack arrows"') :]
+    assert body.index("<table") < body.index("stack-arrow") < body.index("pdg-plot")
+
+
+def test_stack_arrow_takes_the_theme_colour_through_var_chains():
+    """--stack-arrow-color (or the accent), with var() chains resolved: PDF ignores currentColor."""
+    theme = default_theme() + "\n:root { --brand: #123456; --stack-arrow-color: var(--brand); }\n"
+    html = render(parse(STACK_MD), theme, base_css() + theme, (1280, 720))
+    arrow = html[html.index('class="stack-arrow"') :]
+    assert 'fill="#123456"' in arrow[: arrow.index("</svg>")]

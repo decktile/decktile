@@ -89,6 +89,17 @@ class Grid(Node):
 
 
 @dataclass
+class Stack(Node):
+    """``::: stack``: blocks (tables, diagrams, cards, text) one under another, all
+    as wide as the stack, with one gap between each and optionally an arrow in it."""
+
+    gap: str = ""
+    arrows: bool = False
+    class_: str = ""
+    children: list[Node] = field(default_factory=list)
+
+
+@dataclass
 class Card(Node):
     header: str = ""
     body: list[str] = field(default_factory=list)

@@ -112,6 +112,11 @@ Two or more adjacent `::: card` blocks auto-group into a grid. Wrap in
 `::: grid {cols=N}` to pin the column count or add a class; without it, cards are
 laid out at the count you wrote.
 
+For tiers of different blocks (a table over diagrams, say) use
+`::: stack {gap=1.2em, arrows}` instead of tuning widths and margins: every block is
+as wide as the stack, gaps are equal, diagrams lose their outer margin; a `::: arrow`
+fence between two blocks draws a down arrow in that gap (`{arrows}`: every gap).
+
 ````markdown
 ::: grid {cols=3}
 ::: card {tag=green}

@@ -60,6 +60,7 @@ def render_pdg_svg(
     blueprint: bool = False,
     animated: bool = False,
     theme: str = "",
+    flush: bool = False,
 ) -> str | None:
     """Render a predictygraph diagram to SVG, or None if it fails to parse.
 
@@ -67,8 +68,9 @@ def render_pdg_svg(
     translucent fills). ``animated`` keeps predictygraph's SMIL animation
     (``flow=``, ``border=``) for HTML; the default is a still frame, which PDF
     and ODP need. ``theme`` is the deck's ``pdg_theme`` (a predictygraph theme
-    name or ``.toml`` path): it replaces the slide's tag colours, the slide
-    font still applies.
+    name), it replaces the slide's tag colours, the slide
+    font still applies. ``flush`` drops the diagram's outer margin (``::: stack``), so
+    its boxes line up with the blocks above and below; ``graph padding=`` still wins.
     """
     import predictygraph
 
@@ -80,6 +82,8 @@ def render_pdg_svg(
     # A diagram's own theme= wins over the slide theme; otherwise slide theme
     # goes first so css inside the block overrides it.
     text = content if own_theme else "css {\n" + css + "\n}\n" + content
+    if flush:
+        text = "css { graph { padding: 0; } }\n" + text
     try:
         svg = predictygraph.render(text, t=None if animated else 0, theme=deck_theme)
     except Exception:
