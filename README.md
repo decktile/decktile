@@ -355,6 +355,7 @@ body text, and `0.8em` stays relative to it when the theme changes.
 
 A theme folder's `theme.toml` palette is also loaded into the slides as CSS variables
 (`:root { --ink: ...; }`), so `theme.css` and the diagrams share one set of colour names.
+Chart code gets the same colours as a `pal` dict: `plt.bar(x, y, color=pal["ink"])`.
 
 Slide classes for diagrams and columns (`@class ...`):
 

@@ -26,6 +26,7 @@ _DPI = 300
 _DEFAULT_PALETTE = "Paired"
 _THEME_DIR = Path(__file__).parent.parent / "themes"
 _palette: str | None = None
+_colors: dict[str, str] = {}
 _style: dict | None = None
 
 # CSS variable → matplotlib rcParam(s)
@@ -84,7 +85,7 @@ def _pdg_theme(name: str) -> dict | None:
     bg-alt = grid; hues in a fixed order are the colour cycle. An optional ``[seaborn]`` table
     overrides that: ``palette`` (palette keys or hex) and any matplotlib rcParam.
     """
-    from predictygraph.theme import ThemeError, load_theme
+    from predictygraph.theme import ThemeError, _resolve_aliases, load_theme
 
     local = _CHART_THEMES / f"{name}.toml"
     if not local.is_file() and (_THEME_DIR / f"{name}.css").is_file():
@@ -93,11 +94,12 @@ def _pdg_theme(name: str) -> dict | None:
         t = load_theme(str(local) if local.is_file() else name)
     except ThemeError:
         return None
-    pal = t.get("palette", {})
+    pal = _resolve_aliases(dict(t.get("palette", {})), name)
     extra = dict(t.get("seaborn", {}))
     order = extra.pop("palette", None) or [h for h in _HUE_ORDER if h in pal]
     style = {
         "seaborn_palette": [pal.get(c, c) for c in order],
+        "theme_palette": pal,
         "axes.facecolor": pal.get("surface", "#ffffff"),
         "figure.facecolor": pal.get("bg", "#ffffff"),
         "axes.edgecolor": pal.get("border"),
@@ -122,7 +124,9 @@ def _apply(style: dict) -> None:
     import matplotlib.pyplot as plt
     import seaborn as sns
 
+    global _colors
     palette = style.pop("seaborn_palette", _DEFAULT_PALETTE)
+    _colors = style.pop("theme_palette", {})
     sns.set_theme(style="darkgrid", palette=palette)
     plt.rcParams.update(style)
     _style, _palette = style, palette
@@ -196,7 +200,8 @@ def render_seaborn_svg(content: str) -> str | None:
         sns.set_palette(_palette or _DEFAULT_PALETTE)
         plt.figure(figsize=_DEFAULT_FIGSIZE)
 
-        exec(content, {"sns": sns, "plt": plt, "pd": pd, "np": np})
+        # pal: the theme's named colours, so charts say pal["ink"] instead of hex
+        exec(content, {"sns": sns, "plt": plt, "pd": pd, "np": np, "pal": dict(_colors)})
 
         buf = io.BytesIO()
         plt.savefig(buf, format="svg", dpi=_DPI, bbox_inches="tight")

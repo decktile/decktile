@@ -180,3 +180,17 @@ class TestPredictygraphThemes:
 
         with pytest.raises(FileNotFoundError):
             set_theme(str(tmp_path / "nope.toml"))
+
+
+def test_chart_code_gets_the_theme_palette_by_name(tmp_path):
+    """`pal["ink"]` in a chart is the theme's colour (aliases resolved): one palette for slides, diagrams, charts."""
+    import pytest
+
+    pytest.importorskip("seaborn")
+    import decktile.render.seaborn as sb
+
+    f = tmp_path / "brand.toml"
+    f.write_text('schema = 1\nextends = "hami"\n[palette]\nink = "blue"\n')
+    sb.set_theme(str(f))
+    svg = sb.render_seaborn_svg('plt.bar([0], [1], color=pal["ink"])')
+    assert svg and "#2563eb" in svg
