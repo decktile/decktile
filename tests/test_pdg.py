@@ -94,9 +94,10 @@ def test_native_scale_draws_diagrams_one_to_one_at_body_size():
 
     def svg_of(mode):
         html = render(parse(NATIVE % mode), default_theme(), css, (1280, 720))
-        return html[html.index('<div class="pdg-plot"') :]
+        return html[html.index('<div class="pdg-plot') :]
 
     native, plain = svg_of("native"), svg_of("")
     assert float(re.search(r'<svg[^>]* width="([\d.]+)"', native)[1]) > 1000  # the full column
     assert float(re.search(r'<svg[^>]* width="([\d.]+)"', plain)[1]) < 300  # natural size
     assert 'font-size="24"' in native and 'font-size="14"' in plain  # body (18pt), pdg default
+    assert 'class="pdg-plot pdg-native"' in native and "pdg-native" not in plain  # drawn 1:1, not stretched

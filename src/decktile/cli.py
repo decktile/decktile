@@ -77,9 +77,7 @@ def main(
     watch: bool = typer.Option(False, "-w", "--watch", help="Watch file and rebuild on changes"),
     debug: bool = typer.Option(False, "--debug", help="Dump AST + write debug CSS"),
     css: Path | None = typer.Option(None, "--css", help="Extra CSS file layered on top of the deck's theme"),
-    theme: Path | None = typer.Option(
-        None, "--theme", help="Theme folder (theme.css, optional theme.toml); overrides the deck's theme"
-    ),
+    theme: Path | None = typer.Option(None, "--theme", help="Theme folder (theme.css, optional theme.toml); overrides the deck's theme"),
 ):
     if not files:
         raise typer.Exit()

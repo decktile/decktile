@@ -139,7 +139,7 @@ def _render_elem(e: Elem) -> str:
         if e.language == "seaborn":
             return _render_seaborn_html(e.content, e.svg, sid)
         if e.language == "pdg":
-            return _render_pdg_html(e.content, e.svg, sid, e.svg_live)
+            return _render_pdg_html(str(e.content), e.svg, sid, e.svg_live, native=bool(e.attrs.get("pdg_opts")))
         return _highlight_code(e.content, e.language, sid)
     elif e.kind == "list":
         s = f"<ul{sid}>\n"
@@ -291,12 +291,13 @@ def _link_emails(escaped: str) -> str:
     return _EMAIL_RX.sub(r'<a href="mailto:\1">\1</a>', escaped)
 
 
-def _render_pdg_html(content: str, svg: str = "", sid: str = "", live: str = "") -> str:
+def _render_pdg_html(content: str, svg: str = "", sid: str = "", live: str = "", native: bool = False) -> str:
+    cls = "pdg-plot pdg-native" if native else "pdg-plot"
     if svg and live:
         # animated on screen, still frame in print/PDF (and for the ODP geometry pass)
-        return f'<div class="pdg-plot pdg-animated"{sid}>\n<div class="pdg-live">{live}</div>\n<div class="pdg-still">{svg}</div>\n</div>'
+        return f'<div class="{cls} pdg-animated"{sid}>\n<div class="pdg-live">{live}</div>\n<div class="pdg-still">{svg}</div>\n</div>'
     if svg:
-        return f'<div class="pdg-plot"{sid}>\n{svg}\n</div>'
+        return f'<div class="{cls}"{sid}>\n{svg}\n</div>'
     return f'<pre class="pdg-fallback"{sid}><code>{escape(content)}</code></pre>'
 
 

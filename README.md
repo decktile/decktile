@@ -353,6 +353,12 @@ than its column at its own sizes still shrinks to fit. In this mode the graph's 
 is the theme's body text size (`section` and `p` font sizes), so `1em` in a diagram means
 body text, and `0.8em` stays relative to it when the theme changes.
 
+Slide classes for diagrams and columns (`@class ...`):
+
+- `pdg-full`: a diagram may use the whole slide height (no image height cap).
+- `cols-top`: both columns start at the top instead of being centred; `right-top`: only
+  the right column.
+
 ## Stacks
 
 `::: stack` puts any blocks (tables, ```pdg diagrams, cards, text) one under another.

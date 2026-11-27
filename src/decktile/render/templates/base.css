@@ -287,6 +287,10 @@ LOGO_CSS
   height: auto;
   max-height: IMG_MAX_Hpx;
 }
+/* @class pdg-full: a diagram may use the whole slide height (no IMG_MAX_H cap) */
+.pdg-full .pdg-plot svg { max-height: none; }
+/* pdg_scale: native: drawn 1:1 (already as wide as its column), only shrunk to fit */
+.pdg-native svg { width: auto; max-width: 100%; }
 /* animated diagram on screen, still frame in print/PDF */
 .pdg-animated .pdg-still { display: none; }
 @media print {
@@ -400,6 +404,8 @@ LOGO_CSS
   min-width: 0;
   overflow-wrap: break-word;
 }
+/* @class cols-top: columns start at the top instead of being centred (right-top: only the right one) */
+.cols-top .col-left, .cols-top .col-right, .right-top .col-right { justify-content: flex-start; }
 
 .compare {
   grid-template-columns: 1fr auto 1fr !important;
