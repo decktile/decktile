@@ -353,6 +353,9 @@ than its column at its own sizes still shrinks to fit. In this mode the graph's 
 is the theme's body text size (`section` and `p` font sizes), so `1em` in a diagram means
 body text, and `0.8em` stays relative to it when the theme changes.
 
+A theme folder's `theme.toml` palette is also loaded into the slides as CSS variables
+(`:root { --ink: ...; }`), so `theme.css` and the diagrams share one set of colour names.
+
 Slide classes for diagrams and columns (`@class ...`):
 
 - `pdg-full`: a diagram may use the whole slide height (no image height cap).

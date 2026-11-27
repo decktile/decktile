@@ -157,3 +157,15 @@ def test_card_h4_is_a_label_in_place(tmp_path):
     assert CliRunner().invoke(app, [str(deck)]).exit_code == 0
     html = (tmp_path / "dist" / "d.html").read_text()
     assert "<p>first</p>\n<h4>Label</h4>\n<p>second</p>" in html
+
+
+def test_theme_toml_palette_is_available_to_theme_css(tmp_path):
+    """One palette for slides and diagrams: theme.css can use theme.toml's colours."""
+    _make_theme(tmp_path)
+    (tmp_path / "themes" / "acme" / "theme.toml").write_text('extends = "hami"\n[palette]\nink = "blue"\n')
+    deck = tmp_path / "d.deck.md"
+    deck.write_text("---\ntheme: themes/acme\n---\n\n## Slide\n")
+    result = CliRunner().invoke(app, [str(deck)])
+    assert result.exit_code == 0, result.output
+    html = (tmp_path / "dist" / "d.html").read_text()
+    assert ":root { --bg: " in html and "--ink: #" in html  # alias resolved to the parent's blue

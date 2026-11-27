@@ -162,6 +162,8 @@ def _build(
             toml = str((theme_dir / "theme.toml").resolve())
             doc.meta.pdg_theme = doc.meta.pdg_theme or toml
             doc.meta.seaborn_theme = doc.meta.seaborn_theme or toml
+            # one palette for slides and diagrams: theme.css can use var(--ink) etc.
+            theme_css = palette_css(toml) + theme_css
     # downstream theme files, relative to the deck
     if doc.meta.seaborn_theme.endswith(".toml"):
         doc.meta.seaborn_theme = str((file.parent / doc.meta.seaborn_theme).resolve())
@@ -322,6 +324,14 @@ def _symlink_assets(source_dir: Path, dist_dir: Path) -> None:
 
 
 _CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
+
+
+def palette_css(toml: str) -> str:
+    """`:root` variables for a theme.toml's [palette] (aliases resolved), before theme.css."""
+    from predictygraph.theme import _resolve_aliases, load_theme
+
+    pal = _resolve_aliases(dict(load_theme(toml).get("palette", {})), toml)
+    return ":root { " + " ".join(f"--{k}: {v};" for k, v in pal.items()) + " }\n" if pal else ""
 
 
 def _folder_theme_css(theme_dir: Path, deck_dir: Path) -> str:
