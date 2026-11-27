@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs", "plot"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:9e00d2839c32e1d96fec3f06aa7ed772b1c17c810775bcaadb9f54b3b567708c"
+content_hash = "sha256:3ea201dbb5172f0e4b30d7d61939aaaaf0cedf51148e847e45236544c8785b73"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -1928,7 +1928,7 @@ files = [
 
 [[package]]
 name = "predictygraph"
-version = "0.4.2"
+version = "0.6.0"
 requires_python = ">=3.11"
 summary = "Predictable graphs: a readable, CSS-styled diagram DSL with per-group layouts, rendered to SVG/APNG"
 groups = ["default"]
@@ -1938,24 +1938,24 @@ dependencies = [
     "typer>=0.26.8",
 ]
 files = [
-    {file = "predictygraph-0.4.2-py3-none-any.whl", hash = "sha256:bcee4fe35d93c1053506d3e433639aa6539e5f366d69a46d8dbac3c2c131053b"},
-    {file = "predictygraph-0.4.2.tar.gz", hash = "sha256:030253ea9dc529239140df7ac65d8a191f49fc9c818ab7a14319cb0a3b16a56b"},
+    {file = "predictygraph-0.6.0-py3-none-any.whl", hash = "sha256:8502af965a59ac01d04d6c04fd4a22f0eb39da95ebb0046f096c20f78e13bae9"},
+    {file = "predictygraph-0.6.0.tar.gz", hash = "sha256:3b949c710968c7f7d4c6a645720ba9ef76540958416e3a621b0ebe39f31c00b3"},
 ]
 
 [[package]]
 name = "predictygraph"
-version = "0.4.2"
+version = "0.6.0"
 extras = ["icons"]
 requires_python = ">=3.11"
 summary = "Predictable graphs: a readable, CSS-styled diagram DSL with per-group layouts, rendered to SVG/APNG"
 groups = ["default"]
 dependencies = [
-    "predictygraph==0.4.2",
+    "predictygraph==0.6.0",
     "python-lucide>=0.5.0",
 ]
 files = [
-    {file = "predictygraph-0.4.2-py3-none-any.whl", hash = "sha256:bcee4fe35d93c1053506d3e433639aa6539e5f366d69a46d8dbac3c2c131053b"},
-    {file = "predictygraph-0.4.2.tar.gz", hash = "sha256:030253ea9dc529239140df7ac65d8a191f49fc9c818ab7a14319cb0a3b16a56b"},
+    {file = "predictygraph-0.6.0-py3-none-any.whl", hash = "sha256:8502af965a59ac01d04d6c04fd4a22f0eb39da95ebb0046f096c20f78e13bae9"},
+    {file = "predictygraph-0.6.0.tar.gz", hash = "sha256:3b949c710968c7f7d4c6a645720ba9ef76540958416e3a621b0ebe39f31c00b3"},
 ]
 
 [[package]]

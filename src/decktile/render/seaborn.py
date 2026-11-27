@@ -85,7 +85,7 @@ def _pdg_theme(name: str) -> dict | None:
     bg-alt = grid; hues in a fixed order are the colour cycle. An optional ``[seaborn]`` table
     overrides that: ``palette`` (palette keys or hex) and any matplotlib rcParam.
     """
-    from predictygraph.theme import ThemeError, _resolve_aliases, load_theme
+    from predictygraph.theme import ThemeError, load_theme, theme_colours
 
     local = _CHART_THEMES / f"{name}.toml"
     if not local.is_file() and (_THEME_DIR / f"{name}.css").is_file():
@@ -94,7 +94,7 @@ def _pdg_theme(name: str) -> dict | None:
         t = load_theme(str(local) if local.is_file() else name)
     except ThemeError:
         return None
-    pal = _resolve_aliases(dict(t.get("palette", {})), name)
+    pal = theme_colours(str(local) if local.is_file() else name)  # palette, colour roles, series-1 ...
     extra = dict(t.get("seaborn", {}))
     order = extra.pop("palette", None) or [h for h in _HUE_ORDER if h in pal]
     style = {

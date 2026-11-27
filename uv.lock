@@ -826,7 +826,7 @@ requires-dist = [
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.1.0" },
     { name = "odfdo", specifier = ">=3.27.2" },
     { name = "pillow", marker = "extra == 'plot'", specifier = ">=11.0.0" },
-    { name = "predictygraph", extras = ["icons"], specifier = ">=0.4.2" },
+    { name = "predictygraph", extras = ["icons"], specifier = ">=0.6.0" },
     { name = "pygments-styles", specifier = ">=0.3.0" },
     { name = "python-frontmatter", specifier = ">=1.3.0" },
     { name = "python-lucide", specifier = ">=0.5.0" },
@@ -1914,16 +1914,16 @@ wheels = [
 
 [[package]]
 name = "predictygraph"
-version = "0.4.2"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pillow" },
     { name = "tinycss2" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/72/a67ea56590f196ee3f7cc48af9a08f5aecbc41dac03f48d01c9e5181f989/predictygraph-0.4.2.tar.gz", hash = "sha256:030253ea9dc529239140df7ac65d8a191f49fc9c818ab7a14319cb0a3b16a56b", size = 160300, upload-time = "2026-11-27T03:54:40.389Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/0d/8bb7a4a56236aec31a6e403161957f8ef9297c6d542ea673752f8fc19d76/predictygraph-0.6.0.tar.gz", hash = "sha256:3b949c710968c7f7d4c6a645720ba9ef76540958416e3a621b0ebe39f31c00b3", size = 163312, upload-time = "2026-11-27T08:24:04.27Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/35/550804c0d8ea0690d3dfaad93320fdf7326daef2bb3a9436301e5a031ea2/predictygraph-0.4.2-py3-none-any.whl", hash = "sha256:bcee4fe35d93c1053506d3e433639aa6539e5f366d69a46d8dbac3c2c131053b", size = 169225, upload-time = "2026-11-27T03:54:39.525Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/b6/5b8ed5b3b4fdde8b6781ff12af7c6d963e4d0b3cf45acdde0a6ee0cf413d/predictygraph-0.6.0-py3-none-any.whl", hash = "sha256:8502af965a59ac01d04d6c04fd4a22f0eb39da95ebb0046f096c20f78e13bae9", size = 171683, upload-time = "2026-11-27T08:24:03.425Z" },
 ]
 
 [package.optional-dependencies]

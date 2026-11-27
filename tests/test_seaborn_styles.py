@@ -194,3 +194,17 @@ def test_chart_code_gets_the_theme_palette_by_name(tmp_path):
     sb.set_theme(str(f))
     svg = sb.render_seaborn_svg('plt.bar([0], [1], color=pal["ink"])')
     assert svg and "#2563eb" in svg
+
+
+def test_chart_code_gets_colour_roles_and_series(tmp_path):
+    """`pal["primary"]` / `pal["series-2"]`: charts name the theme's roles, not brand colours."""
+    import pytest
+
+    pytest.importorskip("seaborn")
+    import decktile.render.seaborn as sb
+
+    f = tmp_path / "brand.toml"
+    f.write_text('schema = 1\nextends = "hami"\n[palette]\nink = "#093034"\n[roles]\nprimary = "ink"\nseries = ["red", "ink"]\n')
+    sb.set_theme(str(f))
+    svg = sb.render_seaborn_svg('plt.bar([0, 1], [1, 2], color=[pal["primary"], pal["series-2"]])')
+    assert svg and svg.count("#093034") >= 2
